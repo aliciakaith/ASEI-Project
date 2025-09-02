@@ -1,0 +1,15 @@
+# dependencies
+node_modules/
+
+# builds
+dist/
+build/
+.parcel-cache/
+
+# system files
+.DS_Store
+.vscode/
+
+# environment files
+.env
+.env.*
