@@ -1,38 +1,27 @@
-<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ASEI – Unified Integration Platform • Dashboard</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-    :root{--sidebar: #111111; --sidebar-2: #1c1c1c; --stroke:#e5e5e5}
-    html,body{height:100%}
-    body{font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji','Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';}
-    /* scrollbar subtle */
-    *{scrollbar-width: thin; scrollbar-color: #c5c5c5 transparent}
-    *::-webkit-scrollbar{height:8px;width:8px}
-    *::-webkit-scrollbar-thumb{background:#cfcfcf;border-radius:999px}
-    *::-webkit-scrollbar-track{background:transparent}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ASEI Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
 </head>
+<body class="bg-neutral-100 text-neutral-900">
 
-<!-- Sidebar copied -->
+
+<!-- Sidebar -->
 <aside class="w-64 bg-neutral-900 text-neutral-100 min-h-screen fixed">
 <div class="px-4 py-4 border-b border-neutral-800">ASEI Platform</div>
 <nav class="p-2 text-sm space-y-1">
-<a href="asei_dashboard.html" class="block px-3 py-2 hover:bg-neutral-800">Dashboard</a>
-<a href="flow-designer.html" class="block px-3 py-2 bg-neutral-800 rounded">Flow Designer</a>
-<a href="connectors.html" class="block px-3 py-2 hover:bg-neutral-800">Connectors</a>
+<a href="asei_dashboard.html" class="block px-3 py-2 bg-neutral-800 rounded">Dashboard</a>
+<a href="flow_designer.html" class="block px-3 py-2 hover:bg-neutral-800">Flow Designer</a>
+<a href="Connectors.html" class="block px-3 py-2 hover:bg-neutral-800">Connectors</a>
 <a href="templates.html" class="block px-3 py-2 hover:bg-neutral-800">Templates</a>
 <a href="deployments.html" class="block px-3 py-2 hover:bg-neutral-800">Deployments</a>
 <a href="monitoring.html" class="block px-3 py-2 hover:bg-neutral-800">Monitoring</a>
 <a href="settings.html" class="block px-3 py-2 hover:bg-neutral-800">Settings</a>
 </nav>
 </aside>
+
 <body class="min-h-screen bg-neutral-100 text-neutral-900">
   <!-- Top bar -->
   <div class="w-full bg-black text-white text-xs py-2 px-4 flex items-center gap-2">
