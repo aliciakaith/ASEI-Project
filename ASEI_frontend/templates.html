@@ -51,16 +51,69 @@
     </aside>
 
 
-<header class="ml-64 bg-black text-white px-6 py-3">Templates</header>
+<!-- Main Content -->
+  <main class="p-6 ml-40 md:ml-64">
+    <h2 class="text-xl font-semibold mb-4">Templates</h2>
 
+    <!-- Search + Filter -->
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6 space-y-3 md:space-y-0">
+      <input type="text" placeholder="Search templates..." 
+             class="border rounded px-3 py-2 w-full md:w-1/3">
+      
+      <select class="border rounded px-3 py-2 w-full md:w-48">
+        <option value="all">All Categories</option>
+        <option value="payments">Payments</option>
+        <option value="banking">Banking</option>
+        <option value="utilities">Utilities</option>
+        <option value="remittance">Remittances</option>
+      </select>
+    </div>
 
-<main class="ml-64 p-6">
-<h2 class="text-xl font-semibold mb-4">Template Library</h2>
-<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-<div class="bg-white p-4 rounded shadow">Mobile Money → Bank Settlement</div>
-<div class="bg-white p-4 rounded shadow">Utility Bills → Core Banking</div>
-<div class="bg-white p-4 rounded shadow">Remittance → Wallet</div>
-</div>
-</main>
+    <!-- Templates Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+      <!-- Card 1 -->
+      <div class="bg-white p-4 rounded shadow flex flex-col justify-between">
+        <div>
+          <h3 class="font-semibold text-lg">Mobile Money → Bank Settlement</h3>
+          <p class="text-sm text-neutral-600 mt-1">Automates transfers from mobile wallets into bank accounts.</p>
+          <span class="inline-block mt-2 px-2 py-1 bg-green-100 text-green-700 text-xs rounded">Official</span>
+        </div>
+        <div class="mt-4 flex space-x-2">
+          <button class="px-3 py-1 bg-gray-200 rounded">Preview</button>
+          <button class="px-3 py-1 bg-blue-600 text-white rounded">Use Template</button>
+        </div>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="bg-white p-4 rounded shadow flex flex-col justify-between">
+        <div>
+          <h3 class="font-semibold text-lg">Utility Bills → Core Banking</h3>
+          <p class="text-sm text-neutral-600 mt-1">Handles bill collection and reconciliation into core banking system.</p>
+          <span class="inline-block mt-2 px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded">Community</span>
+        </div>
+        <div class="mt-4 flex space-x-2">
+          <button class="px-3 py-1 bg-gray-200 rounded">Preview</button>
+          <button class="px-3 py-1 bg-blue-600 text-white rounded">Use Template</button>
+        </div>
+      </div>
+
+      <!-- Card 3 -->
+      <div class="bg-white p-4 rounded shadow flex flex-col justify-between">
+        <div>
+          <h3 class="font-semibold text-lg">Remittance → Wallet</h3>
+          <p class="text-sm text-neutral-600 mt-1">Maps international remittances directly into local mobile wallets.</p>
+          <span class="inline-block mt-2 px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded">Official</span>
+        </div>
+        <div class="mt-4 flex space-x-2">
+          <button class="px-3 py-1 bg-gray-200 rounded">Preview</button>
+          <button class="px-3 py-1 bg-blue-600 text-white rounded">Use Template</button>
+        </div>
+      </div>
+
+    </div>
+  </main>
 </body>
+</html>
+
 </html>

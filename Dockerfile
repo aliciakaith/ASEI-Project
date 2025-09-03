@@ -1,14 +1,23 @@
 # ---- build stage ----
-FROM maven:3.9-eclipse-temurin-17 AS build
+FROM node:18 AS build
 WORKDIR /app
-COPY pom.xml .
-RUN mvn -B -q -e -DskipTests dependency:go-offline
-COPY src ./src
-RUN mvn -B -DskipTests package
+
+# Copy package files
+COPY package*.json ./
+RUN npm install
+
+# Copy the rest of the app
+COPY . .
 
 # ---- runtime stage ----
-FROM eclipse-temurin:17-jre
+FROM node:18-slim
 WORKDIR /app
-COPY --from=build /app/target/*.jar app.jar
+
+# Copy built app
+COPY --from=build /app .
+
+# Expose app port
 EXPOSE 8080
-CMD ["java","-jar","app.jar"]
+
+# Start the app
+CMD ["npm", "start"]
