@@ -10,50 +10,80 @@
 
 
 <!-- Sidebar -->
-    <aside class="fixed inset-y-0 left-0 w-64 bg-neutral-900 text-neutral-100 min-h-[calc(100vh-40px)]">
-      <nav class="p-2 text-sm">
-        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
+    <aside class="fixed inset-y-0 left-0 w-64 bg-neutral-900 text-neutral-100 flex flex-col">
+      <div class="px-4 py-4 flex items-center gap-2 border-b border-neutral-800">
+        <div class="text-sm font-medium">Insert Name</div>
+      </div>
+
+      <nav class="p-2 text-sm flex-1">
+        <a href="asei_dashboard.html" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
           <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l2-2 4 4 8-8 4 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7"/></svg>
           <span>Dashboard</span>
         </a>
-        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
+        <a href="flow_designer.html" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
           <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/></svg>
           <span>Flow Designer</span>
         </a>
-        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
+        <a href="Connectors.html" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
           <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h10M7 12h6"/></svg>
           <span>Connectors</span>
         </a>
-        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg bg-neutral-800"> 
+        <a href="templates.html" class="flex items-center gap-3 px-3 py-2 rounded-lg bg-neutral-800"> 
           <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 21h10M12 17V3"/><rect x="5" y="11" width="14" height="6" rx="2"/></svg>
           <span>Templates</span>
         </a>
-        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
+        <a href="deployments.html" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
           <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v4H3z"/><path d="M7 7v14m10-14v14"/></svg>
           <span>Deployments</span>
         </a>
-        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
-          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v4H3z"/><path d="M7 7v14m10-14v14"/></svg>
+        <a href="monitoring.html" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="17" y1="16" x2="22" y2="21" stroke-width="3"/></svg>
           <span>Monitoring</span>
         </a>
-        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
+        <a href="settings.html" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
           <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 8.62 4.6 1.65 1.65 0 0 0 10 3.09V3a2 2 0 1 1 4 0v.09c0 .67.39 1.27 1 1.51.53.22 1.15.1 1.58-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06c-.43.43-.55 1.05-.33 1.58.24.61.84 1 1.51 1H21a2 2 0 1 1 0 4h-.09c-.67 0-1.27.39-1.51 1z"/></svg>
           <span>Settings</span>
         </a>
       </nav>
 
-      <div class="px-4 py-4 flex items-center gap-2 border-t border-neutral-800">
-        <div class="h-8 w-8 rounded-full bg-neutral-800 flex items-center justify-center"> 
-          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <div class="relative">
+        <button id="profileBtn" class="w-full px-4 py-4 flex items-center gap-2 border-t border-neutral-800 text-left hover:bg-neutral-800/60">
+            <div class="h-8 w-8 rounded-full bg-neutral-800 grid place-items-center">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                </svg>
+            </div>
+            <span class="text-sm font-medium">Insert User Name</span>
+        </button>
+
+        <div id="profileMenu" class="absolute bottom-full left-3 left-3 right-3 mt-4 hidden rounded-lg bg-neutral-800 border border-neutral-700 text-neutral-200 shadow-xl z-50">
+            <div class="px-3 py-3 text-red-400">Sign Out</div>
         </div>
-        <div class="text-sm font-medium">ASEI Platform</div>
       </div>
+      <script>
+        const btn = document.getElementById('profileBtn');
+        const menu = document.getElementById('profileMenu');
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            menu.classList.toggle('hidden');
+        });
+
+        document.addEventListener('click', (e) =>{
+            if(!menu.contains(e.target) && e.target !== btn){
+                menu.classList.add('hidden');
+            }
+        });
+      </script>
     </aside>
 
 
+<<<<<<< HEAD
 <!-- Main Content -->
   <main class="p-6 ml-40 md:ml-64">
     <h2 class="text-xl font-semibold mb-4">Templates</h2>
+=======
+<header class="ml-64 bg-black text-white text-sm px-2 py-4">Templates</header>
+>>>>>>> 07bedc4 (feat(frontend): update UI + routes)
 
     <!-- Search + Filter -->
     <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6 space-y-3 md:space-y-0">
@@ -69,6 +99,7 @@
       </select>
     </div>
 
+<<<<<<< HEAD
     <!-- Templates Grid -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
@@ -113,6 +144,16 @@
 
     </div>
   </main>
+=======
+<main class="ml-64 p-6">
+<h2 class="text-xl font-semibold mb-4">Themes</h2>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+<div class="bg-white p-4 rounded shadow">Mobile Money → Bank Settlement</div>
+<div class="bg-white p-4 rounded shadow">Utility Bills → Core Banking</div>
+<div class="bg-white p-4 rounded shadow">Remittance → Wallet</div>
+</div>
+</main>
+>>>>>>> 07bedc4 (feat(frontend): update UI + routes)
 </body>
 </html>
 
