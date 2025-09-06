@@ -11,36 +11,37 @@
 
 <!-- Sidebar -->
     <aside class="fixed inset-y-0 left-0 w-64 bg-neutral-900 text-neutral-100 min-h-[calc(100vh-40px)]">
-      <nav class="p-2 text-sm">
-        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
+      <nav class="p-2 flex-1 text-xs" id="sidebarNav">
+        <a href="/dashboard"   class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
           <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l2-2 4 4 8-8 4 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7"/></svg>
           <span>Dashboard</span>
         </a>
-        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
+        <a href="/flow-designer" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
           <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/></svg>
           <span>Flow Designer</span>
         </a>
-        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
+        <a href="/connectors"  class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
           <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h10M7 12h6"/></svg>
           <span>Connectors</span>
         </a>
-        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg bg-neutral-800"> 
+        <a href="/templates"   class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
           <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 21h10M12 17V3"/><rect x="5" y="11" width="14" height="6" rx="2"/></svg>
           <span>Templates</span>
         </a>
-        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
+        <a href="/deployments" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
           <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v4H3z"/><path d="M7 7v14m10-14v14"/></svg>
           <span>Deployments</span>
         </a>
-        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
+        <a href="/monitoring"  class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
           <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v4H3z"/><path d="M7 7v14m10-14v14"/></svg>
           <span>Monitoring</span>
         </a>
-        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
-          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 8.62 4.6 1.65 1.65 0 0 0 10 3.09V3a2 2 0 1 1 4 0v.09c0 .67.39 1.27 1 1.51.53.22 1.15.1 1.58-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06c-.43.43-.55 1.05-.33 1.58.24.61.84 1 1.51 1H21a2 2 0 1 1 0 4h-.09c-.67 0-1.27.39-1.51 1z"/></svg>
+        <a href="/settings"    class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09c-.67 0-1.27.39-1.51 1z"/></svg>
           <span>Settings</span>
         </a>
       </nav>
+
 
       <div class="px-4 py-4 flex items-center gap-2 border-t border-neutral-800">
         <div class="h-8 w-8 rounded-full bg-neutral-800 flex items-center justify-center"> 
@@ -51,16 +52,86 @@
     </aside>
 
 
-<header class="ml-64 bg-black text-white px-6 py-3">Templates</header>
+<!-- Main Content -->
+  <main class="p-6 ml-40 md:ml-64">
+    <h2 class="text-xl font-semibold mb-4">Templates</h2>
 
+    <!-- Search + Filter -->
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6 space-y-3 md:space-y-0">
+      <input type="text" placeholder="Search templates..." 
+             class="border rounded px-3 py-2 w-full md:w-1/3">
+      
+      <select class="border rounded px-3 py-2 w-full md:w-48">
+        <option value="all">All Categories</option>
+        <option value="payments">Payments</option>
+        <option value="banking">Banking</option>
+        <option value="utilities">Utilities</option>
+        <option value="remittance">Remittances</option>
+      </select>
+    </div>
 
-<main class="ml-64 p-6">
-<h2 class="text-xl font-semibold mb-4">Template Library</h2>
-<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-<div class="bg-white p-4 rounded shadow">Mobile Money → Bank Settlement</div>
-<div class="bg-white p-4 rounded shadow">Utility Bills → Core Banking</div>
-<div class="bg-white p-4 rounded shadow">Remittance → Wallet</div>
-</div>
-</main>
+    <!-- Templates Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+      <!-- Card 1 -->
+      <div class="bg-white p-4 rounded shadow flex flex-col justify-between">
+        <div>
+          <h3 class="font-semibold text-lg">Mobile Money → Bank Settlement</h3>
+          <p class="text-sm text-neutral-600 mt-1">Automates transfers from mobile wallets into bank accounts.</p>
+          <span class="inline-block mt-2 px-2 py-1 bg-green-100 text-green-700 text-xs rounded">Official</span>
+        </div>
+        <div class="mt-4 flex space-x-2">
+          <button class="px-3 py-1 bg-gray-200 rounded">Preview</button>
+          <button class="px-3 py-1 bg-blue-600 text-white rounded">Use Template</button>
+        </div>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="bg-white p-4 rounded shadow flex flex-col justify-between">
+        <div>
+          <h3 class="font-semibold text-lg">Utility Bills → Core Banking</h3>
+          <p class="text-sm text-neutral-600 mt-1">Handles bill collection and reconciliation into core banking system.</p>
+          <span class="inline-block mt-2 px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded">Community</span>
+        </div>
+        <div class="mt-4 flex space-x-2">
+          <button class="px-3 py-1 bg-gray-200 rounded">Preview</button>
+          <button class="px-3 py-1 bg-blue-600 text-white rounded">Use Template</button>
+        </div>
+      </div>
+
+      <!-- Card 3 -->
+      <div class="bg-white p-4 rounded shadow flex flex-col justify-between">
+        <div>
+          <h3 class="font-semibold text-lg">Remittance → Wallet</h3>
+          <p class="text-sm text-neutral-600 mt-1">Maps international remittances directly into local mobile wallets.</p>
+          <span class="inline-block mt-2 px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded">Official</span>
+        </div>
+        <div class="mt-4 flex space-x-2">
+          <button class="px-3 py-1 bg-gray-200 rounded">Preview</button>
+          <button class="px-3 py-1 bg-blue-600 text-white rounded">Use Template</button>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+<script>
+  (function () {
+    const current = location.pathname.replace(/\/+$/, "") || "/dashboard";
+    document.querySelectorAll("#sidebarNav a").forEach(a => {
+      const href = a.getAttribute("href");
+      if (href === current) {
+        a.classList.add("bg-neutral-800");
+        a.classList.remove("hover:bg-neutral-800/70");
+      } else {
+        a.classList.remove("bg-neutral-800");
+        a.classList.add("hover:bg-neutral-800/70");
+      }
+    });
+  })();
+</script>
+
 </body>
+</html>
+
 </html>

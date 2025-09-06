@@ -11,36 +11,37 @@
 
 <!-- Sidebar -->
     <aside class="fixed inset-y-0 left-0 w-64 bg-neutral-900 text-neutral-100 min-h-[calc(100vh-40px)]">
-      <nav class="p-2 text-sm">
-        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
+      <nav class="p-2 flex-1 text-xs" id="sidebarNav">
+        <a href="/dashboard"   class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
           <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l2-2 4 4 8-8 4 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7"/></svg>
           <span>Dashboard</span>
         </a>
-        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
+        <a href="/flow-designer" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
           <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/></svg>
           <span>Flow Designer</span>
         </a>
-        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
+        <a href="/connectors"  class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
           <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h10M7 12h6"/></svg>
           <span>Connectors</span>
         </a>
-        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
+        <a href="/templates"   class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
           <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 21h10M12 17V3"/><rect x="5" y="11" width="14" height="6" rx="2"/></svg>
           <span>Templates</span>
         </a>
-        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
+        <a href="/deployments" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
           <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v4H3z"/><path d="M7 7v14m10-14v14"/></svg>
           <span>Deployments</span>
         </a>
-        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg bg-neutral-800"> 
-          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l2-2 4 4 8-8 4 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7"/></svg>
+        <a href="/monitoring"  class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v4H3z"/><path d="M7 7v14m10-14v14"/></svg>
           <span>Monitoring</span>
         </a>
-        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
-          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 8.62 4.6 1.65 1.65 0 0 0 10 3.09V3a2 2 0 1 1 4 0v.09c0 .67.39 1.27 1 1.51.53.22 1.15.1 1.58-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06c-.43.43-.55 1.05-.33 1.58.24.61.84 1 1.51 1H21a2 2 0 1 1 0 4h-.09c-.67 0-1.27.39-1.51 1z"/></svg>
+        <a href="/settings"    class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09c-.67 0-1.27.39-1.51 1z"/></svg>
           <span>Settings</span>
         </a>
       </nav>
+
 
       <div class="px-4 py-4 flex items-center gap-2 border-t border-neutral-800">
         <div class="h-8 w-8 rounded-full bg-neutral-800 flex items-center justify-center"> 
@@ -73,5 +74,21 @@
 </tbody>
 </table>
 </main>
+<script>
+  (function () {
+    const current = location.pathname.replace(/\/+$/, "") || "/dashboard";
+    document.querySelectorAll("#sidebarNav a").forEach(a => {
+      const href = a.getAttribute("href");
+      if (href === current) {
+        a.classList.add("bg-neutral-800");
+        a.classList.remove("hover:bg-neutral-800/70");
+      } else {
+        a.classList.remove("bg-neutral-800");
+        a.classList.add("hover:bg-neutral-800/70");
+      }
+    });
+  })();
+</script>
+
 </body>
 </html>
