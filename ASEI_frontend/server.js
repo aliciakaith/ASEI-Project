@@ -1,16 +1,26 @@
+// ASEI_frontend/server.js
 const express = require("express");
 const path = require("path");
 const app = express();
+const PORT = process.env.PORT || 3000;
 
-// Serve static files (HTML, CSS, JS)
-app.use(express.static(path.join(__dirname)));
+// serve static assets (css/js/images) from this folder
+app.use(express.static(__dirname));
 
-// Default route → index.html
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "index.html"));
-});
+// helper to send a page
+const page = f => (_req, res) => res.sendFile(path.join(__dirname, f));
 
-const PORT = 3000;
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`ASEI UI running at http://172.19.121.180:${PORT}`);
-});
+// home + friendly routes
+app.get("/", page("asei_dashboard.html"));
+app.get("/dashboard", page("asei_dashboard.html"));
+app.get("/flow-designer", page("flow_designer.html"));
+app.get("/connectors", page("Connectors.html")); // note the capital C in the filename
+app.get("/templates", page("templates.html"));
+app.get("/deployments", page("deployments.html"));
+app.get("/monitoring", page("monitoring.html"));
+app.get("/settings", page("settings.html"));
+
+// readable 404
+app.use((req, res) => res.status(404).send(`404 Not Found: ${req.url}`));
+
+app.listen(PORT, () => console.log(`UI at http://localhost:${PORT}`));
