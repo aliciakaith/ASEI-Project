@@ -18,6 +18,11 @@ COPY --from=build /app .
 
 # Expose app port
 EXPOSE 8080
+<<<<<<< Updated upstream
 
 # Start the app
 CMD ["npm", "start"]
+=======
+CMD ["java","-jar","app.jar"]
+
+>>>>>>> Stashed changes
