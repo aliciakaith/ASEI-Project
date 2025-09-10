@@ -1,23 +1,12 @@
-# ---- build stage ----
-FROM node:18 AS build
+FROM node:20-alpine
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
-RUN npm install
+COPY ASEI_frontend/package*.json ./
+RUN npm ci --omit=dev || npm install --omit=dev
 
-# Copy the rest of the app
-COPY . .
+COPY ASEI_frontend/ ./
 
-# ---- runtime stage ----
-FROM node:18-slim
-WORKDIR /app
+ENV PORT=3000
+EXPOSE 3000
 
-# Copy built app
-COPY --from=build /app .
-
-# Expose app port
-EXPOSE 8080
-
-# Start the app
-CMD ["npm", "start"]
+CMD ["node", "server.js"]
