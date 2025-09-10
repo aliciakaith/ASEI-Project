@@ -9,42 +9,76 @@
 <body class="bg-neutral-100 text-neutral-900">
 
 
-<!-- Sidebar -->
-<aside class="w-64 bg-neutral-900 text-neutral-100 min-h-screen fixed">
-<div class="px-4 py-4 border-b border-neutral-800">ASEI Platform</div>
-<nav class="p-2 text-sm space-y-1">
-<a href="asei_dashboard.html" class="block px-3 py-2 hover:bg-neutral-800">Dashboard</a>
-<a href="flow_designer.html" class="block px-3 py-2 hover:bg-neutral-800">Flow Designer</a>
-<a href="Connectors.html" class="block px-3 py-2 hover:bg-neutral-800">Connectors</a>
-<a href="templates.html" class="block px-3 py-2 hover:bg-neutral-800">Templates</a>
-<a href="deployments.html" class="block px-3 py-2 hover:bg-neutral-800">Deployments</a>
-<a href="monitoring.html" class="block px-3 py-2 bg-neutral-800 rounded">Monitoring</a>
-<a href="settings.html" class="block px-3 py-2 hover:bg-neutral-800">Settings</a>
-</nav>
-</aside>
+  <!-- Sidebar -->
+  <aside class="fixed top-0 left-0 w-40 md:w-64 bg-neutral-900 text-neutral-100 min-h-screen overflow-y-auto">
+    <div class="px-4 py-4 flex items-center gap-2 border-b border-neutral-800">
+      <div class="h-8 w-8 rounded-full bg-neutral-800 flex items-center justify-center">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+      </div>
+      <div class="text-sm font-medium hidden sm:block">ASEI Platform</div>
+    </div>
+
+    <nav class="p-2 text-sm space-y-1">
+      <a href="asei_dashboard.html" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-neutral-800/70">🏠 <span class="hidden sm:inline">Dashboard</span></a>
+      <a href="flow_designer.html" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-neutral-800/70">🛠 <span class="hidden sm:inline">Flow Designer</span></a>
+      <a href="connectors.html" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-neutral-800/70">🔌 <span class="hidden sm:inline">Connectors</span></a>
+      <a href="templates.html" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-neutral-800/70">📑 <span class="hidden sm:inline">Templates</span></a>
+      <a href="deployments.html" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-neutral-800/70">🚀 <span class="hidden sm:inline">Deployments</span></a>
+      <a href="monitoring.html" class="flex items-center gap-2 px-3 py-2 rounded bg-neutral-800">📊 <span class="hidden sm:inline">Monitoring</span></a>
+      <a href="settings.html" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-neutral-800/70">⚙️ <span class="hidden sm:inline">Settings</span></a>
+    </nav>
+  </aside>
 
 
 <header class="ml-64 bg-black text-white px-6 py-3">Monitoring</header>
 
 
-<main class="ml-64 p-6">
-<h2 class="text-xl font-semibold mb-4">Execution Logs</h2>
-<table class="w-full bg-white rounded shadow">
-<thead>
-<tr class="bg-neutral-200">
-<th class="p-3 text-left">Flow</th>
-<th class="p-3 text-left">Timestamp</th>
-<th class="p-3 text-left">Status</th>
-</tr>
-</thead>
-<tbody>
-<tr class="border-t">
-<td class="p-3">Payment Flow</td>
-<td class="p-3">2025-08-30 12:45</td>
-<td class="p-3 text-green-600">Success</td>
-</tr>
-</tbody>
-</table>
+<main class="p-6 ml-40 md:ml-64 overflow-x-auto">
+  <div class="flex justify-between items-center mb-4">
+    <h2 class="text-xl font-semibold">Execution Logs</h2>
+    <button class="px-4 py-2 bg-gray-600 text-white rounded">Download Logs</button>
+  </div>
+
+  <!-- Filters -->
+  <div class="flex space-x-3 mb-4">
+    <select class="border rounded px-3 py-2">
+      <option value="all">All Status</option>
+      <option value="success">Success</option>
+      <option value="error">Error</option>
+    </select>
+    <label class="flex items-center space-x-2">
+      <input type="checkbox" class="form-checkbox"> <span class="text-sm">Auto Refresh</span>
+    </label>
+  </div>
+
+  <!-- Logs Table -->
+  <table class="w-full bg-white rounded shadow text-sm">
+    <thead>
+      <tr class="bg-neutral-200">
+        <th class="p-3 text-left">Flow</th>
+        <th class="p-3 text-left">Timestamp</th>
+        <th class="p-3 text-left">Status</th>
+        <th class="p-3 text-left">Details</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="border-t">
+        <td class="p-3">Payment Flow</td>
+        <td class="p-3">2025-09-03 12:45</td>
+        <td class="p-3"><span class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">Success</span></td>
+        <td class="p-3"><button class="px-2 py-1 bg-blue-500 text-white rounded text-xs">View</button></td>
+      </tr>
+      <tr class="border-t">
+        <td class="p-3">Settlement Flow</td>
+        <td class="p-3">2025-09-03 12:50</td>
+        <td class="p-3"><span class="px-2 py-1 bg-red-100 text-red-700 rounded text-xs">Error</span></td>
+        <td class="p-3"><button class="px-2 py-1 bg-blue-500 text-white rounded text-xs">View</button></td>
+      </tr>
+    </tbody>
+  </table>
 </main>
 </body>
 </html>

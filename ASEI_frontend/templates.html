@@ -9,19 +9,29 @@
 <body class="bg-neutral-100 text-neutral-900">
 
 
-<!-- Sidebar -->
-<aside class="w-64 bg-neutral-900 text-neutral-100 min-h-screen fixed">
-<div class="px-4 py-4 border-b border-neutral-800">ASEI Platform</div>
-<nav class="p-2 text-sm space-y-1">
-<a href="asei_dashboard.html" class="block px-3 py-2 hover:bg-neutral-800">Dashboard</a>
-<a href="flow_designer.html" class="block px-3 py-2 hover:bg-neutral-800">Flow Designer</a>
-<a href="Connectors.html" class="block px-3 py-2 hover:bg-neutral-800">Connectors</a>
-<a href="templates.html" class="block px-3 py-2 bg-neutral-800 rounded">Templates</a>
-<a href="deployments.html" class="block px-3 py-2 hover:bg-neutral-800">Deployments</a>
-<a href="monitoring.html" class="block px-3 py-2 hover:bg-neutral-800">Monitoring</a>
-<a href="settings.html" class="block px-3 py-2 hover:bg-neutral-800">Settings</a>
-</nav>
-</aside>
+
+  <!-- Sidebar -->
+  <aside class="fixed top-0 left-0 w-40 md:w-64 bg-neutral-900 text-neutral-100 min-h-screen overflow-y-auto">
+    <div class="px-4 py-4 flex items-center gap-2 border-b border-neutral-800">
+      <div class="h-8 w-8 rounded-full bg-neutral-800 flex items-center justify-center">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+      </div>
+      <div class="text-sm font-medium hidden sm:block">ASEI Platform</div>
+    </div>
+
+    <nav class="p-2 text-sm space-y-1">
+      <a href="asei_dashboard.html" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-neutral-800/70">🏠 <span class="hidden sm:inline">Dashboard</span></a>
+      <a href="flow_designer.html" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-neutral-800/70">🛠 <span class="hidden sm:inline">Flow Designer</span></a>
+      <a href="connectors.html" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-neutral-800/70">🔌 <span class="hidden sm:inline">Connectors</span></a>
+      <a href="templates.html" class="flex items-center gap-2 px-3 py-2 rounded bg-neutral-800">📑 <span class="hidden sm:inline">Templates</span></a>
+      <a href="deployments.html" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-neutral-800/70">🚀 <span class="hidden sm:inline">Deployments</span></a>
+      <a href="monitoring.html" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-neutral-800/70">📊 <span class="hidden sm:inline">Monitoring</span></a>
+      <a href="settings.html" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-neutral-800/70">⚙️ <span class="hidden sm:inline">Settings</span></a>
+    </nav>
+  </aside>
 
 
 <!-- Main Content -->

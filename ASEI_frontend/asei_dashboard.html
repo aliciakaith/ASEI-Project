@@ -1,79 +1,52 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ASEI Dashboard</title>
-<script src="https://cdn.tailwindcss.com"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ASEI Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-neutral-100 text-neutral-900">
-
-
-<!-- Sidebar -->
-<aside class="w-64 bg-neutral-900 text-neutral-100 min-h-screen fixed">
-<div class="px-4 py-4 border-b border-neutral-800"></div>
-<nav class="p-2 text-sm space-y-1">
-<a href="asei_dashboard.html" class="block px-3 py-2 bg-neutral-800 rounded">Dashboard</a>
-<a href="flow_designer.html" class="block px-3 py-2 hover:bg-neutral-800">Flow Designer</a>
-<a href="Connectors.html" class="block px-3 py-2 hover:bg-neutral-800">Connectors</a>
-<a href="templates.html" class="block px-3 py-2 hover:bg-neutral-800">Templates</a>
-<a href="deployments.html" class="block px-3 py-2 hover:bg-neutral-800">Deployments</a>
-<a href="monitoring.html" class="block px-3 py-2 hover:bg-neutral-800">Monitoring</a>
-<a href="settings.html" class="block px-3 py-2 hover:bg-neutral-800">Settings</a>
-</nav>
-</aside>
-
 <body class="min-h-screen bg-neutral-100 text-neutral-900">
+
   <!-- Top bar -->
   <div class="w-full bg-black text-white text-xs py-2 px-4 flex items-center gap-2">
-    <svg class="h-5 w-5 opacity-80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+    <svg class="h-5 w-5 opacity-80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+    </svg>
     <span class="tracking-wide">Dashboard</span>
   </div>
 
   <div class="flex">
-    <!-- Sidebar -->
-    <aside class="w-64 bg-neutral-900 text-neutral-100 min-h-[calc(100vh-40px)]">
-      <div class="px-4 py-4 flex items-center gap-2 border-b border-neutral-800">
-        <div class="h-8 w-8 rounded-full bg-neutral-800 flex items-center justify-center"> 
-          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        </div>
-        <div class="text-sm font-medium">ASEI Platform</div>
+  <!-- Sidebar -->
+  <aside class="fixed top-0 left-0 w-40 md:w-64 bg-neutral-900 text-neutral-100 min-h-screen overflow-y-auto">
+    <div class="px-4 py-4 flex items-center gap-2 border-b border-neutral-800">
+      <div class="h-8 w-8 rounded-full bg-neutral-800 flex items-center justify-center">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
       </div>
+      <div class="text-sm font-medium hidden sm:block">ASEI Platform</div>
+    </div>
 
-      <nav class="p-2 text-sm">
-        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg bg-neutral-800"> 
-          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l2-2 4 4 8-8 4 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7"/></svg>
-          <span>Dashboard</span>
-        </a>
-        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
-          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/></svg>
-          <span>Flow Designer</span>
-        </a>
-        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
-          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h10M7 12h6"/></svg>
-          <span>Connectors</span>
-        </a>
-        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
-          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 21h10M12 17V3"/><rect x="5" y="11" width="14" height="6" rx="2"/></svg>
-          <span>Templates</span>
-        </a>
-        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
-          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v4H3z"/><path d="M7 7v14m10-14v14"/></svg>
-          <span>Deployments</span>
-        </a>
-        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
-          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 8.62 4.6 1.65 1.65 0 0 0 10 3.09V3a2 2 0 1 1 4 0v.09c0 .67.39 1.27 1 1.51.53.22 1.15.1 1.58-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06c-.43.43-.55 1.05-.33 1.58.24.61.84 1 1.51 1H21a2 2 0 1 1 0 4h-.09c-.67 0-1.27.39-1.51 1z"/></svg>
-          <span>Settings</span>
-        </a>
-      </nav>
-    </aside>
+    <nav class="p-2 text-sm space-y-1">
+      <a href="asei_dashboard.html" class="flex items-center gap-2 px-3 py-2 rounded bg-neutral-800">🏠 <span class="hidden sm:inline">Dashboard</span></a>
+      <a href="flow_designer.html" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-neutral-800/70">🛠 <span class="hidden sm:inline">Flow Designer</span></a>
+      <a href="connectors.html" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-neutral-800/70">🔌 <span class="hidden sm:inline">Connectors</span></a>
+      <a href="templates.html" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-neutral-800/70">📑 <span class="hidden sm:inline">Templates</span></a>
+      <a href="deployments.html" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-neutral-800/70">🚀 <span class="hidden sm:inline">Deployments</span></a>
+      <a href="monitoring.html" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-neutral-800/70">📊 <span class="hidden sm:inline">Monitoring</span></a>
+      <a href="settings.html" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-neutral-800/70">⚙️ <span class="hidden sm:inline">Settings</span></a>
+    </nav>
+  </aside>
 
     <!-- Main content -->
-    <main class="flex-1 p-6">
+    <main class="flex-1 p-4 sm:p-6 ml-40 md:ml-64">
       <!-- Top controls -->
-      <div class="flex items-center justify-between mb-4">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-3">
         <div class="text-sm text-neutral-500">Overview</div>
         <div class="flex items-center gap-2">
-          <button class="px-3 py-1.5 rounded-lg bg-white border border-neutral-200 text-sm hover:bg-neutral-50">Staging ▾</button>
+          <button class="px-3 py-1.5 rounded-lg bg-white border border-neutral-200 text-sm hover:bg-neutral-50 w-full sm:w-auto">Staging ▾</button>
           <button class="p-2 rounded-lg bg-white border border-neutral-200 hover:bg-neutral-50" aria-label="Notifications">
             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
           </button>
@@ -84,7 +57,7 @@
       </div>
 
       <!-- KPI cards -->
-      <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div class="bg-white border border-neutral-200 rounded-xl p-4">
           <div class="flex items-center gap-3">
             <div class="h-9 w-9 rounded-xl bg-neutral-100 flex items-center justify-center">
@@ -131,11 +104,11 @@
         </div>
       </section>
 
-      <!-- Content area: chart + quick actions -->
+      <!-- Content area -->
       <section class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+        <!-- Chart -->
         <div class="lg:col-span-2 bg-white border border-neutral-200 rounded-xl p-4">
           <div class="text-sm font-medium mb-2">Transactions</div>
-          <!-- simple SVG line chart placeholder to match mockup -->
           <svg viewBox="0 0 640 240" class="w-full h-56">
             <defs>
               <linearGradient id="g" x1="0" x2="0" y1="0" y2="1">
@@ -155,6 +128,7 @@
           </svg>
         </div>
 
+        <!-- Quick Actions -->
         <div class="bg-white border border-neutral-200 rounded-xl p-4">
           <div class="text-center font-semibold">Quick Actions</div>
           <div class="mt-4 space-y-3">
@@ -172,7 +146,6 @@
       <section class="bg-white border border-neutral-200 rounded-xl p-4">
         <div class="text-sm font-medium mb-4">Services Integrations</div>
         <div class="space-y-4">
-          <!-- item -->
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
               <svg class="h-4 w-4 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3.5 9-7 10-3.5-1-7-5-7-10V6l7-4z"/></svg>
@@ -180,7 +153,6 @@
             </div>
             <span class="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">Active</span>
           </div>
-          <!-- item -->
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
               <svg class="h-4 w-4 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h10M7 13h6"/></svg>

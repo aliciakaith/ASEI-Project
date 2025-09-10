@@ -1,52 +1,69 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Deployments</title>
-<script src="https://cdn.tailwindcss.com"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deployments</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-neutral-100 text-neutral-900">
 
+  <!-- Sidebar -->
+  <aside class="fixed top-0 left-0 w-40 md:w-64 bg-neutral-900 text-neutral-100 min-h-screen overflow-y-auto">
+    <div class="px-4 py-4 flex items-center gap-2 border-b border-neutral-800">
+      <div class="h-8 w-8 rounded-full bg-neutral-800 flex items-center justify-center">⚡</div>
+      <div class="text-sm font-medium hidden sm:block">ASEI Platform</div>
+    </div>
 
-<!-- Sidebar -->
-<aside class="w-64 bg-neutral-900 text-neutral-100 min-h-screen fixed">
-<div class="px-4 py-4 border-b border-neutral-800">ASEI Platform</div>
-<nav class="p-2 text-sm space-y-1">
-<a href="asei_dashboard.html" class="block px-3 py-2 hover:bg-neutral-800">Dashboard</a>
-<a href="flow_designer.html" class="block px-3 py-2 hover:bg-neutral-800">Flow Designer</a>
-<a href="Connectors.html" class="block px-3 py-2 hover:bg-neutral-800">Connectors</a>
-<a href="templates.html" class="block px-3 py-2 hover:bg-neutral-800">Templates</a>
-<a href="deployments.html" class="block px-3 py-2 bg-neutral-800 rounded">Deployments</a>
-<a href="monitoring.html" class="block px-3 py-2 hover:bg-neutral-800">Monitoring</a>
-<a href="settings.html" class="block px-3 py-2 hover:bg-neutral-800">Settings</a>
-</nav>
-</aside>
+    <nav class="p-2 text-sm space-y-1">
+      <a href="asei_dashboard.html" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-neutral-800/70">🏠 <span class="hidden sm:inline">Dashboard</span></a>
+      <a href="flow_designer.html" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-neutral-800/70">🛠 <span class="hidden sm:inline">Flow Designer</span></a>
+      <a href="connectors.html" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-neutral-800/70">🔌 <span class="hidden sm:inline">Connectors</span></a>
+      <a href="templates.html" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-neutral-800/70">📑 <span class="hidden sm:inline">Templates</span></a>
+      <a href="deployments.html" class="flex items-center gap-2 px-3 py-2 rounded bg-neutral-800">🚀 <span class="hidden sm:inline">Deployments</span></a>
+      <a href="monitoring.html" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-neutral-800/70">📊 <span class="hidden sm:inline">Monitoring</span></a>
+      <a href="settings.html" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-neutral-800/70">⚙️ <span class="hidden sm:inline">Settings</span></a>
+    </nav>
+  </aside>
 
+  <!-- Main Content -->
+  <main class="ml-40 md:ml-64 p-4 sm:p-6 overflow-x-auto">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-2">
+      <h2 class="text-xl font-semibold">Deployments</h2>
+      <button class="px-4 py-2 bg-blue-600 text-white rounded w-full sm:w-auto">+ New Deployment</button>
+    </div>
 
-<header class="ml-64 bg-black text-white px-6 py-3">Deployments</header>
+    <!-- Filter -->
+    <select class="border rounded px-3 py-2 w-full sm:w-48 mb-4">
+      <option value="all">All Environments</option>
+      <option value="prod">Production</option>
+      <option value="test">Test</option>
+      <option value="sandbox">Sandbox</option>
+    </select>
 
-
-<main class="ml-64 p-6">
-<h2 class="text-xl font-semibold mb-4">Deployments</h2>
-<table class="w-full bg-white rounded shadow">
-<thead>
-<tr class="bg-neutral-200">
-<th class="p-3 text-left">Flow Name</th>
-<th class="p-3 text-left">Mode</th>
-<th class="p-3 text-left">Environment</th>
-<th class="p-3 text-left">Status</th>
-</tr>
-</thead>
-<tbody>
-<tr class="border-t">
-<td class="p-3">Payment Flow</td>
-<td class="p-3">REST API</td>
-<td class="p-3">Production</td>
-<td class="p-3 text-green-600">Active</td>
-</tr>
-</tbody>
-</table>
-</main>
+    <!-- Table -->
+    <div class="overflow-x-auto bg-white rounded shadow">
+      <table class="w-full text-sm">
+        <thead class="bg-neutral-200">
+          <tr>
+            <th class="p-3 text-left">Flow Name</th>
+            <th class="p-3 text-left">Environment</th>
+            <th class="p-3 text-left">Status</th>
+            <th class="p-3 text-left">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="border-t">
+            <td class="p-3">Payment Flow</td>
+            <td class="p-3">Production</td>
+            <td class="p-3"><span class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">Active</span></td>
+            <td class="p-3">
+              <button class="px-2 py-1 bg-gray-200 rounded text-xs">Rollback</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
 </body>
 </html>
