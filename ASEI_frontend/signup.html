@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ASEI – Unified Integration Platform • Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="images/connectify_logo.png">
+
+    <meta name="appleid-signin-client-id" content="[CLIENT_ID]" />
+    <meta name="appleid-signin-scope" content="[SCOPES]" />
+    <meta name="appleid-signin-redirect-uri" content="[REDIRECT_URI]" />
+    <meta name="appleid-signin-state" content="[STATE]" />
+</head>
+
+<style>
+    .signin-button {
+    width: 210px;
+    height: 40px;
+    }
+</style>
+
+<body class="bg-gray-900 min-h-screen">
+    <div class="flex flex-col items-center justify-center px-6 py-8 mx-auto md:h-screen lg:py-0">
+        <a href="#" class="flex items-center mb-6 text-2xl font-semibold text-white">
+            <img class="w-auto h-10 mr-2" src="/ASEI_frontend/images/connectify_logo.png" alt="Logo">
+          Connectify    
+        </a>
+    <div class="w-full bg-gray-800 rounded-lg shadow border border-gray-700 md:mt-0 sm:max-w-md xl:p-0">
+        <div class="p-6 space-y-2 pb-0 sm:p-8">
+            <h1 class="text-xl font-bold leading-tight tracking-tight text-white md:text-2xl">
+                Create an account
+            </h1>
+            <p class="text-sm font-light text-gray-400">
+                Already have an account? <a href="login.html" class="font-medium text-[#5daeff] hover:underline">Login here</a>
+            </p>
+        </div>
+        <div class="px-6 pt-0 pb-6 sm:px-8">      
+            <form class="space-y-3 md:space-y-4" action="#">
+                <div>
+                    <label for="email" class="block mb-2 text-sm font-medium text-white">Email</label>
+                        <input type="email" name="email" id="email" class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5" required="">
+                </div>
+                <div>
+                    <label for="password" class="block mb-2 text-sm font-medium text-white">Password</label>
+                    <input type="password" name="password" id="password" class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5" required="">
+                </div>
+                <div>
+                    <label for="confirm-password" class="block mb-2 text-sm font-medium text-white">Confirm password</label>
+                    <input type="password" name="confirm-password" id="confirm-password" class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5" required="">
+                </div>
+                <div class="flex items-start">
+                    <div class="flex items-center h-5">
+                        <input id="terms" aria-describedby="terms" type="checkbox" class="w-4 h-4 border border-gray-600 rounded bg-gray-700 focus:ring-3 focus:ring-primary-300" required="">
+                    </div>
+                        <div class="ml-3 text-sm">
+                            <label for="terms" class="font-light text-gray-300">I accept the <a class="font-medium text-[#5daeff] hover:underline" href="#">Terms and Conditions</a></label>
+                        </div>
+                </div>
+                <button type="submit" class="w-full text-white bg-[#3f9fff] hover:bg-[#1188ff] focus:ring-4 focus:outline-none focus:ring-primary-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center">Create an account</button>
+                <div class="flex items-center my-6">
+                    <div class="flex-grow border-t border-gray-500"></div>
+                    <span class="px-3 text-sm text-gray-400">or</span>
+                    <div class="flex-grow border-t border-gray-500"></div>
+                </div>
+
+                <h1 class="text-xl font-bold leading-tight tracking-tight text-white md:text-2xl">
+                    Continue with
+                </h1>
+
+<!-- NOTE: "YOUR_GOOGLE_CLIENT_ID" replace w OAuth 2.0?? -->
+                <div class="w-full rounded-lg overflow-hidden">
+                    <div id="g_id_onload"
+                        data-client_id="YOUR_GOOGLE_CLIENT_ID" 
+                        data-login_uri="https://your.domain/your_login_endpoint"
+                        data-auto_prompt="false">
+                    </div>
+                    <div class="g_id_signin"
+                        data-type="standard"
+                        data-size="large"
+                        data-theme="outline"
+                        data-text="sign_in_with"
+                        data-shape="rectangular"
+                        data-logo_alignment="left">
+                    </div>
+                </div>
+
+<!-- Apple option -->
+                <div id="appleid-signin" class="signin-button" data-color="black" data-border="true" data-type="sign-in"></div>
+                
+            </form>
+        </div>
+    </div>
+    </div>
+
+    <script src="https://accounts.google.com/gsi/client" async></script>
+    <script type="text/javascript" src="https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js"></script> 
+
+</body>
+</html>
