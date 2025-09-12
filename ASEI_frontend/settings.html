@@ -5,85 +5,157 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Settings</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<link rel="icon" type="image/png" href="images/connectify_logo.png">
 </head>
 <body class="bg-neutral-100 text-neutral-900">
 
 
-<!-- Sidebar -->
-    <aside class="fixed inset-y-0 left-0 w-64 bg-neutral-900 text-neutral-100 min-h-[calc(100vh-40px)]">
-      <nav class="p-2 flex-1 text-xs" id="sidebarNav">
-        <a href="/dashboard"   class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
-          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l2-2 4 4 8-8 4 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7"/></svg>
-          <span>Dashboard</span>
-        </a>
-        <a href="/flow-designer" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
-          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/></svg>
-          <span>Flow Designer</span>
-        </a>
-        <a href="/connectors"  class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
-          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h10M7 12h6"/></svg>
-          <span>Connectors</span>
-        </a>
-        <a href="/templates"   class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
-          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 21h10M12 17V3"/><rect x="5" y="11" width="14" height="6" rx="2"/></svg>
-          <span>Templates</span>
-        </a>
-        <a href="/deployments" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
-          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v4H3z"/><path d="M7 7v14m10-14v14"/></svg>
-          <span>Deployments</span>
-        </a>
-        <a href="/monitoring"  class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
-          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v4H3z"/><path d="M7 7v14m10-14v14"/></svg>
-          <span>Monitoring</span>
-        </a>
-        <a href="/settings"    class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800/70">
-          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09c-.67 0-1.27.39-1.51 1z"/></svg>
-          <span>Settings</span>
-        </a>
-      </nav>
-
-
-      <div class="px-4 py-4 flex items-center gap-2 border-t border-neutral-800">
-        <div class="h-8 w-8 rounded-full bg-neutral-800 flex items-center justify-center"> 
-          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        </div>
-        <div class="text-sm font-medium">ASEI Platform</div>
+  <!-- Sidebar -->
+    <aside class="fixed inset-y-0 left-0 w-60 bg-neutral-900 text-neutral-100 flex flex-col">
+      <div class="px-4 py-4 flex items-center gap-2 border-b border-neutral-800">
+        <img src="images/connectify_logo.png" alt="Logo" class="h-8 w-auto">
+        <span>Connectify</span>
       </div>
-    </aside>
+
+    <nav class="p-2 text-sm space-y-1 flex-1">
+      <a href="asei_dashboard.html" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-neutral-800/70">🏠 <span class="hidden sm:inline">Dashboard</span></a>
+      <a href="flow_designer.html" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-neutral-800/70">🛠 <span class="hidden sm:inline">Flow Designer</span></a>
+      <a href="connectors.html" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-neutral-800/70">🔌 <span class="hidden sm:inline">Connectors</span></a>
+      <a href="templates.html" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-neutral-800/70">📑 <span class="hidden sm:inline">Templates</span></a>
+      <a href="deployments.html" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-neutral-800/70">🚀 <span class="hidden sm:inline">Deployments</span></a>
+      <a href="monitoring.html" class="flex items-center gap-2 px-3 py-2 rounded hover:bg-neutral-800/70">📊 <span class="hidden sm:inline">Monitoring</span></a>
+      <a href="settings.html" class="flex items-center gap-2 px-3 py-2 rounded bg-neutral-800">⚙️ <span class="hidden sm:inline">Settings</span></a>
+    </nav>
+
+    <div class="relative">
+      <button id="profileBtn" class="w-full px-4 py-4 flex items-center gap-2 border-t border-neutral-800 text-left hover:bg-neutral-800/60">
+          <div class="h-8 w-8 rounded-full bg-neutral-800 grid place-items-center">
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+              </svg>
+          </div>
+          <span class="text-sm font-medium">Insert User Name</span>
+      </button>
+
+      <div id="profileMenu" class="absolute bottom-full left-3 left-3 right-3 mt-4 hidden rounded-lg bg-neutral-800 border border-neutral-700 text-neutral-200 shadow-xl z-50">
+          <button class="px-3 py-3 text-red-400 w-full hover:bg-neutral-700">Sign Out</button>
+      </div>
+    </div>
+    <script>
+      const btn = document.getElementById('profileBtn');
+      const menu = document.getElementById('profileMenu');
+      btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          menu.classList.toggle('hidden');
+      });
+
+      document.addEventListener('click', (e) =>{
+          if(!menu.contains(e.target) && e.target !== btn){
+              menu.classList.add('hidden');
+          }
+      });
+    </script>
+  </aside>
 
 
-<header class="ml-64 bg-black text-white px-6 py-3">Settings</header>
 
 
-<main class="ml-64 p-6">
-<h2 class="text-xl font-semibold mb-4">System Settings</h2>
-<div class="bg-white p-6 rounded shadow space-y-4">
-<div>
-<label class="block text-sm font-medium">API Rate Limit</label>
-<input type="number" value="1000" class="border rounded px-3 py-2 w-48" />
-</div>
-<div>
-<label class="block text-sm font-medium">Notification Email</label>
-<input type="email" value="admin@asei.com" class="border rounded px-3 py-2 w-64" />
-</div>
-<button class="px-4 py-2 bg-blue-600 text-white rounded">Save Changes</button>
-</div>
+<main class="p-6 ml-40 md:ml-64">
+<h2 class="text-xl font-semibold mb-4">Settings</h2>
+
+  <div class="bg-white p-6 rounded shadow space-y-6">
+
+    <!-- General -->
+    <div>
+      <div class="w-full px-4 py-4 flex items-center gap-2 border-neutral-800 text-left">
+          <div class="h-12 w-12 rounded-full bg-neutral-800 grid place-items-center hover:bg-neutral-800/60">
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+              </svg>
+          </div>
+          <span class="font-bold mb-0">Insert User Name</span>
+      </div>
+
+<div class="flex-grow border-t border-gray-400 mb-2"></div>
+      <h3 class="font-semibold mb-2">Update Profile</h3>
+        <grid class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm font-medium">Given Names</label>
+            <input type="text" id="first-name" name="first-name" class="border rounded px-3 py-2 w-full sm:w-48 mb-4">
+          </div>
+          <div>
+            <label class="block text-sm font-medium">Surname</label>
+            <input type="text" id="last-name" name="last-name" class="border rounded px-3 py-2 w-full sm:w-48 mb-4">
+          </div>
+          <div>
+            <label class="block text-sm font-medium">Email</label>
+            <input type="email" id="email" name="email" class="border rounded px-3 py-2 w-full sm:w-48 mb-4">
+          </div>
+          <div>
+            <label class="block text-sm font-medium">Password</label>
+            <input type="password" id="password" name="password" class="border rounded px-3 py-2 w-full sm:w-48 mb-4">
+          </div>
+        </grid>
+        <div id="enter-password" class="hidden">
+          <label class="block text-sm font-medium text-red-400">*Enter current password to confirm</label>
+          <input type="password" id="confirmPassword" name="confirmPassword" class="border rounded px-3 py-2 w-full sm:w-48 mb-4">
+        </div>
+<div class="flex-grow border-t border-gray-400 mb-2 mt-2"></div>
+
+        <div class="flex flex-col">
+          <label for="Theme" class="font-semibold mb-2">Theme</label>
+            <select id="Theme" class="border rounded px-3 py-2 w-full sm:w-48">
+              <option>Light</option>
+              <option>Dark</option>
+            </select>
+        </div>
+<div class="flex-grow border-t border-gray-400 mb-2 mt-2"></div>
+
+        <div>
+          <h3 class="font-semibold mb-2">Security</h3>
+          <label class="flex items-center space-x-2 mb-2">
+            <input type="checkbox" checked class="form-checkbox"> <span>Enable 2FA</span>
+          </label>
+          <label class="flex items-center space-x-2">
+            <input type="checkbox" class="form-checkbox"> <span>Allow IP Whitelist Only</span>
+          </label>
+        </div>
+<div class="flex-grow border-t border-gray-400 mb-2 mt-2"></div>
+
+        <div>
+          <h3 class="font-semibold mb-2">Notifications</h3>
+          <label class="flex items-center space-x-2">
+            <input type="checkbox" checked class="form-checkbox"> <span>Send error alerts</span>
+          </label>
+        </div>
+<div class="flex-grow border-t border-gray-400 mb-2 mt-2"></div>
+
+          <div>
+            <h3 class="font-semibold mb-2">Advance Settings</h3>
+            <label class="block text-sm font-medium">API Rate Limit</label>
+              <input type="number" value="1000" class="border rounded px-3 py-2 w-full sm:w-48 mb-4">
+          </div>
+<div class="flex-grow border-t border-gray-400 mb-2 mt-2"></div>
+
+    <div class="flex space-x-3">
+      <button class="px-4 py-2 bg-blue-600 hover:bg-blue-800 text-white rounded">Save Changes</button>
+      <button class="px-4 py-2 bg-gray-400 hover:bg-gray-600 text-white rounded">Reset</button>
+    </div>
+
 </main>
-<script>
-  (function () {
-    const current = location.pathname.replace(/\/+$/, "") || "/dashboard";
-    document.querySelectorAll("#sidebarNav a").forEach(a => {
-      const href = a.getAttribute("href");
-      if (href === current) {
-        a.classList.add("bg-neutral-800");
-        a.classList.remove("hover:bg-neutral-800/70");
-      } else {
-        a.classList.remove("bg-neutral-800");
-        a.classList.add("hover:bg-neutral-800/70");
-      }
-    });
-  })();
-</script>
+  <script>
+    const firstName = document.getElementById('first-name');
+    const lastName = document.getElementById('last-name');
+    const email = document.getElementById('email');
+    const enterPass = document.getElementById('enter-password');
 
+    function toggleCP() {
+      const show = firstName.value.trim() || lastName.value.trim() || email.value.trim();
+      enterPass.classList.toggle('hidden', !show);
+    }
+    [firstName, lastName, email].forEach(input =>
+      input.addEventListener('input', toggleCP)
+    );
+  </script>
 </body>
 </html>

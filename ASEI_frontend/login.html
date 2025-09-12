@@ -50,7 +50,24 @@
                         </div>
                         <div>
                             <label for="password" class="block mb-2 text-sm font-medium text-white">Password</label>
-                            <input type="password" name="password" id="password" class="bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5" required="">
+                            <div class="relative">
+                                <input type="password" name="password" id="password" class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 pr-10" required="" autocomplete="added-password">
+                                <button type="button" id="toggle-password" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-white focus:outline-none" aria-label="Show password" aria-pressed="false">
+                                    <!-- closed eye -->
+                                    <svg id="closedEye" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M17.94 17.94A10.5 10.5 0 0 1 12 19.5C6 19.5 1.5 12 1.5 12a18.53 18.53 0 0 1 4.06-4.94"/>
+                                        <path d="M22.5 12s-3-7.5-10.5-7.5a10.3 10.3 0 0 0-2.19.25"/>
+                                        <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/>
+                                        <line x1="2" y1="2" x2="22" y2="22"/>
+                                    </svg>                                    
+                                    
+                                    <!-- open eye -->
+                                    <svg id="openEye" class="h-5 w-5 hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M1.5 12s4.5-7.5 10.5-7.5 10.5 7.5 10.5 7.5-4.5 7.5-10.5 7.5S1.5 12 1.5 12z"/>
+                                        <circle cx="12" cy="12" r="3"/>
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
                         <div class="flex items-center justify-between">
                             <div class="flex items-start">
@@ -74,29 +91,21 @@
                         <h1 class="text-xl font-bold leading-tight tracking-tight text-white md:text-2xl">
                             Continue with
                         </h1>
-            
-        <!-- NOTE: "YOUR_GOOGLE_CLIENT_ID" replace w OAuth 2.0?? -->
-                        <div class="w-[375px] rounded-lg overflow-hidden">
-                            <div id="g_id_onload"
-                                data-client_id="YOUR_GOOGLE_CLIENT_ID"
-                                data-login_uri="https://your.domain/your_login_endpoint"
-                                data-auto_prompt="false">
-                            </div>
-                            <div class="g_id_signin"
-                                data-type="standard"
-                                data-size="large"
-                                data-theme="outline"
-                                data-text="sign_in_with"
-                                data-shape="rectangular"
-                                data-logo_alignment="center">
-                            </div>
-                        </div>
-                    
-        <!-- Apple option -->
-                        <div class="w-full rounded-lg overflow-hidden">
-                            <div id="appleid-signin" class="w-full h-10" data-color="black" data-border="true" data-type="sign-in"></div>
+
+        <!-- Google and Apple option -->
+                        <div class="space-y-3 w-full">
+                            <a href="/auth/google" class="w-full p-2.5 inline-flex items-center justify-center gap-3 rounded-lg border border-gray-600 bg-white text-gray-900 text-sm font-medium hover:bg-gray-50">
+                                <img src="images/G_logo.png" alt="G" class="w-5 h-5"/>
+                                <span>Sign up with Google</span>
+                            </a>
+
+                            <button type="button" id="apple-button" class="w-full p-2.5 inline-flex items-center justify-center gap-3 rounded-lg bg-black text-white text-sm font-medium hover:bg-black/90">
+                                <img src="images/apple_logo.png" alt="A" class="w-4 h-4.5"/>
+                                <span>Sign up with Apple</span>
+                            </button>
                         </div>
                         <script type="text/javascript">
+                            window.addEventListener('load', () => {
                             AppleID.auth.init({
                                 clientId : '[CLIENT_ID]',
                                 scope : '[SCOPES]',
@@ -104,6 +113,10 @@
                                 state : '[STATE]',
                                 nonce : '[NONCE]',
                                 usePopup : true
+                            });
+                            document.getElementById('apple-button')?.addEventListener('click', () => {
+                                AppleID.auth.signIn();
+                            });
                             });
                         </script>
                     </form>
@@ -113,5 +126,20 @@
 
         <script src="https://accounts.google.com/gsi/client" async></script>
     </div>
+        <script>
+            const passW = document.getElementById('password');
+            const btn = document.getElementById('toggle-password');
+            const openEye = document.getElementById('openEye');
+            const closedEye = document.getElementById('closedEye');
+
+            btn.addEventListener('click', () =>{
+                const isHidden = passW.type === 'password';
+                passW.type=isHidden ? 'text' : 'password';
+                btn.setAttribute('aria-label', isHidden? 'Hide password' : 'Show password');
+
+                openEye.classList.toggle('hidden', !isHidden);
+                closedEye.classList.toggle('hidden', isHidden);
+            });
+        </script>
 </body>
 </html>
