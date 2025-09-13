@@ -1,3 +1,4 @@
+// postgres.js
 import pkg from 'pg';
 import dotenv from 'dotenv';
 
@@ -17,4 +18,5 @@ pool.connect()
     console.error('❌ PostgreSQL connection error', err.stack);
   });
 
+export default pool;                 // 👈 add this for default import
 export const query = (text, params) => pool.query(text, params);

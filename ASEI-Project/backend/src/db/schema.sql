@@ -14,10 +14,12 @@ CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   email CITEXT UNIQUE NOT NULL,
-  display_name TEXT,
+  first_name TEXT,
+  last_name TEXT,
   password_hash TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
 
 -- ---------- Roles ----------
 CREATE TABLE IF NOT EXISTS roles (
