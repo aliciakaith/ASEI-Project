@@ -128,6 +128,12 @@ router.get("/google", async (req, res) => {
   res.redirect(url);
 });
 
+router.use((req, _res, next) => {
+  if (req.path.startsWith("/google")) {
+    console.log("GOOGLE AUTH HIT:", req.method, req.originalUrl);
+  }
+  next();
+});
 
 // Step 2: callback from Google
 router.get("/google/callback", async (req, res) => {
@@ -145,9 +151,9 @@ router.get("/google/callback", async (req, res) => {
 
     // 2) exchange code for tokens
     const tokenSet = await client.callback(
-      process.env.GOOGLE_REDIRECT_URI,
-      { code, state },
-      { code_verifier }
+    process.env.GOOGLE_REDIRECT_URI,
+    { code, state },
+    { state: expectedState, code_verifier }   // ✅ include expected state
     );
     const claims = tokenSet.claims(); // { email, given_name, family_name, sub, ... }
 
