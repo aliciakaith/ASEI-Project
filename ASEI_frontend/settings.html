@@ -29,15 +29,16 @@
 
     <div class="relative">
       <button id="profileBtn" class="w-full px-4 py-4 flex items-center gap-2 border-t border-neutral-800 text-left hover:bg-neutral-800/60">
-          <div class="h-8 w-8 rounded-full bg-neutral-800 grid place-items-center">
+          <div id="initialSidebarPfp" class="h-8 w-8 rounded-full bg-neutral-800 grid place-items-center">
               <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
               </svg>
           </div>
+          <img id="sidebarPfp" class="h-8 w-8 rounded-full object-cover hidden" alt="Pfp"/>
           <span class="text-sm font-medium">Insert User Name</span>
       </button>
 
-      <div id="profileMenu" class="absolute bottom-full left-3 left-3 right-3 mt-4 hidden rounded-lg bg-neutral-800 border border-neutral-700 text-neutral-200 shadow-xl z-50">
+      <div id="profileMenu" class="absolute hidden bottom-full left-3 left-3 right-3 mt-4 rounded-lg bg-neutral-800 border border-neutral-700 text-neutral-200 shadow-xl z-50">
           <button class="px-3 py-3 text-red-400 w-full hover:bg-neutral-700">Sign Out</button>
       </div>
     </div>
@@ -58,8 +59,6 @@
   </aside>
 
 
-
-
 <main class="p-6 ml-40 md:ml-64">
 <h2 class="text-xl font-semibold mb-4">Settings</h2>
 
@@ -68,13 +67,19 @@
     <!-- General -->
     <div>
       <div class="w-full px-4 py-4 flex items-center gap-2 border-neutral-800 text-left">
-          <div class="h-12 w-12 rounded-full bg-neutral-800 grid place-items-center hover:bg-neutral-800/60">
-              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button id="pfpTriiger" class="relative h-12 w-12 rounded-full overflow-hidden cursor-pointer group" aria-label="Changing pfp">
+          <div id="initialMainPfp" class="h-12 w-12 rounded-full bg-gray-200 grid place-items-center hover:bg-neutral-800/60 border border-neutral-500">
+              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
               </svg>
           </div>
+          
+          <img id="mainPfp" class="h-12 w-12 rounded-full object-cover hidden" alt="Pfp"/>
+          </button>
           <span class="font-bold mb-0">Insert User Name</span>
       </div>
+
+      
 
 <div class="flex-grow border-t border-gray-400 mb-2"></div>
       <h3 class="font-semibold mb-2">Update Profile</h3>
@@ -138,8 +143,8 @@
 <div class="flex-grow border-t border-gray-400 mb-2 mt-2"></div>
 
     <div class="flex space-x-3">
-      <button class="px-4 py-2 bg-blue-600 hover:bg-blue-800 text-white rounded">Save Changes</button>
-      <button class="px-4 py-2 bg-gray-400 hover:bg-gray-600 text-white rounded">Reset</button>
+      <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded">Save Changes</button>
+      <button class="px-4 py-2 bg-gray-400 hover:bg-gray-500 text-white rounded">Reset</button>
     </div>
 
 </main>
@@ -156,6 +161,6 @@
     [firstName, lastName, email].forEach(input =>
       input.addEventListener('input', toggleCP)
     );
-  </script>
+  </script>  
 </body>
 </html>
