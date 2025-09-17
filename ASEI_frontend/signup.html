@@ -212,17 +212,25 @@
         <script>
             const modal = document.getElementById("TCModal");
             const btn = document.getElementById("TCModalTrigger");
-            const close = document.querySelector("[data-close]");
+            const closeBtn = document.querySelector("[data-close]");
             const acceptBtn = document.querySelector("[data-accept]");
             const checkBox = document.getElementById("terms");
-
-            btn.onclick = function() {
-                modal.style.display = "flex";
+            const close = () =>{
+                modal.style.display = "none";
+                document.body.classList.remove("overflow-hidden");
             }
 
             const hide = ()=>{
                 modal.style.display = "none";
                 document.body.classList.remove("overflow-hidden");
+            }
+
+            btn.onclick = function() {
+                modal.style.display = "flex";
+            }
+
+            closeBtn.onclick = function(){
+                close();
             }
 
             acceptBtn.addEventListener("click", () =>{
