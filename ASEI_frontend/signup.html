@@ -209,5 +209,27 @@
             </div>
         </div>   
 
+        <script>
+            const modal = document.getElementById("TCModal");
+            const btn = document.getElementById("TCModalTrigger");
+            const close = document.querySelector("[data-close]");
+            const acceptBtn = document.querySelector("[data-accept]");
+            const checkBox = document.getElementById("terms");
+
+            btn.onclick = function() {
+                modal.style.display = "flex";
+            }
+
+            const hide = ()=>{
+                modal.style.display = "none";
+                document.body.classList.remove("overflow-hidden");
+            }
+
+            acceptBtn.addEventListener("click", () =>{
+                if (checkBox) checkBox.checked = true;
+                hide();
+            });
+        </script>
+
 </body>
 </html>
