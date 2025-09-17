@@ -26,6 +26,12 @@ router.post("/signup", async (req, res) => {
       orgId = orgResult.rows[0].id;
     }
 
+    // ✅ Check for duplicate email BEFORE inserting
+    const existing = await query("SELECT 1 FROM users WHERE email=$1", [email.toLowerCase()]);
+    if (existing.rowCount > 0) {
+      return res.status(400).json({ error: "Email already exists. Try logging in instead." });
+    }
+
     // Hash password
     const hashed = await bcrypt.hash(password, 10);
 
@@ -34,12 +40,18 @@ router.post("/signup", async (req, res) => {
       `INSERT INTO users (org_id, email, first_name, last_name, password_hash)
        VALUES ($1, $2, $3, $4, $5)
        RETURNING id, email, first_name, last_name, org_id`,
-      [orgId, email, firstName || null, lastName || null, hashed]
+      [orgId, email.toLowerCase(), firstName || null, lastName || null, hashed]
     );
 
     res.status(201).json({ user: result.rows[0] });
   } catch (err) {
     console.error("Signup error:", err);
+
+    // Optional: catch database uniqueness error if constraint is set
+    if (err.code === "23505") {
+      return res.status(400).json({ error: "Email already exists" });
+    }
+
     res.status(500).json({ error: "Server error" });
   }
 });
