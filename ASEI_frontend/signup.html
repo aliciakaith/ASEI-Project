@@ -135,8 +135,13 @@
           return;
         }
 
-        // Success → redirect to login
-        window.location.href = "login.html";
+// Success → go to verification page with the email
+localStorage.setItem("pendingEmail", body.email); 
+// Save email for later use in verify.html
+sessionStorage.setItem("pendingEmail", body.email);
+
+// Redirect
+window.location.href = `verify.html?email=${encodeURIComponent(body.email)}`;
       } catch (err) {
         errorBox.textContent = "Network error: " + err.message;
         errorBox.classList.remove("hidden");

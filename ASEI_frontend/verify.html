@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Verify Account – Connectify</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="icon" type="image/png" href="images/connectify_logo.png">
+</head>
+<body class="bg-gray-900 min-h-screen flex items-center justify-center">
+  <main class="w-full max-w-md bg-gray-800 rounded-lg shadow border border-gray-700 p-8">
+    <!-- Logo + heading -->
+    <div class="flex flex-col items-center mb-6">
+      <img src="images/connectify_logo.png" alt="Logo" class="w-12 h-12 mb-2">
+      <h1 class="text-2xl font-bold text-white">Verify your identity</h1>
+      <p class="text-sm text-gray-400 mt-2 text-center" id="verify-msg">
+        We’ve sent a 6-digit code to your email.
+      </p>
+    </div>
+
+    <!-- Code input -->
+    <form id="verify-form" class="flex flex-col items-center space-y-4">
+      <div class="flex gap-2 justify-center">
+        <!-- six inputs for 6-digit code -->
+        <input type="text" maxlength="1" class="digit w-10 h-12 text-center text-xl font-semibold rounded bg-gray-700 border border-gray-600 text-white" required>
+        <input type="text" maxlength="1" class="digit w-10 h-12 text-center text-xl font-semibold rounded bg-gray-700 border border-gray-600 text-white" required>
+        <input type="text" maxlength="1" class="digit w-10 h-12 text-center text-xl font-semibold rounded bg-gray-700 border border-gray-600 text-white" required>
+        <input type="text" maxlength="1" class="digit w-10 h-12 text-center text-xl font-semibold rounded bg-gray-700 border border-gray-600 text-white" required>
+        <input type="text" maxlength="1" class="digit w-10 h-12 text-center text-xl font-semibold rounded bg-gray-700 border border-gray-600 text-white" required>
+        <input type="text" maxlength="1" class="digit w-10 h-12 text-center text-xl font-semibold rounded bg-gray-700 border border-gray-600 text-white" required>
+      </div>
+
+      <button type="submit"
+              class="w-full bg-[#3f9fff] hover:bg-[#1188ff] text-white font-medium rounded-lg text-sm px-5 py-2.5">
+        Verify
+      </button>
+    </form>
+
+    <!-- error/success messages -->
+    <div id="verify-error" class="hidden mt-3 text-sm text-red-400 text-center"></div>
+    <div id="verify-success" class="hidden mt-3 text-sm text-green-400 text-center"></div>
+
+    <!-- resend link -->
+    <p class="text-sm text-gray-400 mt-6 text-center">
+      Didn’t get a code?
+      <a href="#" id="resend" class="text-[#5daeff] hover:underline">Resend</a>
+    </p>
+  </main>
+
+<script>
+  // Auto-advance between code boxes
+  const inputs = document.querySelectorAll(".digit");
+  inputs.forEach((input, idx) => {
+    input.addEventListener("input", () => {
+      if (input.value.length === 1 && idx < inputs.length - 1) inputs[idx + 1].focus();
+    });
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Backspace" && !input.value && idx > 0) inputs[idx - 1].focus();
+    });
+  });
+
+  // Email: URL → sessionStorage → localStorage
+  const params = new URLSearchParams(window.location.search);
+  function resolveEmail() {
+    return (
+      (params.get("email") || "").trim() ||
+      (sessionStorage.getItem("pendingEmail") || "").trim() ||
+      (localStorage.getItem("pendingEmail") || "").trim()
+    );
+  }
+  function persistEmail(e) {
+    if (!e) return;
+    sessionStorage.setItem("pendingEmail", e);
+    localStorage.setItem("pendingEmail", e);
+  }
+
+  let email = resolveEmail();
+  if (email) {
+    persistEmail(email);
+    document.getElementById("verify-msg").textContent =
+      `We’ve sent a 6-digit code to ${email}.`;
+  }
+
+  // --- VERIFY submit: ALWAYS send email in body ---
+  document.getElementById("verify-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const errorBox = document.getElementById("verify-error");
+    const successBox = document.getElementById("verify-success");
+    errorBox.classList.add("hidden");
+    successBox.classList.add("hidden");
+
+    const code = Array.from(document.querySelectorAll(".digit")).map(i => i.value).join("");
+    const storedEmail = resolveEmail();
+
+    if (!storedEmail) {
+      errorBox.textContent = "We couldn’t find your email. Please sign up again.";
+      errorBox.classList.remove("hidden");
+      return;
+    }
+
+    try {
+      const res = await fetch("http://localhost:3001/api/auth/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: storedEmail, code })
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        errorBox.textContent = data.error || `Verification failed (${res.status})`;
+        errorBox.classList.remove("hidden");
+        return;
+      }
+
+      successBox.textContent = data.message || "Verified successfully!";
+      successBox.classList.remove("hidden");
+      setTimeout(() => (window.location.href = "login.html"), 2000);
+    } catch (err) {
+      errorBox.textContent = "Network error: " + err.message;
+      errorBox.classList.remove("hidden");
+    }
+  });
+
+  // --- RESEND cooldown helper ---   <<< ADD HERE
+  let cooldownTimer = null;
+  function startCooldown(untilMs) {
+    clearInterval(cooldownTimer);
+    const resendLink = document.getElementById("resend");
+
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((untilMs - Date.now()) / 1000));
+      if (remaining > 0) {
+        resendLink.textContent = `Resend in ${remaining}s`;
+        resendLink.classList.add("pointer-events-none", "opacity-50");
+      } else {
+        resendLink.textContent = "Resend";
+        resendLink.classList.remove("pointer-events-none", "opacity-50");
+        clearInterval(cooldownTimer);
+      }
+    };
+
+    tick();
+    cooldownTimer = setInterval(tick, 1000);
+
+    // persist cooldown across refresh
+    sessionStorage.setItem("resendCooldownUntil", untilMs);
+  }
+
+  // --- RESEND: ALWAYS send email in body ---
+  document.getElementById("resend")?.addEventListener("click", async (e) => {
+    e.preventDefault();
+    const errorBox = document.getElementById("verify-error");
+    const successBox = document.getElementById("verify-success");
+    errorBox.classList.add("hidden");
+    successBox.classList.add("hidden");
+
+    const storedEmail = resolveEmail();
+
+    if (!storedEmail) {
+      errorBox.textContent = "We couldn’t find your email. Please sign up again.";
+      errorBox.classList.remove("hidden");
+      return;
+    }
+
+    try {
+      const res = await fetch("http://localhost:3001/api/auth/resend-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: storedEmail })
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        if (res.status === 429 && data.nextEligibleAtMs) {
+          startCooldown(data.nextEligibleAtMs); // <<< start cooldown if blocked
+        }
+        errorBox.textContent = data.error || `Resend failed (${res.status})`;
+        errorBox.classList.remove("hidden");
+        return;
+      }
+
+      if (data.nextEligibleAtMs) startCooldown(data.nextEligibleAtMs); // <<< start cooldown on success
+      successBox.textContent = data.message || "A new code has been sent to your email.";
+      successBox.classList.remove("hidden");
+    } catch (err) {
+      errorBox.textContent = "Network error: " + err.message;
+      errorBox.classList.remove("hidden");
+    }
+  });
+
+  // --- Restore cooldown on page load ---   <<< ADD THIS
+  const savedCooldown = sessionStorage.getItem("resendCooldownUntil");
+  if (savedCooldown && Date.now() < Number(savedCooldown)) {
+    startCooldown(Number(savedCooldown));
+  }
+</script>
+
+</body>
+</html>
