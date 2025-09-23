@@ -6,6 +6,27 @@ import { query } from "../db/postgres.js";
 import { Issuer, generators } from "openid-client";
 import { sendMail, verificationEmail } from "../mailer.js";
 
+// --- Google OpenID Connect setup ---
+const GOOGLE_REDIRECT =
+  process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3001/api/auth/google/callback';
+
+const FRONTEND_BASE =
+  process.env.FRONTEND_ORIGIN || 'http://localhost:3000'; // your env already sets this
+
+let googleClient;
+async function getGoogleClient() {
+  if (googleClient) return googleClient;
+  const googleIssuer = await Issuer.discover('https://accounts.google.com');
+  googleClient = new googleIssuer.Client({
+    client_id: process.env.GOOGLE_CLIENT_ID,
+    client_secret: process.env.GOOGLE_CLIENT_SECRET,
+    redirect_uris: [GOOGLE_REDIRECT],
+    response_types: ['code'],
+  });
+  return googleClient;
+}
+
+
 const router = express.Router();
 const SECRET = process.env.JWT_SECRET || "supersecret";
 
@@ -181,6 +202,90 @@ router.post("/resend-code", async (req, res) => {
   } catch (err) {
     console.error("Resend code error:", err);
     res.status(500).json({ error: "Server error" });
+  }
+});
+
+// POST /api/auth/logout
+router.post("/logout", (req, res) => {
+  // If you set a JWT cookie on login, clear it here.
+  // (Change 'token' to your actual cookie name if different.)
+  res.clearCookie("token", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+  });
+
+  // Also clear the pending email cookie used during signup/verify (harmless if absent)
+  res.clearCookie("pending_email", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+  });
+
+  // If you also stash anything in localStorage on the client, clear it there (frontend).
+  return res.status(204).end();
+});
+
+// Start Google sign-in
+router.get('/google', async (req, res) => {
+  try {
+    const client = await getGoogleClient();
+    const state = generators.state();
+    const nonce = generators.nonce();
+
+    const secure = process.env.NODE_ENV === 'production';
+    res.cookie('g_state', state, { httpOnly: true, sameSite: 'lax', secure });
+    res.cookie('g_nonce', nonce, { httpOnly: true, sameSite: 'lax', secure });
+
+    const authUrl = client.authorizationUrl({
+      scope: 'openid email profile',
+      state,
+      nonce,
+      prompt: 'select_account',
+    });
+
+    return res.redirect(authUrl);
+  } catch (e) {
+    console.error('Google init error:', e);
+    res.status(500).json({ error: 'Google OAuth init failed' });
+  }
+});
+
+// Google OAuth callback
+router.get('/google/callback', async (req, res) => {
+  try {
+    const client = await getGoogleClient();
+    const params = client.callbackParams(req);
+
+    const cookieState = req.cookies?.g_state;
+    const cookieNonce = req.cookies?.g_nonce;
+
+    const tokenSet = await client.callback(GOOGLE_REDIRECT, params, {
+      state: cookieState,
+      nonce: cookieNonce,
+    });
+
+    // Get profile
+    const userinfo = await client.userinfo(tokenSet.access_token);
+
+    // TODO: Upsert user + set your session cookie/JWT here if you want:
+    // const token = jwt.sign({ sub: userinfo.sub, email: userinfo.email }, SECRET, { expiresIn: '7d' });
+    // res.cookie('token', token, {
+    //   httpOnly: true,
+    //   sameSite: 'lax',
+    //   secure: process.env.NODE_ENV === 'production',
+    //   maxAge: 7 * 24 * 60 * 60 * 1000
+    // });
+
+    const secure = process.env.NODE_ENV === 'production';
+    res.clearCookie('g_state', { httpOnly: true, sameSite: 'lax', secure });
+    res.clearCookie('g_nonce', { httpOnly: true, sameSite: 'lax', secure });
+
+    // Send user to your app
+    return res.redirect(`${FRONTEND_BASE}/asei_dashboard.html`);
+  } catch (e) {
+    console.error('Google callback error:', e);
+    res.status(500).json({ error: 'Google OAuth callback failed' });
   }
 });
 
