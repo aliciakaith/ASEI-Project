@@ -206,10 +206,10 @@ router.post("/resend-code", async (req, res) => {
 });
 
 /* ============================
-   LOGIN
+   LOGIN  (supports Remember Me)
    ============================ */
 router.post("/login", async (req, res) => {
-  const { email, password } = req.body || {};
+  const { email, password, remember } = req.body || {};
   if (!email || !password) {
     return res.status(400).json({ error: "Email and password are required." });
   }
@@ -232,19 +232,23 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ error: "Invalid email or password." });
     }
 
-    // Create JWT
+    // Cookie + token lifetimes
+    const jwtTtl = remember ? "30d" : "1d";                 // token lifetime
+    const cookieMaxAge = remember ? 30*24*60*60*1000 : 24*60*60*1000; // 30d vs 1d
+
+    // Issue JWT
     const token = jwt.sign(
       { id: user.id, email: user.email, org: user.org_id },
       SECRET,
-      { expiresIn: "7d" }
+      { expiresIn: jwtTtl }
     );
 
-    // Set cookie (must match middleware)
+    // Set cookie
     res.cookie("token", token, {
       httpOnly: true,
       sameSite: "lax",
-      secure: process.env.NODE_ENV === "production", // false in local dev
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: cookieMaxAge,
       path: "/",
     });
 
@@ -257,6 +261,7 @@ router.post("/login", async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
+
 
 // POST /api/auth/logout
 router.post("/logout", (req, res) => {
@@ -383,6 +388,31 @@ router.get('/google/callback', async (req, res) => {
     res.status(500).json({ error: 'Google OAuth callback failed' });
   }
 });
+
+// GET /api/auth/me
+router.get("/me", async (req, res) => {
+  try {
+    const token = req.cookies?.token;
+    if (!token) return res.status(401).json({ error: "Not logged in" });
+
+    const payload = jwt.verify(token, SECRET); // throws if expired/invalid
+
+    const { rows, rowCount } = await query(
+      "SELECT id, email, first_name, last_name, org_id FROM users WHERE id=$1",
+      [payload.id]
+    );
+    if (!rowCount) return res.status(401).json({ error: "Unknown user" });
+
+    const u = rows[0];
+    res.json({
+      ok: true,
+      user: { id: u.id, email: u.email, firstName: u.first_name, lastName: u.last_name }
+    });
+  } catch (e) {
+    return res.status(401).json({ error: "Session expired" });
+  }
+});
+
 
 
 

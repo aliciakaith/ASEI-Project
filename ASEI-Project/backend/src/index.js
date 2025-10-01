@@ -37,12 +37,14 @@ const FRONTEND_DIR = path.resolve(__dirname, '../../../ASEI_frontend');
 
 console.log('Serving static from:', FRONTEND_DIR);
 
-app.use(express.static(FRONTEND_DIR));
+app.use(express.static(FRONTEND_DIR, { index: false }));
+
 
 // Default landing
 app.get('/', (_req, res) => {
   res.sendFile(path.join(FRONTEND_DIR, 'login.html'));
 });
+
 
 // Keep a simple API 404 (after all routes)
 app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found' }));

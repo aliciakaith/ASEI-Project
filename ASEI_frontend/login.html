@@ -141,6 +141,11 @@ document.getElementById("login-form").addEventListener("submit", async (e) => {
         <script src="https://accounts.google.com/gsi/client" async></script>
     </div>
         <script>
+            const body = {
+            email: document.getElementById("email").value.trim(),
+            password: document.getElementById("password").value,
+            remember: document.getElementById("remember").checked   // ✅ add this
+            };
             const passW = document.getElementById('password');
             const btn = document.getElementById('toggle-password');
             const openEye = document.getElementById('openEye');
@@ -154,6 +159,17 @@ document.getElementById("login-form").addEventListener("submit", async (e) => {
                 openEye.classList.toggle('hidden', !isHidden);
                 closedEye.classList.toggle('hidden', isHidden);
             });
+
+  // If already authenticated, skip login screen
+  (async () => {
+    try {
+      const res = await fetch("/api/auth/me", { credentials: "include" });
+      if (res.ok) {
+        // already logged in -> go to dashboard
+        window.location.href = "asei_dashboard.html";
+      }
+    } catch {}
+  })();
         </script>
 </body>
 </html>
