@@ -29,12 +29,9 @@
 
     <div class="relative">
       <button id="profileBtn" class="w-full px-4 py-4 flex items-center gap-2 border-t border-neutral-800 text-left hover:bg-neutral-800/60">
-          <div id="initialSidebarPfp" class="h-8 w-8 rounded-full bg-neutral-800 grid place-items-center">
-              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-              </svg>
-          </div>
-          <img id="sidebarPfp" class="h-8 w-8 rounded-full object-cover hidden" alt="Pfp"/>
+
+          <img id="initialSidebarPfp" src="images/default_avatar.png" class="js-initial-pfp h-8 w-8 rounded-full object-cover" alt="O Pfp"/>
+          <img id="mainPfp" class="js-main-pfp h-8 w-8 rounded-full object-cover hidden" alt="N Pfp"/>
           <span class="text-sm font-medium">Insert User Name</span>
       </button>
 
@@ -67,18 +64,15 @@
     <!-- General -->
     <div>
       <div class="w-full px-4 py-4 flex items-center gap-2 border-neutral-800 text-left">
-          <button id="pfpTriiger" class="relative h-12 w-12 rounded-full overflow-hidden cursor-pointer group" aria-label="Changing pfp">
-          <div id="initialMainPfp" class="h-12 w-12 rounded-full bg-gray-200 grid place-items-center hover:bg-neutral-800/60 border border-neutral-500">
-              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-              </svg>
-          </div>
+          <button id="pfpTrigger" class="group relative h-12 w-12 rounded-full border border-neutral-400 overflow-hidden cursor-pointer group" aria-label="Changing pfp">
+          <img id="initialMainPfp" src="images/default_avatar.png" alt="avatar" class="js-initial-pfp absolute inset-0 h-full w-full bg-gray-300 transition-opacity duration-300 group-hover:opacity-0 group-hover:scale-110"/>
+          <img id="hoverPfp" src="images/hover.png" alt="avatar" class="js-hover-pfp absolute inset-2 h-8 w-8 opacity-0 transition-opacity duration-300 group-hover:opacity-100"/>
           
-          <img id="mainPfp" class="h-12 w-12 rounded-full object-cover hidden" alt="Pfp"/>
+          <img id="mainPfp" class="js-main-pfp absolute inset-0 h-12 w-12 rounded-full object-cover hidden" alt="Pfp"/>
           </button>
           <span class="font-bold mb-0">Insert User Name</span>
+          <input type="file" id="updatePfp" accept="image/*" class="hidden">
       </div>
-
       
 
 <div class="flex-grow border-t border-gray-400 mb-2"></div>
@@ -161,6 +155,57 @@
     [firstName, lastName, email].forEach(input =>
       input.addEventListener('input', toggleCP)
     );
-  </script>  
+  </script>
+
+<!-- Update sidebar & setting Pfp -->
+<script>
+  const pfpTrigger = document.getElementById("pfpTrigger");
+  const updatePfp = document.getElementById("updatePfp");
+  const imageStore = "connectify.pfpUrl";
+
+  if(pfpTrigger && updatePfp){
+    pfpTrigger.addEventListener("click", () => updatePfp.click());
+    updatePfp.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+
+      if(!file){
+        return;
+      }
+
+      if(!file.type.startsWith("image/")){
+        alert("Please choose an image.");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () =>{
+        const pfpUrl = reader.result;
+        try{
+          localStorage.setItem(imageStore, pfpUrl)
+        }
+        catch (e){
+          console.warn("Could not save avatar. Try again.", e);
+        }
+        applyPfpToDOM(pfpUrl);
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+  function applyPfpToDOM(dataUrl){
+    document.querySelectorAll(".js-main-pfp").forEach(img =>{
+      img.src = dataUrl;
+      img.classList.remove("hidden");
+    });
+    document.querySelectorAll(".js-initial-pfp, .js-hover-pfp").forEach(element =>{
+      element.classList.add("hidden");
+    });
+  }
+  function hydrate(){
+    const saveImg = localStorage.getItem(imageStore);
+    if(saveImg) applyPfpToDOM(saveImg);
+  }
+  document.addEventListener('DOMContentLoaded', hydrate);
+
+</script>
+
 </body>
 </html>

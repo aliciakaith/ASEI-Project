@@ -39,15 +39,13 @@
 
     <div class="relative">
       <button id="profileBtn" class="w-full px-4 py-4 flex items-center gap-2 border-t border-neutral-800 text-left hover:bg-neutral-800/60">
-          <div class="h-8 w-8 rounded-full bg-neutral-800 grid place-items-center">
-              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-              </svg>
-          </div>
+
+          <img id="initialSidebarPfp" src="images/default_avatar.png" class="js-initial-pfp h-8 w-8 rounded-full object-cover" alt="O Pfp"/>
+          <img id="mainPfp" class="js-main-pfp h-8 w-8 rounded-full object-cover hidden" alt="N Pfp"/>
           <span class="text-sm font-medium">Insert User Name</span>
       </button>
 
-      <div id="profileMenu" class="absolute bottom-full left-3 left-3 right-3 mt-4 hidden rounded-lg bg-neutral-800 border border-neutral-700 text-neutral-200 shadow-xl z-50">
+      <div id="profileMenu" class="absolute hidden bottom-full left-3 left-3 right-3 mt-4 rounded-lg bg-neutral-800 border border-neutral-700 text-neutral-200 shadow-xl z-50">
           <button class="px-3 py-3 text-red-400 w-full hover:bg-neutral-700">Sign Out</button>
       </div>
     </div>
@@ -106,6 +104,24 @@
       <button class="w-full sm:w-auto px-4 py-2 bg-gray-500 text-white rounded">Save Draft</button>
       <button class="w-full sm:w-auto px-4 py-2 bg-blue-700 text-white rounded">Deploy Flow</button>
     </div>
+
+<!-- Update sidebar Pfp -->
+<script>
+  const imageStore = 'connectify.pfpUrl';
+  function applyPfpToDOM(pfpUrl){
+    document.querySelectorAll('.js-main-pfp').forEach(img =>{
+      img.src = pfpUrl;
+      img.classList.remove("hidden");
+    });
+    document.querySelectorAll(".js-initial-pfp, .js-hover-pfp").forEach(element =>{
+      element.classList.add("hidden");
+    });
+  }
+  document.addEventListener('DOMContentLoaded', () =>{
+    const saveImg = localStorage.getItem(imageStore);
+    if(saveImg) applyPfpToDOM(saveImg);
+  })
+</script>
   </main>
 </body>
 </html>
