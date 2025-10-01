@@ -205,6 +205,59 @@ router.post("/resend-code", async (req, res) => {
   }
 });
 
+/* ============================
+   LOGIN
+   ============================ */
+router.post("/login", async (req, res) => {
+  const { email, password } = req.body || {};
+  if (!email || !password) {
+    return res.status(400).json({ error: "Email and password are required." });
+  }
+
+  try {
+    const lowerEmail = email.toLowerCase();
+
+    // Look up verified user
+    const { rows, rowCount } = await query(
+      "SELECT id, email, password_hash, first_name, last_name, org_id FROM users WHERE email=$1",
+      [lowerEmail]
+    );
+    if (!rowCount) {
+      return res.status(401).json({ error: "Invalid email or password." });
+    }
+
+    const user = rows[0];
+    const ok = await bcrypt.compare(password, user.password_hash || "");
+    if (!ok) {
+      return res.status(401).json({ error: "Invalid email or password." });
+    }
+
+    // Create JWT
+    const token = jwt.sign(
+      { id: user.id, email: user.email, org: user.org_id },
+      SECRET,
+      { expiresIn: "7d" }
+    );
+
+    // Set cookie (must match middleware)
+    res.cookie("token", token, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production", // false in local dev
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: "/",
+    });
+
+    res.json({
+      ok: true,
+      user: { id: user.id, email: user.email, firstName: user.first_name, lastName: user.last_name }
+    });
+  } catch (err) {
+    console.error("Login error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 // POST /api/auth/logout
 router.post("/logout", (req, res) => {
   // If you set a JWT cookie on login, clear it here.
@@ -252,6 +305,7 @@ router.get('/google', async (req, res) => {
 });
 
 // Google OAuth callback
+// Google OAuth callback
 router.get('/google/callback', async (req, res) => {
   try {
     const client = await getGoogleClient();
@@ -260,34 +314,76 @@ router.get('/google/callback', async (req, res) => {
     const cookieState = req.cookies?.g_state;
     const cookieNonce = req.cookies?.g_nonce;
 
+    // Exchange code for tokens + verify state/nonce
     const tokenSet = await client.callback(GOOGLE_REDIRECT, params, {
       state: cookieState,
       nonce: cookieNonce,
     });
 
-    // Get profile
+    // Pull profile (email, name, etc.)
     const userinfo = await client.userinfo(tokenSet.access_token);
+    const email = (userinfo.email || '').toLowerCase();
+    if (!email) {
+      console.error('Google callback error: missing email in userinfo:', userinfo);
+      return res.status(400).send('Google did not return an email address.');
+    }
 
-    // TODO: Upsert user + set your session cookie/JWT here if you want:
-    // const token = jwt.sign({ sub: userinfo.sub, email: userinfo.email }, SECRET, { expiresIn: '7d' });
-    // res.cookie('token', token, {
-    //   httpOnly: true,
-    //   sameSite: 'lax',
-    //   secure: process.env.NODE_ENV === 'production',
-    //   maxAge: 7 * 24 * 60 * 60 * 1000
-    // });
+    // ----- UPSERT USER -----
+    // Find existing user
+    let { rows, rowCount } = await query(
+      'SELECT id, org_id FROM users WHERE email=$1',
+      [email]
+    );
 
+    let user;
+    if (!rowCount) {
+      // Ensure DefaultOrg exists (your verify route already uses this)
+      const orgRes = await query('SELECT id FROM organizations WHERE name=$1', ['DefaultOrg']);
+      const orgId = orgRes.rowCount
+        ? orgRes.rows[0].id
+        : (await query('INSERT INTO organizations (name) VALUES ($1) RETURNING id', ['DefaultOrg'])).rows[0].id;
+
+      // Insert new user (no password_hash for Google accounts)
+      const inserted = await query(
+        `INSERT INTO users (org_id, email, first_name, last_name)
+         VALUES ($1,$2,$3,$4)
+         RETURNING id, email, org_id`,
+        [orgId, email, userinfo.given_name || null, userinfo.family_name || null]
+      );
+      user = inserted.rows[0];
+    } else {
+      user = rows[0];
+    }
+
+    // ----- ISSUE SESSION COOKIE -----
+    const token = jwt.sign(
+      { id: user.id, email, org: user.org_id },
+      SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.cookie('token', token, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: '/',
+    });
+
+    // Clear temp cookies
     const secure = process.env.NODE_ENV === 'production';
     res.clearCookie('g_state', { httpOnly: true, sameSite: 'lax', secure });
     res.clearCookie('g_nonce', { httpOnly: true, sameSite: 'lax', secure });
 
-    // Send user to your app
+    // Redirect to your dashboard (env-driven)
     return res.redirect(`${FRONTEND_BASE}/asei_dashboard.html`);
   } catch (e) {
-    console.error('Google callback error:', e);
+    // Log the actual error to diagnose issues (mismatch, bad state/nonce, etc.)
+    console.error('Google callback error:', e?.response?.body || e?.message || e);
     res.status(500).json({ error: 'Google OAuth callback failed' });
   }
 });
+
 
 
 export default router;

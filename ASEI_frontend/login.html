@@ -89,45 +89,47 @@
 
         <!-- Google and Apple option -->
                         <div class="space-y-3 w-full">
-                            <a href="http://localhost:3001/api/auth/google" class="w-full p-2.5 inline-flex items-center justify-center gap-3 rounded-lg border border-gray-600 bg-white text-gray-900 text-sm font-medium hover:bg-gray-50">
+                            <a href="/api/auth/google" class="w-full p-2.5 inline-flex items-center justify-center gap-3 rounded-lg border border-gray-600 bg-white text-gray-900 text-sm font-medium hover:bg-gray-50">
                                 <img src="images/G_logo.png" alt="G" class="w-5 h-5"/>
                                 <span>Sign in with Google</span>
                             </a>
 
                         </div>
-                <script>
-                document.getElementById("login-form").addEventListener("submit", async (e) => {
-                    e.preventDefault();
-                    const errorBox = document.getElementById("login-error");
-                    errorBox.classList.add("hidden");
+<script>
+document.getElementById("login-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
 
-                    const body = {
-                    email: document.getElementById("email").value.trim(),
-                    password: document.getElementById("password").value
-                    };
+  // ✅ query after the element exists
+  const errorBox = document.getElementById("login-error");
+  errorBox.classList.add("hidden");
 
-                    try {
-                    const res = await fetch("http://localhost:3001/api/auth/login", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        credentials: "include",  // make cookie stick
-                        body: JSON.stringify(body)
-                    });
+  const body = {
+    email: document.getElementById("email").value.trim(),
+    password: document.getElementById("password").value
+  };
 
-                    const data = await res.json().catch(() => ({}));
-                    if (!res.ok) {
-                        errorBox.textContent = data.error || `Login failed (${res.status})`;
-                        errorBox.classList.remove("hidden");
-                        return;
-                    }
+  try {
+    const res = await fetch("/api/auth/login", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  credentials: "include",
+  body: JSON.stringify(body)
+});
 
-                    window.location.href = "asei_dashboard.html";
-                    } catch (err) {
-                    errorBox.textContent = "Network error: " + err.message;
-                    errorBox.classList.remove("hidden");
-                    }
-                });
-                </script>
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      errorBox.textContent = data.error || `Login failed (${res.status})`;
+      errorBox.classList.remove("hidden");
+      return;
+    }
+    window.location.href = "asei_dashboard.html";
+  } catch (err) {
+    errorBox.textContent = "Network error: " + err.message;
+    errorBox.classList.remove("hidden");
+  }
+});
+</script>
+
 
                     </form>
                     <div id="login-error" class="hidden mt-3 text-sm text-red-400"></div>

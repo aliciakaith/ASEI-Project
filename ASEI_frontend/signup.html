@@ -90,7 +90,7 @@
 
           <!-- Google option -->
           <div class="space-y-3 w-full">
-            <a href="http://localhost:3001/api/auth/google"
+            <a href="/api/auth/google"
                class="w-full p-2.5 inline-flex items-center justify-center gap-3 rounded-lg border border-gray-600 bg-white text-gray-900 text-sm font-medium hover:bg-gray-50">
               <img src="images/G_logo.png" alt="G" class="w-5 h-5"/>
               <span>Sign up with Google</span>
@@ -122,7 +122,7 @@
       }
 
       try {
-        const res = await fetch("http://localhost:3001/api/auth/signup", {
+        const res = await fetch("/api/auth/signup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body)

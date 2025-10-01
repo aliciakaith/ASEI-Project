@@ -99,18 +99,22 @@
     }
 
     try {
-      const res = await fetch("http://localhost:3001/api/auth/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: storedEmail, code })
-      });
-      const data = await res.json().catch(() => ({}));
+    const res = await fetch("/api/auth/verify", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",  // 👈 important
+    body: JSON.stringify({ email: storedEmail, code })
+    });
+    const data = await res.json().catch(() => ({}));
 
-      if (!res.ok) {
-        errorBox.textContent = data.error || `Verification failed (${res.status})`;
-        errorBox.classList.remove("hidden");
-        return;
-      }
+    if (!res.ok) {
+    errorBox.textContent = data.error || `Verification failed (${res.status})`;
+    errorBox.classList.remove("hidden");
+    return;
+    }
+
+// Instead of waiting & sending to login.html:
+window.location.href = "asei_dashboard.html";
 
       successBox.textContent = data.message || "Verified successfully!";
       successBox.classList.remove("hidden");
@@ -163,7 +167,7 @@
     }
 
     try {
-      const res = await fetch("http://localhost:3001/api/auth/resend-code", {
+      const res = await fetch("/api/auth/resend-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: storedEmail })
