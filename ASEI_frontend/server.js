@@ -1,8 +1,18 @@
 // ASEI_frontend/server.js
 const express = require("express");
 const path = require("path");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Security middleware
+app.use(helmet());
+app.use(rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: "Too many requests, please try again later."
+}));
 
 // serve static assets (css/js/images) from this folder
 app.use(express.static(__dirname));
@@ -26,4 +36,13 @@ app.get("/terms", page("termsAndConditions.html"));
 // readable 404
 app.use((req, res) => res.status(404).send(`404 Not Found: ${req.url}`));
 
-app.listen(PORT, () => console.log(`UI at http://localhost:${PORT}`));
+// Check for secrets in Render env
+if (!process.env.JWT_SECRET || !process.env.AES_KEY) {
+  console.warn("Missing JWT_SECRET or AES_KEY");
+}
+
+// start server
+app.listen(PORT, () => {
+  console.log(`ASEI server running in ${process.env.NODE_ENV || "development"} mode`);
+  console.log(`Listening on port ${PORT}`);
+});
