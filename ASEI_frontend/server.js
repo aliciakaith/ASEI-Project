@@ -19,6 +19,9 @@ app.get("/templates", page("templates.html"));
 app.get("/deployments", page("deployments.html"));
 app.get("/monitoring", page("monitoring.html"));
 app.get("/settings", page("settings.html"));
+app.get("/login", page("login.html"));
+app.get("/signup", page("signup.html"));
+app.get("/terms", page("termsAndConditions.html"));
 
 // readable 404
 app.use((req, res) => res.status(404).send(`404 Not Found: ${req.url}`));
