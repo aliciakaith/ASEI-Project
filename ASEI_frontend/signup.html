@@ -49,15 +49,36 @@
               <input type="email" id="email" class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg block w-full p-2.5" required>
             </div>
 
+            <!-- Password -->
             <div>
               <label for="password" class="block mb-2 text-sm font-medium text-white">Password</label>
-              <input type="password" id="password" class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg block w-full p-2.5" required>
+              <input type="password" id="password"
+                    class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg block w-full p-2.5"
+                    required aria-describedby="pw-hints">
+              <!-- Live strength + rules -->
+              <div id="pw-hints" class="mt-2 space-y-2">
+                <div class="w-full h-1.5 bg-gray-700 rounded overflow-hidden">
+                  <div id="pw-strength" class="h-full bg-gray-500 w-0 transition-all duration-200"></div>
+                </div>
+                <ul class="text-xs space-y-1 text-gray-400" id="pw-rules" aria-live="polite">
+                  <li id="rule-length"  class="flex items-center gap-2"><span>•</span> At least 8 characters</li>
+                  <li id="rule-lower"   class="flex items-center gap-2"><span>•</span> At least one lowercase letter</li>
+                  <li id="rule-upper"   class="flex items-center gap-2"><span>•</span> At least one uppercase letter</li>
+                  <li id="rule-number"  class="flex items-center gap-2"><span>•</span> At least one number</li>
+                  <li id="rule-special" class="flex items-center gap-2"><span>•</span> At least one special (@ $ ! % * ? & . # ^)</li>
+                </ul>
+              </div>
             </div>
 
-            <div>
-              <label for="confirm-password" class="block mb-2 text-sm font-medium text-white">Confirm password</label>
-              <input type="password" id="confirm-password" class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg block w-full p-2.5" required>
-            </div>
+              <!-- Confirm -->
+              <div>
+                <label for="confirm-password" class="block mb-2 text-sm font-medium text-white">Confirm password</label>
+                <input type="password" id="confirm-password"
+                      class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg block w-full p-2.5"
+                      required aria-describedby="pw-match-msg">
+                <p id="pw-match-msg" class="text-xs mt-1 text-gray-400" aria-live="polite"></p>
+              </div>
+
 
             <div class="flex items-start">
               <div class="flex items-center h-5">
@@ -104,52 +125,112 @@
     </main>
   </div>
 
-  <!-- Signup logic -->
-  <script>
-    document.getElementById("signup-form").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const errorBox = document.getElementById("signup-error");
-      errorBox.classList.add("hidden");
+<script>
+  const form = document.getElementById("signup-form");
+  const errorBox = document.getElementById("signup-error");
+  const passwordEl = document.getElementById("password");
+  const confirmEl  = document.getElementById("confirm-password");
+  const matchMsg   = document.getElementById("pw-match-msg");
+  const submitBtn  = form.querySelector('button[type="submit"]');
+  const strengthEl = document.getElementById("pw-strength");
 
-      const body = {
-        firstName: document.getElementById("first-name").value.trim(),
-        lastName: document.getElementById("last-name").value.trim(),
-        email: document.getElementById("email").value.trim(),
-        password: document.getElementById("password").value
-      };
+  const ruleEls = {
+    length:  document.getElementById("rule-length"),
+    lower:   document.getElementById("rule-lower"),
+    upper:   document.getElementById("rule-upper"),
+    number:  document.getElementById("rule-number"),
+    special: document.getElementById("rule-special"),
+  };
 
-      if (body.password !== document.getElementById("confirm-password").value) {
-        errorBox.textContent = "Passwords do not match.";
+  function checkRules(pw) {
+    return {
+      length:  /.{8,}/.test(pw),
+      lower:   /[a-z]/.test(pw),
+      upper:   /[A-Z]/.test(pw),
+      number:  /\d/.test(pw),
+      special: /[@$!%*?&.#^]/.test(pw),
+    };
+  }
+
+  function updateChecklist(pw) {
+    const res = checkRules(pw);
+    Object.entries(res).forEach(([key, ok]) => {
+      const el = ruleEls[key];
+      el.classList.toggle("text-green-400", ok);
+      el.classList.toggle("text-gray-400", !ok);
+      el.firstElementChild.textContent = ok ? "✓" : "•";
+    });
+
+    // simple strength meter = % rules satisfied
+    const passed = Object.values(res).filter(Boolean).length;
+    const pct = (passed / 5) * 100;
+    strengthEl.style.width = pct + "%";
+    strengthEl.className = "h-full transition-all duration-200 " +
+      (passed <= 2 ? "bg-red-500" : passed === 3 ? "bg-yellow-500" : passed === 4 ? "bg-lime-500" : "bg-green-500");
+
+    return passed === 5;
+  }
+
+  function updateMatch() {
+    const pw = passwordEl.value;
+    const okAllRules = updateChecklist(pw);
+    const match = pw.length > 0 && pw === confirmEl.value;
+
+    matchMsg.textContent = match ? "Passwords match." : (confirmEl.value ? "Passwords do not match." : "");
+    matchMsg.className = "text-xs mt-1 " + (match ? "text-green-400" : "text-red-400");
+
+    // Enable submit only if rules pass + match
+    submitBtn.disabled = !(okAllRules && match);
+    submitBtn.classList.toggle("opacity-50", submitBtn.disabled);
+    submitBtn.classList.toggle("cursor-not-allowed", submitBtn.disabled);
+  }
+
+  // live checks
+  passwordEl.addEventListener("input", updateMatch);
+  confirmEl.addEventListener("input", updateMatch);
+
+  // initial state
+  updateMatch();
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    errorBox.classList.add("hidden");
+
+    // final guard
+    const rulesOk = updateChecklist(passwordEl.value);
+    const matchOk = passwordEl.value === confirmEl.value;
+    if (!rulesOk || !matchOk) return;
+
+    const body = {
+      firstName: document.getElementById("first-name").value.trim(),
+      lastName: document.getElementById("last-name").value.trim(),
+      email: document.getElementById("email").value.trim(),
+      password: passwordEl.value
+    };
+
+    try {
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        errorBox.textContent = data.error || `Signup failed (${res.status})`;
         errorBox.classList.remove("hidden");
         return;
       }
 
-      try {
-        const res = await fetch("/api/auth/signup", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body)
-        });
+      localStorage.setItem("pendingEmail", body.email);
+      sessionStorage.setItem("pendingEmail", body.email);
+      window.location.href = `verify.html?email=${encodeURIComponent(body.email)}`;
+    } catch (err) {
+      errorBox.textContent = "Network error: " + err.message;
+      errorBox.classList.remove("hidden");
+    }
+  });
+</script>
 
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          errorBox.textContent = data.error || `Signup failed (${res.status})`;
-          errorBox.classList.remove("hidden");
-          return;
-        }
-
-// Success → go to verification page with the email
-localStorage.setItem("pendingEmail", body.email); 
-// Save email for later use in verify.html
-sessionStorage.setItem("pendingEmail", body.email);
-
-// Redirect
-window.location.href = `verify.html?email=${encodeURIComponent(body.email)}`;
-      } catch (err) {
-        errorBox.textContent = "Network error: " + err.message;
-        errorBox.classList.remove("hidden");
-      }
-    });
-  </script>
 </body>
 </html>

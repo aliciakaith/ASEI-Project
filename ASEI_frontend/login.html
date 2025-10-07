@@ -105,7 +105,8 @@ document.getElementById("login-form").addEventListener("submit", async (e) => {
 
   const body = {
     email: document.getElementById("email").value.trim(),
-    password: document.getElementById("password").value
+    password: document.getElementById("password").value,
+    remember: document.getElementById("remember").checked  
   };
 
   try {
