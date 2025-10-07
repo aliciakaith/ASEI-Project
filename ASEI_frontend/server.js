@@ -7,11 +7,12 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Security middleware
-app.use(helmet());
-app.use(rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  message: "Too many requests, please try again later."
+app.use(helmet({
+  contentSecurityPolicy: false, // no CSP yet, disabled
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginEmbedderPolicy: false, // prevents COEP issues with some CDNs
+  crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
+  referrerPolicy: { policy: "no-referrer" }
 }));
 
 // serve static assets (css/js/images) from this folder
