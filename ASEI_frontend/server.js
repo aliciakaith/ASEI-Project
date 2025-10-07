@@ -34,6 +34,10 @@ app.get("/login", page("login.html"));
 app.get("/signup", page("signup.html"));
 app.get("/terms", page("termsAndConditions.html"));
 
+// Aliases for common variations
+app.get("/Connectors", (_req, res) => res.redirect(301, "/connectors"));
+app.get("/connectors.html", (_req, res) => res.redirect(301, "/connectors"));
+
 // readable 404
 app.use((req, res) => res.status(404).send(`404 Not Found: ${req.url}`));
 
