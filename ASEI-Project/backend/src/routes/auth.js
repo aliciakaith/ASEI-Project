@@ -6,6 +6,49 @@ import { query } from "../db/postgres.js";
 import { Issuer, generators } from "openid-client";
 import { sendMail, verificationEmail } from "../mailer.js";
 
+// ---- Password policy helper (server-side) ----
+function validatePassword(password, { email, firstName, lastName } = {}) {
+  const failures = [];
+
+  const rules = [
+    { ok: /.{8,}/.test(password), msg: "At least 8 characters long" },
+    { ok: /[a-z]/.test(password),  msg: "At least one lowercase letter" },
+    { ok: /[A-Z]/.test(password),  msg: "At least one uppercase letter" },
+    { ok: /\d/.test(password),     msg: "At least one number" },
+    { ok: /[@$!%*?&.#^]/.test(password), msg: "At least one special character (@ $ ! % * ? & . # ^)" },
+  ];
+
+  // optional hardening: avoid obvious personal info
+  const lowerPw = password.toLowerCase();
+  const partsToAvoid = [];
+  if (email) {
+    const local = String(email).toLowerCase().split("@")[0];
+    if (local && local.length >= 3) partsToAvoid.push(local);
+  }
+  if (firstName && String(firstName).length >= 3) partsToAvoid.push(String(firstName).toLowerCase());
+  if (lastName && String(lastName).length >= 3) partsToAvoid.push(String(lastName).toLowerCase());
+
+  if (partsToAvoid.some(p => lowerPw.includes(p))) {
+    failures.push("Should not contain your name or email.");
+  }
+
+  // simple repeated/sequence checks (optional)
+  if (/(.)\1{2,}/.test(password)) {
+    failures.push("Should not contain 3+ repeated characters in a row.");
+  }
+  if (/1234|abcd|qwer|password|letmein|welcome/i.test(password)) {
+    failures.push("Avoid common/weak patterns (e.g., 'password', '1234').");
+  }
+
+  for (const r of rules) if (!r.ok) failures.push(r.msg);
+
+  return {
+    ok: failures.length === 0,
+    failures
+  };
+}
+
+
 // --- Google OpenID Connect setup ---
 const GOOGLE_REDIRECT =
   process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3001/api/auth/google/callback';
@@ -46,6 +89,15 @@ router.post("/signup", async (req, res) => {
   const { email, password, firstName, lastName } = req.body || {};
   if (!email || !password) {
     return res.status(400).json({ error: "Email and password are required." });
+  }
+
+  // 🔐 Enforce server-side password policy
+  const { ok, failures } = validatePassword(password, { email, firstName, lastName });
+  if (!ok) {
+    return res.status(400).json({
+      error: "Password does not meet requirements.",
+      failures // e.g., [ "At least one uppercase letter", "At least one number" ]
+    });
   }
 
   try {
