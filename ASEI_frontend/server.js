@@ -11,7 +11,7 @@ app.use(express.static(__dirname));
 const page = f => (_req, res) => res.sendFile(path.join(__dirname, f));
 
 // home + friendly routes
-app.get("/", page("asei_dashboard.html"));
+app.get("/", page("login.html"));
 app.get("/dashboard", page("asei_dashboard.html"));
 app.get("/flow-designer", page("flow_designer.html"));
 app.get("/connectors", page("Connectors.html")); // note the capital C in the filename
