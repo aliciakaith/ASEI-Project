@@ -33,7 +33,7 @@ app.use('/api', requireAuth, dashboardRouter); // other protected endpoints
 // --- Serve static frontend (your HTML/CSS/JS lives here) ---
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const FRONTEND_DIR = path.resolve(__dirname, '../../../ASEI_frontend');
+const FRONTEND_DIR = path.resolve(__dirname, '../../ASEI_frontend');
 
 console.log('Serving static from:', FRONTEND_DIR);
 
