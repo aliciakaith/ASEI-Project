@@ -24,6 +24,7 @@ dotenv.config({ path: path.resolve(__dirname, "../.env") });
 // ------------------------------------------------------
 const app = express();
 app.set("trust proxy", 1);
+app.use(express.urlencoded({ extended: true })); // for render2
 app.use(express.json());
 app.use(cookieParser());
 
