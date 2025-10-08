@@ -105,8 +105,8 @@ router.post("/forgot", async (req, res) => {
       await sendMail({
         to: email,
         subject: "Reset your Connectify password",
-        text: `Use this link to reset your password (valid 15 minutes): ${resetLink}`,
-        html: `<p>Use this link to reset your password (valid 15 minutes):</p>
+        text: `Use this link to reset your password (valid for 15 minutes): ${resetLink}`,
+        html: `<p>Use this link to reset your password (valid for 15 minutes):</p>
                <p><a href="${resetLink}">${resetLink}</a></p>`
       });
     }
@@ -441,6 +441,7 @@ router.get('/google', async (req, res) => {
 // Google OAuth callback
 // Google OAuth callback
 router.get('/google/callback', async (req, res) => {
+  const dev = process.env.NODE_ENV !== 'production';
   try {
     const client = await getGoogleClient();
     const params = client.callbackParams(req);
@@ -448,54 +449,51 @@ router.get('/google/callback', async (req, res) => {
     const cookieState = req.cookies?.g_state;
     const cookieNonce = req.cookies?.g_nonce;
 
-    // Exchange code for tokens + verify state/nonce
+    if (!params.code) console.error('[OAuth] Missing code param:', req.url);
+    if (!cookieState) console.error('[OAuth] Missing g_state cookie');
+    if (!cookieNonce) console.error('[OAuth] Missing g_nonce cookie');
+
+    // IMPORTANT: pass the same redirect URI you registered
     const tokenSet = await client.callback(GOOGLE_REDIRECT, params, {
       state: cookieState,
       nonce: cookieNonce,
     });
 
-    // Pull profile (email, name, etc.)
-    const userinfo = await client.userinfo(tokenSet.access_token);
-    const email = (userinfo.email || '').toLowerCase();
+    // Prefer claims over userinfo; 'email' is in the ID token when scope has 'email'
+    const claims = tokenSet.claims();
+    const email = (claims.email || '').toLowerCase();
     if (!email) {
-      console.error('Google callback error: missing email in userinfo:', userinfo);
-      return res.status(400).send('Google did not return an email address.');
+      const msg = '[OAuth] No email in ID token claims';
+      console.error(msg, claims);
+      return dev ? res.status(400).json({ error: msg, claims }) 
+                 : res.status(400).send('Google did not return an email address.');
     }
 
     // ----- UPSERT USER -----
-    // Find existing user
-    let { rows, rowCount } = await query(
-      'SELECT id, org_id FROM users WHERE email=$1',
-      [email]
-    );
-
+    let { rows, rowCount } = await query('SELECT id, org_id FROM users WHERE email=$1', [email]);
     let user;
     if (!rowCount) {
-      // Ensure DefaultOrg exists (your verify route already uses this)
       const orgRes = await query('SELECT id FROM organizations WHERE name=$1', ['DefaultOrg']);
       const orgId = orgRes.rowCount
         ? orgRes.rows[0].id
         : (await query('INSERT INTO organizations (name) VALUES ($1) RETURNING id', ['DefaultOrg'])).rows[0].id;
 
-      // Insert new user (no password_hash for Google accounts)
+      const firstName = claims.given_name || null;
+      const lastName  = claims.family_name || null;
+
       const inserted = await query(
         `INSERT INTO users (org_id, email, first_name, last_name)
          VALUES ($1,$2,$3,$4)
          RETURNING id, email, org_id`,
-        [orgId, email, userinfo.given_name || null, userinfo.family_name || null]
+        [orgId, email, firstName, lastName]
       );
       user = inserted.rows[0];
     } else {
       user = rows[0];
     }
 
-    // ----- ISSUE SESSION COOKIE -----
-    const token = jwt.sign(
-      { id: user.id, email, org: user.org_id },
-      SECRET,
-      { expiresIn: '7d' }
-    );
-
+    // ----- SESSION COOKIE -----
+    const token = jwt.sign({ id: user.id, email, org: user.org_id }, SECRET, { expiresIn: '7d' });
     res.cookie('token', token, {
       httpOnly: true,
       sameSite: 'lax',
@@ -504,17 +502,20 @@ router.get('/google/callback', async (req, res) => {
       path: '/',
     });
 
-    // Clear temp cookies
+    // clear temp cookies
     const secure = process.env.NODE_ENV === 'production';
     res.clearCookie('g_state', { httpOnly: true, sameSite: 'lax', secure });
     res.clearCookie('g_nonce', { httpOnly: true, sameSite: 'lax', secure });
 
-    // Redirect to your dashboard (env-driven)
     return res.redirect(`${FRONTEND_BASE}/asei_dashboard.html`);
   } catch (e) {
-    // Log the actual error to diagnose issues (mismatch, bad state/nonce, etc.)
-    console.error('Google callback error:', e?.response?.body || e?.message || e);
-    res.status(500).json({ error: 'Google OAuth callback failed' });
+    const details = e?.response?.body || e?.message || String(e);
+    console.error('Google callback error:', details);
+    // In dev, expose details so you can see the exact cause
+    if (process.env.NODE_ENV !== 'production') {
+      return res.status(500).json({ error: 'Google OAuth callback failed', details });
+    }
+    return res.status(500).json({ error: 'Google OAuth callback failed' });
   }
 });
 
