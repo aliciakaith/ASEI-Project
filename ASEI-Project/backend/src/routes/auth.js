@@ -29,7 +29,7 @@ function validatePassword(password, { email, firstName, lastName } = {}) {
   if (lastName && String(lastName).length >= 3) partsToAvoid.push(String(lastName).toLowerCase());
 
   if (partsToAvoid.some(p => lowerPw.includes(p))) {
-    failures.push("Should not contain your name or email.");
+    failures.push("Password should not contain your name or email.");
   }
 
   // simple repeated/sequence checks (optional)
@@ -83,6 +83,80 @@ function cookieOpts(maxAgeMs) {
 }
 
 /* ============================
+   FORGOT PASSWORD (PUBLIC)
+   ============================ */
+router.post("/forgot", async (req, res) => {
+  const email = String(req.body?.email || "").toLowerCase();
+  if (!email) return res.status(400).json({ error: "Email is required." });
+
+  try {
+    // Silent lookup (no user enumeration)
+    const { rows, rowCount } = await query("SELECT id FROM users WHERE email=$1", [email]);
+
+    if (rowCount) {
+      const userId = rows[0].id;
+
+      // Short-lived, purpose-scoped token
+      const resetToken = jwt.sign({ sub: userId, kind: "pwd_reset" }, SECRET, { expiresIn: "15m" });
+
+      // Link to your frontend page (make sure the filename matches)
+      const resetLink = `${FRONTEND_BASE}/forgot.html?token=${encodeURIComponent(resetToken)}`;
+
+      await sendMail({
+        to: email,
+        subject: "Reset your Connectify password",
+        text: `Use this link to reset your password (valid 15 minutes): ${resetLink}`,
+        html: `<p>Use this link to reset your password (valid 15 minutes):</p>
+               <p><a href="${resetLink}">${resetLink}</a></p>`
+      });
+    }
+
+    return res.json({ message: "If that email exists, a reset link has been sent." });
+  } catch (e) {
+    console.error("Forgot error:", e);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+/* ============================
+   RESET PASSWORD (PUBLIC)
+   ============================ */
+router.post("/reset", async (req, res) => {
+  const { token, password } = req.body || {};
+  if (!token || !password) {
+    return res.status(400).json({ error: "Token and new password are required." });
+  }
+
+  try {
+    const payload = jwt.verify(token, SECRET); // throws if bad/expired
+    if (payload.kind !== "pwd_reset") {
+      return res.status(400).json({ error: "Invalid reset token." });
+    }
+
+    // Validate strength (no personal info at this step)
+    const { ok, failures } = validatePassword(password);
+    if (!ok) {
+      return res.status(400).json({
+        error: `Password does not meet requirements: ${failures.join("; ")}`,
+        failures
+      });
+    }
+
+    const hash = await bcrypt.hash(password, 10);
+    await query("UPDATE users SET password_hash=$1 WHERE id=$2", [hash, payload.sub]);
+
+    return res.json({ message: "Password updated successfully." });
+  } catch (e) {
+    if (e.name === "TokenExpiredError") {
+      return res.status(400).json({ error: "Reset link has expired. Request a new one." });
+    }
+    console.error("Reset error:", e);
+    return res.status(400).json({ error: "Invalid reset token." });
+  }
+});
+
+
+/* ============================
    SIGNUP (always leads to verify)
    ============================ */
 router.post("/signup", async (req, res) => {
@@ -93,12 +167,14 @@ router.post("/signup", async (req, res) => {
 
   // 🔐 Enforce server-side password policy
   const { ok, failures } = validatePassword(password, { email, firstName, lastName });
-  if (!ok) {
-    return res.status(400).json({
-      error: "Password does not meet requirements.",
-      failures // e.g., [ "At least one uppercase letter", "At least one number" ]
-    });
-  }
+if (!ok) {
+  const message = failures.length
+    ? `${failures.join("; ")}`
+    : "Password does not meet requirements.";
+
+  return res.status(400).json({ error: message, failures });
+}
+
 
   try {
     const lowerEmail = email.toLowerCase();
@@ -313,6 +389,7 @@ router.post("/login", async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
+
 
 
 // POST /api/auth/logout

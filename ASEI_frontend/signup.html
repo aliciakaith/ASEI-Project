@@ -73,25 +73,29 @@
               </div>
             </div>
 
-            <!-- Confirm -->
-            <div>
-              <label for="confirm-password" class="block mb-2 text-sm font-medium text-white">Confirm password</label>
-              <input type="password" id="confirm-password" name="confirmPassword"
-                     class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg block w-full p-2.5"
-                     required aria-describedby="pw-match-msg">
-              <p id="pw-match-msg" class="text-xs mt-1 text-gray-400" aria-live="polite"></p>
-            </div>
-          
+              <!-- Confirm -->
+              <div>
+                <label for="confirm-password" class="block mb-2 text-sm font-medium text-white">Confirm password</label>
+                <input type="password" id="confirm-password"
+                      class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg block w-full p-2.5"
+                      required aria-describedby="pw-match-msg">
+                <p id="pw-match-msg" class="text-xs mt-1 text-gray-400" aria-live="polite"></p>
+              </div>
+
+
             <div class="flex items-start">
               <div class="flex items-center h-5">
                 <input id="terms" type="checkbox" name="acceptTerms" value="on"
                        class="w-4 h-4 border border-gray-600 rounded bg-gray-700" required>
               </div>
+    
               <div class="ml-3 text-sm text-gray-300">
                 <label for="terms" class="font-light">I accept the</label>
-                <a href="/terms" class="font-medium text-[#5daeff] hover:underline ml-1" target="_blank" rel="noopener">
+                <a href="/termsAndConditions.html"
+                   class="font-medium text-[#5daeff] hover:underline ml-1"
+                   target="_blank" rel="noopener">
                   Terms and Conditions
-                </a>
+                </button>
               </div>
             </div>
           
@@ -125,6 +129,7 @@
     </main>
   </div>
 
+<!-- Existing signup JS -->
 <script>
   const form = document.getElementById("signup-form");
   const errorBox = document.getElementById("signup-error");
@@ -209,6 +214,157 @@
     // to /api/auth/signup and follow the backend redirect (e.g., /dashboard).
   });
 </script>
+
+<!-- Terms Modal (popup) -->
+<div id="terms-modal" class="fixed inset-0 z-50 hidden" aria-hidden="true">
+  <!-- overlay -->
+  <div id="terms-overlay" class="absolute inset-0 bg-black/60"></div>
+
+  <!-- dialog -->
+  <div class="absolute inset-0 flex items-center justify-center p-4">
+    <div role="dialog" aria-modal="true" aria-labelledby="terms-title"
+         class="w-full max-w-3xl rounded-xl border border-gray-700 bg-gray-800 shadow-xl outline-none text-white">
+      <!-- header -->
+      <div class="flex items-center justify-between px-5 py-3 border-b border-gray-700">
+        <h2 id="terms-title" class="text-lg font-semibold">Terms &amp; Conditions</h2>
+        <button type="button" id="terms-close"
+                class="p-2 rounded hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-[#5daeff]">
+          <span class="sr-only">Close</span> ✕
+        </button>
+      </div>
+
+      <!-- body (scrollable, inline content) -->
+      <div id="terms-body"
+           class="px-5 py-4 max-h-[70vh] overflow-y-auto leading-relaxed text-gray-200 space-y-5 text-sm">
+        <p class="text-xs text-gray-400">Last updated: 7 Oct 2025</p>
+
+        <h3 class="text-[#5daeff] font-semibold">About These Terms</h3>
+        <p>These Terms and Conditions govern your use of the Platform. By creating an account or continuing to use the Platform, you agree to these Terms for as long as your access remains active.</p>
+
+        <h3 class="text-[#5daeff] font-semibold">What the Platform Provides</h3>
+        <p>The Platform helps you integrate third-party APIs into enterprise systems with drag-and-drop tools to streamline workflows and improve efficiency.</p>
+
+        <h3 class="text-[#5daeff] font-semibold">Costs &amp; Fees</h3>
+        <p>There are currently no fees for using the Platform. If you are asked to pay more than an amount you explicitly approved, stop immediately and report it.</p>
+
+        <h3 class="text-[#5daeff] font-semibold">Risks You Should Know</h3>
+        <p>Using the Platform may allow us and approved third-party applications to access and process your data (including financial information where required by an integration). You are responsible for what you share with third parties. Connectify is not responsible for transactions or activity outside the Platform. We may update these Terms and will notify you of material changes.</p>
+
+        <h3 class="text-[#5daeff] font-semibold">Security</h3>
+        <p>We implement security controls to help protect your data. You must safeguard your account (use a strong password, keep details current, and never share credentials). Failure to do so may lead to suspension.</p>
+
+        <h3 class="text-[#5daeff] font-semibold">Account Management</h3>
+        <ul class="list-disc ml-5 space-y-1">
+          <li>Be alert to scams or imposters trying to access your account.</li>
+          <li>Do not share your password or authentication factors with anyone.</li>
+          <li>Notify us immediately if you suspect compromise; delays may affect liability.</li>
+          <li>Report mistaken payments as soon as possible so we can help mitigate issues.</li>
+          <li>You consent to sharing necessary personal/transactional info with specific providers solely to deliver services (see Third-party Access).</li>
+        </ul>
+
+        <h3 class="text-[#5daeff] font-semibold">Third-party Access</h3>
+        <p>The Platform connects to external providers (e.g., Google APIs, MTN, Flutterwave, Airtel). Availability depends on each provider’s systems, terms, and uptime.</p>
+
+        <h3 class="text-[#5daeff] font-semibold">Closing Your Account</h3>
+        <p>When you close your account, related personal details are removed from active systems subject to legal/operational retention. We may suspend or close accounts without prior notice if fraudulent, abusive, or malicious activity is suspected.</p>
+
+        <h3 class="text-[#5daeff] font-semibold">Your Responsibilities</h3>
+        <ul class="list-disc ml-5 space-y-1">
+          <li>Use the Platform only for lawful purposes.</li>
+          <li>Provide accurate information and keep it up to date.</li>
+          <li>Do not attempt to breach, probe, or interfere with Platform security or functionality.</li>
+        </ul>
+
+        <h3 class="text-[#5daeff] font-semibold">Monitoring &amp; Notifications</h3>
+        <p>If you detect suspicious or unauthorised activity, notify us immediately. System logs and notifications may help you monitor account activity.</p>
+
+        <h3 class="text-[#5daeff] font-semibold">Protecting Your Information</h3>
+        <p>You are responsible for keeping your personal information secure, including login credentials and authentication tools. Connectify will not request authentication without your consent. Do not provide information to untrusted sources.</p>
+
+        <h3 class="text-[#5daeff] font-semibold">Reporting Issues</h3>
+        <p>If you encounter issues while using the Platform, report them promptly through the designated support channel.</p>
+
+        <h3 class="text-[#5daeff] font-semibold">Acceptance</h3>
+        <p>By using the Platform, you confirm that you have read, understood, and agree to these Terms and Conditions.</p>
+      </div>
+
+      <!-- footer -->
+      <div class="flex items-center justify-end gap-3 px-5 py-4 border-t border-gray-700">
+        <button type="button" id="terms-cancel"
+                class="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600">
+          Cancel
+        </button>
+        <button type="button" id="terms-accept"
+                class="px-4 py-2 rounded-lg bg-[#3f9fff] hover:bg-[#1188ff]">
+          Accept &amp; close
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal script -->
+<script>
+  (function () {
+    const modal    = document.getElementById('terms-modal');
+    const overlay  = document.getElementById('terms-overlay');
+    const openBtn  = document.getElementById('open-terms');
+    const closeBtn = document.getElementById('terms-close');
+    const cancel   = document.getElementById('terms-cancel');
+    const accept   = document.getElementById('terms-accept');
+    const checkbox = document.getElementById('terms');
+
+    let lastFocused = null;
+
+    function onKeyDown(e) {
+      if (e.key === 'Escape') closeModal();
+      if (e.key === 'Tab') trapFocus(e);
+    }
+
+    function trapFocus(e) {
+      if (modal.classList.contains('hidden')) return;
+      const focusables = modal.querySelectorAll(
+        'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
+      );
+      if (!focusables.length) return;
+      const first = focusables[0];
+      const last  = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) { last.focus(); e.preventDefault(); }
+      else if (!e.shiftKey && document.activeElement === last) { first.focus(); e.preventDefault(); }
+    }
+
+    function openModal() {
+      lastFocused = document.activeElement;
+      modal.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+      (closeBtn || modal).focus();
+      document.addEventListener('keydown', onKeyDown);
+    }
+
+    function closeModal() {
+      modal.classList.add('hidden');
+      document.body.style.overflow = '';
+      document.removeEventListener('keydown', onKeyDown);
+      if (lastFocused) lastFocused.focus();
+    }
+
+    openBtn.addEventListener('click', openModal);
+    overlay.addEventListener('click', closeModal);
+    closeBtn.addEventListener('click', closeModal);
+    cancel.addEventListener('click', closeModal);
+
+    // Accept = tick the checkbox and close
+    accept.addEventListener('click', () => {
+      checkbox.checked = true;
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+      closeModal();
+    });
+
+    // Optional: /signup#terms opens the modal
+    if (location.hash === '#terms') openModal();
+  })();
+</script>
+
 
 </body>
 </html>

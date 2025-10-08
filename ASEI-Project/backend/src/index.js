@@ -83,6 +83,8 @@ app.get("/deployments", send("deployments.html"));
 app.get("/monitoring", send("monitoring.html"));
 app.get("/settings", send("settings.html"));
 app.get("/terms", send("termsAndConditions.html"));
+app.get("/forgot", send("forgot.html")); // or send("Forgot.html") if that’s the actual name
+
 
 // ------------------------------------------------------
 // 404 handling
