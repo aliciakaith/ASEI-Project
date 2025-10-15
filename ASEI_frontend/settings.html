@@ -59,10 +59,10 @@
   </aside>
 
 
-<main class="p-6 ml-40 md:ml-64">
+<main class="px-6 pt-0 ml-40 md:ml-64">
 <h2 class="text-xl font-semibold mb-4">Settings</h2>
 
-  <div class="bg-white p-6 rounded shadow space-y-6">
+  <div class="bg-white p-6 rounded shadow space-y-6 max-w-2xl mx-auto">
 
     <!-- General -->
     <div>
@@ -79,29 +79,45 @@
       
 
 <div class="flex-grow border-t border-gray-400 mb-2"></div>
-      <h3 class="font-semibold mb-2">Update Profile</h3>
-        <grid class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label class="block text-sm font-medium">Given Names</label>
-            <input type="text" id="first-name" name="first-name" class="border rounded px-3 py-2 w-full sm:w-48 mb-4">
-          </div>
-          <div>
-            <label class="block text-sm font-medium">Surname</label>
-            <input type="text" id="last-name" name="last-name" class="border rounded px-3 py-2 w-full sm:w-48 mb-4">
-          </div>
-          <div>
-            <label class="block text-sm font-medium">Email</label>
-            <input type="email" id="email" name="email" class="border rounded px-3 py-2 w-full sm:w-48 mb-4">
-          </div>
-          <div>
-            <label class="block text-sm font-medium">Password</label>
-            <input type="password" id="password" name="password" class="border rounded px-3 py-2 w-full sm:w-48 mb-4">
-          </div>
-        </grid>
-        <div id="enter-password" class="hidden">
-          <label class="block text-sm font-medium text-red-400">*Enter current password to confirm</label>
-          <input type="password" id="confirmPassword" name="confirmPassword" class="border rounded px-3 py-2 w-full sm:w-48 mb-4">
+      <div class="flex items-center w-full mb-2">
+        <h3 class="font-semibold mb-2">Update Profile</h3>
+        <button id="editBtn" class="ml-auto px-4 py-1 bg-blue-500 hover:bg-blue-600 rounded-full">
+          <label class="text-sm font-small text-white">Edit</label>
+        </button>
+        <button id="cancelBtn" class="hidden ml-2 px-4 py-1 bg-gray-400 hover:bg-gray-500 rounded-full">
+          <label class="text-sm font-small text-white">Cancel</label>
+        </button>
+      </div>
+      <div>
+        <div>
+          <label class="block text-sm font-medium">Given Names</label>
+          <p id="viewFName" class="rounded px-3 py-1 w-full mb-2">asd</p>
+          <input id="editFName" type="text" class="hidden border rounded px-3 py-2 w-full lg:w-1/2 mb-4">
         </div>
+
+        <div>
+          <label class="block text-sm font-medium"> Surname</label>
+          <p id="viewLName" class="rounded px-3 py-1 w-full mb-2">asd</p>
+          <input id="editLName" type="text" class="hidden border rounded px-3 py-2 w-full lg:w-1/2 mb-4">
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium">Email</label>
+          <p id="viewEmail" class="rounded px-3 py-1 w-full mb-2">asd</p>
+          <input id="editEmail" type="text" class="hidden border rounded px-3 py-2 w-full lg:w-1/2 mb-4">
+        </div>
+
+        <div class="hidden">
+          <label class="block text-sm font-medium">Change Password</label>
+          <input id="changePassword" type="text" class="border rounded px-3 py-2 w-full lg:w-1/2 mb-4">
+        </div>
+
+        <div class="hidden">
+          <label class="block text-sm font-medium text-red-400">*Enter old password to confirm</label>
+          <input type="password" id="confirmPassword" name="confirmPassword" class="border rounded px-3 py-2 w-full lg:w-1/2 mb-4">
+        </div>
+      </div>
+
 <div class="flex-grow border-t border-gray-400 mb-2 mt-2"></div>
 
         <div class="flex flex-col">
@@ -137,13 +153,14 @@
 <div class="flex-grow border-t border-gray-400 mb-2 mt-2"></div>
 
     <div class="flex space-x-3">
-      <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded">Save Changes</button>
-      <button class="px-4 py-2 bg-gray-400 hover:bg-gray-500 text-white rounded">Reset</button>
+      <button id="saveEdit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded">Save Changes</button>
+      <button id="resetEdit" class="px-4 py-2 bg-gray-400 hover:bg-gray-500 text-white rounded">Reset</button>
     </div>
 
 </main>
+<!-- Edit profile -->
   <script>
-    const firstName = document.getElementById('first-name');
+    /*const firstName = document.getElementById('first-name');
     const lastName = document.getElementById('last-name');
     const email = document.getElementById('email');
     const enterPass = document.getElementById('enter-password');
@@ -154,7 +171,80 @@
     }
     [firstName, lastName, email].forEach(input =>
       input.addEventListener('input', toggleCP)
+    );*/
+
+    const editBtn = document.getElementById('editBtn');
+    const editBtnLabel = editBtn.querySelector('label');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const viewFName = document.getElementById('viewFName');
+    const editFName = document.getElementById('editFName');
+    const viewLName = document.getElementById('viewLName');
+    const editLName = document.getElementById('editLName');
+    const viewEmail = document.getElementById('viewEmail');
+    const editEmail = document.getElementById('editEmail');
+    const changePassword = document.getElementById('changePassword');
+    const confirmPassword = document.getElementById('confirmPassword');
+    const wrapChangeP = changePassword.parentElement;
+    const wrapConfirmP = confirmPassword.parentElement;
+    const show = el => el.classList.remove('hidden');
+    const hide = el => el.classList.add('hidden');
+
+    let editing = false;
+
+    function toggleEdit(){
+      editFName.value = viewFName.textContent || '';
+      editLName.value = viewLName.textContent || '';
+      editEmail.value = viewEmail.textContent ||'';
+
+      show(editFName); show(editLName); show(editEmail); show(wrapChangeP); show(cancelBtn);
+      hide(viewFName); hide(viewLName); hide (viewEmail); hide(wrapConfirmP);
+
+      editBtnLabel.textContent = 'Save';
+      editing = true;
+    }
+
+    function editNSave(){
+      viewFName.textContent = editFName.value.trim();
+      viewLName.textContent = editLName.value.trim();
+      viewEmail.textContent = editEmail.value.trim();
+
+      show(viewFName); show(viewLName); show(viewEmail);
+      hide(editFName); hide(editLName); hide(editEmail); hide(wrapChangeP); hide(wrapConfirmP); hide(cancelBtn);
+
+      editBtnLabel.textContent = 'Edit';
+      editing = false;
+    }
+
+    function toggleCP(){
+      const showCP = editFName.value.trim() || editLName.value.trim() || editEmail.value.trim() || changePassword.value.trim();
+      wrapConfirmP.classList.toggle('hidden', !showCP);
+    }
+    [editFName, editLName, editEmail, wrapChangeP].forEach(input =>
+      input.addEventListener('input', toggleCP)
     );
+
+    function cancel(){
+      editFName.value = (viewFName.textContent || '').trim();
+      editLName.value = (viewLName.textContent || '').trim();
+      editEmail.value = (viewEmail.textContent || '').trim();
+      changePassword.value = '';
+      confirmPassword.value = '';
+
+      show(viewFName); show(viewLName); show(viewEmail);
+      hide(editFName); hide(editLName); hide(editEmail); hide(wrapChangeP); hide(wrapConfirmP); hide(cancelBtn);
+      editBtnLabel.textContent = 'Edit';
+      editing = false;
+    }
+
+    editBtn.addEventListener('click', () => {
+      if(!editing){
+        toggleEdit();
+      }
+      else{editNSave()};
+    });
+
+    cancelBtn.addEventListener('click', cancel);
+
   </script>
 
 <!-- Update sidebar & setting Pfp -->
