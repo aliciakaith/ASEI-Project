@@ -60,25 +60,7 @@
           <img id="mainPfp" class="js-main-pfp h-8 w-8 rounded-full object-cover hidden" alt="N Pfp"/>
           <span class="text-sm font-medium">Insert User Name</span>
       </button>
-
-      <div id="profileMenu" class="absolute hidden bottom-full left-3 left-3 right-3 mt-4 rounded-lg bg-neutral-800 border border-neutral-700 text-neutral-200 shadow-xl z-50">
-          <button class="px-3 py-3 text-red-400 w-full hover:bg-neutral-700">Sign Out</button>
-      </div>
     </div>
-    <script>
-      const btn = document.getElementById('profileBtn');
-      const menu = document.getElementById('profileMenu');
-      btn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          menu.classList.toggle('hidden');
-      });
-
-      document.addEventListener('click', (e) =>{
-          if(!menu.contains(e.target) && e.target !== btn){
-              menu.classList.add('hidden');
-          }
-      });
-    </script>
   </aside>
 
 
