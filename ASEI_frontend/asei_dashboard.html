@@ -266,7 +266,7 @@
       });
       if (res.status === 401) {
         // Not logged in – go to login page
-        location.href = 'index.html';
+        location.href = 'login.html';
         return Promise.reject(new Error('401 Unauthorized'));
       }
       if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
@@ -386,7 +386,7 @@
     logoutBtn?.addEventListener('click', async () => {
       try {
         await fetchJSON('/api/auth/logout', { method: 'POST' });
-        window.location.href = 'index.html';
+        window.location.href = 'login.html';
       } catch (e) { console.error(e); }
     });
 
