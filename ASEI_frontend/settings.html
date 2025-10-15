@@ -4,10 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Settings</title>
+<script>
+  tailwind.config = { darkMode: 'class' };
+</script>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="icon" type="image/png" href="images/connectify_logo.png">
 </head>
-<body class="bg-neutral-100 text-neutral-900">
+<body class="bg-neutral-100 text-neutral-900 dark:bg-gray-900">
 
 
   <!-- Sidebar -->
@@ -104,17 +107,14 @@
         <div class="flex flex-col">
           <label for="Theme" class="font-semibold mb-2">Theme</label>
             <select id="Theme" class="border rounded px-3 py-2 w-full sm:w-48">
-              <option>Light</option>
-              <option>Dark</option>
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
             </select>
         </div>
 <div class="flex-grow border-t border-gray-400 mb-2 mt-2"></div>
 
         <div>
           <h3 class="font-semibold mb-2">Security</h3>
-          <label class="flex items-center space-x-2 mb-2">
-            <input type="checkbox" checked class="form-checkbox"> <span>Enable 2FA</span>
-          </label>
           <label class="flex items-center space-x-2">
             <input type="checkbox" class="form-checkbox"> <span>Allow IP Whitelist Only</span>
           </label>
@@ -205,6 +205,77 @@
   }
   document.addEventListener('DOMContentLoaded', hydrate);
 
+</script>
+
+<!-- Light Dark mode toggle -->
+<script>
+  /*
+  function toggleDarkMode(mode){
+    document.documentElement.classList.toggle('dark', mode == 'dark');
+    if(document.documentElement.classList.contains('dark')){
+      localStorage.setItem('theme', 'dark');
+    }
+    else{
+      localStorage.setItem('theme', 'light');
+    }
+  }
+  (function(){
+    const storeTheme = localStorage.getItem('theme');
+    if(storeTheme == 'dark'){
+      document.documentElement.classList.add('dark');
+    }
+    else{
+      document.documentElement.classList.remove('dark');
+    }
+
+    const syncDropdown = document.getElementById('Theme');
+    if(syncDropdown) syncDropdown.value = mode;
+  })();
+
+  document.addEventListener('DOMContentLoaded', ()=>{
+    const syncDropdown = document.getElementById('Theme');
+    if(!syncDropdown) return;
+    syncDropdown.addEventListener('change', (e) => toggleDarkMode(e.target.value));
+  });*/
+
+  const userTheme = localStorage.getItem('theme');
+  const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const darkMode = document.getElementById('darkMode');
+  const lightMode = document.getElementById('lightMode');
+  const mode = 'hidden';
+  const selectTheme = document.getElementById('Theme');
+
+  const themeCheck = ()=> {
+    if(userTheme === 'dark' || (!userTheme && systemTheme)){
+      document.documentElement.classList.add('dark');
+    }
+    else if(!userTheme && systemTheme){
+      document.documentElement.classList.add('dark');
+    }
+    else{
+      document.documentElement.classList.remove('dark');
+    }
+
+    if(selectTheme){
+      if(document.documentElement.classList.contains('dark')){
+        selectTheme.value = 'dark';
+      }
+      else{
+        selectTheme.value = 'light';
+      }
+    }
+  }
+
+  const themeSwitch = ()=> {
+    if(document.documentElement.classList.contains('dark')){
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+      return;
+    }
+    document.documentElement.classList.add('dark');
+    localStorage.setItem('theme', 'dark');
+  }
+  themeCheck();
 </script>
 
 </body>

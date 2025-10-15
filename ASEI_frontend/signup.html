@@ -15,7 +15,9 @@
   <div class="flex flex-col items-center px-6 gap-6">
     <header class="pt-10">
       <a href="#" class="flex items-center text-2xl font-semibold text-white -ml-8">
-        <img class="w-auto h-10 mr-2" src="images/connectify_logo.png" alt="Logo">
+        <div class="w-16 h-12 mr-2">
+            <img class="w-full h-full object-contain" src="images/connectify_logo.png" alt="Logo">
+        </div>
         Connectify    
       </a>
     </header>
@@ -55,9 +57,27 @@
             <!-- Password -->
             <div>
               <label for="password" class="block mb-2 text-sm font-medium text-white">Password</label>
+              <div class="relative">
               <input type="password" id="password" name="password"
-                     class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg block w-full p-2.5"
-                     required aria-describedby="pw-hints">
+                     class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg block w-full p-2.5 pr-10"
+                     required aria-describedby="pw-hints" autocomplete="add-password">
+                <button type="button" id="toggle-password" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-white focus:outline-none" aria-label="Show password" aria-pressed="false">
+                    <!-- closed eye -->
+                    <svg id="closedEye" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17.94 17.94A10.5 10.5 0 0 1 12 19.5C6 19.5 1.5 12 1.5 12a18.53 18.53 0 0 1 4.06-4.94"/>
+                        <path d="M22.5 12s-3-7.5-10.5-7.5a10.3 10.3 0 0 0-2.19.25"/>
+                        <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/>
+                        <line x1="2" y1="2" x2="22" y2="22"/>
+                    </svg>                                    
+                    
+                    <!-- open eye -->
+                    <svg id="openEye" class="h-5 w-5 hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M1.5 12s4.5-7.5 10.5-7.5 10.5 7.5 10.5 7.5-4.5 7.5-10.5 7.5S1.5 12 1.5 12z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                </button>
+                </div>
+
               <!-- Live strength + rules -->
               <div id="pw-hints" class="mt-2 space-y-2">
                 <div class="w-full h-1.5 bg-gray-700 rounded overflow-hidden">
@@ -76,10 +96,27 @@
               <!-- Confirm -->
               <div>
                 <label for="confirm-password" class="block mb-2 text-sm font-medium text-white">Confirm password</label>
-                <input type="password" id="confirm-password"
-                      class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg block w-full p-2.5"
-                      required aria-describedby="pw-match-msg">
+                <div class="relative">
+                <input type="password" id="confirmedPassword" name="confirmedPassword"
+                        class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg block w-full p-2.5 pr-10"
+                        required aria-describedby="pw-hints" autocomplete="add-password">
                 <p id="pw-match-msg" class="text-xs mt-1 text-gray-400" aria-live="polite"></p>
+                <button type="button" id="toggle-confirmed-password" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-white focus:outline-none" aria-label="Show password" aria-pressed="false">
+                    <!-- closed eye -->
+                    <svg id="confirmedClosedEye" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17.94 17.94A10.5 10.5 0 0 1 12 19.5C6 19.5 1.5 12 1.5 12a18.53 18.53 0 0 1 4.06-4.94"/>
+                        <path d="M22.5 12s-3-7.5-10.5-7.5a10.3 10.3 0 0 0-2.19.25"/>
+                        <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/>
+                        <line x1="2" y1="2" x2="22" y2="22"/>
+                    </svg>                                    
+                    
+                    <!-- open eye -->
+                    <svg id="confirmedOpenEye" class="h-5 w-5 hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M1.5 12s4.5-7.5 10.5-7.5 10.5 7.5 10.5 7.5-4.5 7.5-10.5 7.5S1.5 12 1.5 12z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                </button>
+                </div>
               </div>
 
 
@@ -112,7 +149,7 @@
             <div class="flex-grow border-t border-gray-500"></div>
           </div>
 
-          <h1 class="text-xl font-bold leading-tight tracking-tight text-white md:text-2xl">
+          <h1 class="text-xl font-bold leading-tight tracking-tight text-white md:text-2xl mb-3">
             Continue with
           </h1>
 
@@ -416,6 +453,35 @@
   })();
 </script>
 
+<!-- toggle eye -->
+<script>
+    const passW = document.getElementById('password');
+    const confirmedPassW = document.getElementById('confirmedPassword');
+    const btn = document.getElementById('toggle-password');
+    const confirmedBtn = document.getElementById('toggle-confirmed-password');
+    const openEye = document.getElementById('openEye');
+    const closedEye = document.getElementById('closedEye');
+    const confirmedOpenEye = document.getElementById('confirmedOpenEye');
+    const confirmedClosedEye = document.getElementById('confirmedClosedEye');
+
+    btn.addEventListener('click', () =>{
+        const isHidden = passW.type === 'password';
+        passW.type=isHidden ? 'text' : 'password';
+        btn.setAttribute('aria-label', isHidden? 'Hide password' : 'Show password');
+
+        openEye.classList.toggle('hidden', !isHidden);
+        closedEye.classList.toggle('hidden', isHidden);
+    });
+
+    confirmedBtn.addEventListener('click', () =>{
+        const isHidden = confirmedPassW.type === 'password';
+        confirmedPassW.type=isHidden ? 'text' : 'password';
+        confirmedBtn.setAttribute('aria-label', isHidden? 'Hide confirmedPassword' : 'Show confirmedPassword');
+
+        confirmedOpenEye.classList.toggle('hidden', !isHidden);
+        confirmedClosedEye.classList.toggle('hidden', isHidden);
+    });
+</script>
 
 </body>
 </html>
