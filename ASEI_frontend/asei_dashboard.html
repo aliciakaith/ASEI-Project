@@ -76,25 +76,35 @@
       <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-3">
         <h2 class="text-xl font-semibold mb-4">Dashboard</h2>
         <div class="flex items-center gap-2">
-          <button class="p-2 rounded-lg bg-white border border-neutral-200 hover:bg-neutral-50" aria-label="Notifications">
-            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-          </button>
+<!-- Notification Bell -->
+<div class="relative">
+  <button id="notifBtn"
+          class="relative p-2 rounded-lg bg-white border border-neutral-200 hover:bg-neutral-50"
+          aria-label="Notifications">
+    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5"/>
+      <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+    </svg>
+    <span id="notifBadge"
+          class="hidden absolute -top-1 -right-1 h-4 min-w-4 px-1 text-[10px] leading-4 text-center
+                 rounded-full bg-red-500 text-white"></span>
+  </button>
 
-          <div class="relative">
-            <button id="topProfileBtn" class="relative h-10 w-10 overflow-hidden rounded-full border border-neutral-200 hover:bg-neutral-800" aria-label="Profile">
-              <img id="initialSidebarPfp" src="images/default_avatar.png" class="js-initial-pfp absolute inset-0 h-full w-full transform scale-[1.28] object-cover" alt="Default profile"/>
-              <img id="mainPfp" class="js-main-pfp h-12 w-12 rounded-full object-cover hidden" alt="Profile"/>
-            </button>
-            <div id="profileMenu" class="absolute hidden top-full right-0 w-48 mt-2 rounded-lg bg-neutral-300 border border-neutral-400 text-neutral-200 z-50">
-              <button id="logoutBtn" class="px-3 py-3 text-red-600 w-full hover:bg-neutral-400 hover:text-red-500 shadow-lg rounded-lg">Sign Out</button>
-            </div>
-          </div>
-          <script>
-            const btn = document.getElementById('topProfileBtn');
-            const menu = document.getElementById('profileMenu');
-            btn.addEventListener('click', (e) => { e.stopPropagation(); menu.classList.toggle('hidden'); });
-            document.addEventListener('click', (e) => { if(!menu.contains(e.target) && e.target !== btn) menu.classList.add('hidden'); });
-          </script>
+  <!-- Dropdown -->
+  <div id="notifMenu"
+       class="absolute hidden right-0 mt-2 w-80 max-h-96 overflow-y-auto
+              bg-white border border-neutral-200 rounded-xl shadow-xl z-50">
+<div class="flex items-center justify-between px-3 py-2 border-b border-neutral-100">
+  <div class="text-sm font-medium">Notifications</div>
+</div>
+
+    <div id="notifList" class="divide-y divide-neutral-100"></div>
+  </div>
+</div>
+          <a href="settings.html" id="topProfileBtn" class="relative h-10 w-10 overflow-hidden rounded-full border border-neutral-200 hover:bg-neutral-800" aria-label="Profile">
+            <img id="initialSidebarPfp" src="images/default_avatar.png" class="js-initial-pfp absolute inset-0 h-full w-full transform scale-[1.28] object-cover" alt="Default profile"/>
+            <img id="mainPfp" class="js-main-pfp h-12 w-12 rounded-full object-cover hidden" alt="Profile"/>
+          </a>
         </div>
       </div>
 
@@ -261,9 +271,64 @@
   </script>
 
   <!-- Backend integration -->
+   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script type="module">
     // Pick backend base automatically: local dev -> http://localhost:3001, otherwise same-origin
     const base = location.hostname === 'localhost' || location.hostname === '127.0.0.1' ? 'http://localhost:3001' : '';
+    const socket = io(base, { withCredentials: true });
+    window.socket = socket;
+// ===== Notifications UI =====
+const notifBtn   = document.getElementById('notifBtn');
+const notifMenu  = document.getElementById('notifMenu');
+const notifBadge = document.getElementById('notifBadge');
+const notifList  = document.getElementById('notifList');
+
+function timeAgo(ts){ const s=Math.max(1,((Date.now()-ts)/1000)|0); if(s<60)return `${s}s ago`; const m=(s/60|0); if(m<60)return `${m}m ago`; const h=(m/60|0); if(h<24)return `${h}h ago`; return new Date(ts).toLocaleString(); }
+function pill(type){ const map={error:['bg-red-100','text-red-700'],warn:['bg-amber-100','text-amber-800'],info:['bg-blue-100','text-blue-700']}; const [bg,tx]=map[type]||map.info; return `<span class="text-[10px] px-2 py-0.5 rounded-full ${bg} ${tx}">${(type||'info').toUpperCase()}</span>`; }
+
+function renderNotifs(items=[]){
+  const unread = items.filter(n=>!n.isRead).length;
+  if(unread){ notifBadge.textContent = unread>99?'99+':String(unread); notifBadge.classList.remove('hidden'); }
+  else notifBadge.classList.add('hidden');
+
+notifList.innerHTML = items.length ? items.map(n=>`
+  <div class="p-3 ${n.isRead?'bg-white':'bg-neutral-50'}">
+    <div class="flex items-center justify-between">
+      <div class="font-medium text-sm">${n.title}</div>${pill(n.type)}
+    </div>
+    <div class="text-sm text-neutral-600 mt-1">${n.message}</div>
+    <div class="flex items-center justify-between mt-2">
+      <div class="text-[11px] text-neutral-400">${timeAgo(n.ts)}</div>
+    </div>
+  </div>
+`).join('') : `<div class="p-3 text-sm text-neutral-500">No notifications.</div>`;
+
+}
+
+async function loadNotifications(){
+  try { const items = await fetchJSON('/api/notifications'); renderNotifs(items||[]); }
+  catch(e){ console.error('Load notifications failed', e); }
+}
+
+// open (auto mark-all-read) / close
+notifBtn?.addEventListener('click', async (e) => {
+  e.stopPropagation();
+  const opening = notifMenu.classList.contains('hidden');
+  notifMenu.classList.toggle('hidden');
+
+  // only when opening, clear unread on the server and refresh UI
+  if (opening) {
+    try {
+      await fetchJSON('/api/notifications/read-all', { method: 'POST' });
+      await loadNotifications();
+    } catch (err) {
+      console.error('Auto mark-all-read failed', err);
+    }
+  }
+});
+
+document.addEventListener('click', (e)=>{ if(notifMenu && !notifMenu.contains(e.target) && e.target!==notifBtn) notifMenu.classList.add('hidden'); });
+
 
     // Elements
     const elName = document.querySelector('#profileBtn span');
@@ -377,6 +442,14 @@
           fetchJSON('/api/integrations')
         ]);
 
+        // join org room so server can push updates to this dashboard
+if (me?.org) socket.emit('join-org', me.org);
+
+// make sure we don't double-bind, then listen for pushed updates
+socket.off('notifications:update');
+socket.on('notifications:update', loadNotifications);
+
+
         if (me?.firstName) elName.textContent = me.firstName + ' ' + (me.lastName || '');
         elKpiFlows.textContent = kpis?.activeFlows ?? 0;
         elKpiTx.textContent    = kpis?.transactions ?? 0;
@@ -385,6 +458,7 @@
 
         renderServices(integrations || []);
         renderChart((txSeries?.points || []).map(p => ({ t: p.t, value: p.count })));
+        await loadNotifications();
       } catch (e) {
         console.error('Load error', e);
         showToast('Could not load dashboard data.');
