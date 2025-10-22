@@ -98,7 +98,7 @@
           data-desc="Automates transfers from mobile wallets into bank accounts with real-time reconciliation and API hooks.">
           Preview
         </button>
-        <button class="px-3 py-1 bg-blue-600 text-white rounded">Use Template</button>
+        <button onclick="window.location.href='flow_designer.html'" class="px-3 py-1 bg-blue-600 text-white rounded">Use Template</button>
       </div>
     </div>
 
@@ -115,7 +115,7 @@
           data-desc="Integrates utility payment collections directly into core banking using RESTful APIs.">
           Preview
         </button>
-        <button class="px-3 py-1 bg-blue-600 text-white rounded">Use Template</button>
+        <button onclick="window.location.href='flow_designer.html'" class="px-3 py-1 bg-blue-600 text-white rounded">Use Template</button>
       </div>
     </div>
 
@@ -132,7 +132,7 @@
           data-desc="Maps remittances to mobile wallets using AML checks, FX conversions, and partner APIs.">
           Preview
         </button>
-        <button class="px-3 py-1 bg-blue-600 text-white rounded">Use Template</button>
+        <button onclick="window.location.href='flow_designer.html'" class="px-3 py-1 bg-blue-600 text-white rounded">Use Template</button>
       </div>
     </div>
 
@@ -152,14 +152,14 @@
     </div>
     <div class="flex justify-end gap-2 mt-6">
       <button id="closePreviewBtn" class="px-4 py-2 rounded-lg bg-neutral-200 hover:bg-neutral-300">Close</button>
-      <button class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">Use Template</button>
+      <button onclick="window.location.href='flow_designer.html'" class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">Use Template</button>
     </div>
   </div>
 </div>
 
-<!-- Script: Modal + PFP -->
+<!-- Script -->
 <script>
-  // Profile Image Update
+  // Profile Image
   const imageStore = 'connectify.pfpUrl';
   function applyPfpToDOM(pfpUrl){
     document.querySelectorAll('.js-main-pfp').forEach(img =>{
@@ -173,7 +173,7 @@
     if(saveImg) applyPfpToDOM(saveImg);
   });
 
-  // Preview Modal Logic
+  // Preview Modal
   const previewModal = document.getElementById("previewModal");
   const previewTitle = document.getElementById("previewTitle");
   const previewDesc = document.getElementById("previewDesc");
