@@ -1,12 +1,20 @@
+# Use Node 20
 FROM node:20-alpine
+
+# Set working directory inside container
 WORKDIR /app
 
-COPY ASEI_frontend/package*.json ./
-RUN npm ci --omit=dev || npm install --omit=dev
+# Copy backend files
+COPY ASEI-Project/backend/package*.json ./
 
-COPY ASEI_frontend/ ./
+# Install backend dependencies
+RUN npm install --omit=dev
 
-ENV PORT=3000
-EXPOSE 3000
+# Copy rest of backend code
+COPY ASEI-Project/backend/ ./
 
-CMD ["node", "server.js"]
+# Expose port 3001
+EXPOSE 3001
+
+# Start your backend
+CMD ["npm", "start"]
