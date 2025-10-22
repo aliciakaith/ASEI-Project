@@ -1,0 +1,12 @@
+{
+  "flows": {
+    "demo-1": {
+      "id": "demo-1",
+      "name": "Demo Flow",
+      "nodes": [],
+      "edges": [],
+      "meta": {},
+      "updatedAt": "2025-09-02T09:17:24.847Z"
+    }
+  }
+}
