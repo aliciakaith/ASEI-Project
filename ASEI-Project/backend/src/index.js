@@ -12,6 +12,8 @@ import rolesRouter from "./routes/roles.js";
 import authRouter from "./routes/auth.js";
 import dashboardRouter from "./routes/dashboard.js";
 import { requireAuth } from "./middleware/authMiddleware.js";
+import connectionsRouter from "./routes/connections.js";
+import mtnRouter from "./routes/mtn.js";
 
 // ------------------------------------------------------
 // Load environment variables from backend/.env
@@ -43,6 +45,11 @@ app.use("/api/auth", authRouter);
 app.use("/api/flows", requireAuth, flowsRouter);
 app.use("/api/roles", requireAuth, rolesRouter);
 app.use("/api", requireAuth, dashboardRouter);
+app.use("/api/connections", requireAuth, connectionsRouter);
+app.use("/api/mtn", requireAuth, mtnRouter);
+
+
+
 
 // ------------------------------------------------------
 // Serve static frontend

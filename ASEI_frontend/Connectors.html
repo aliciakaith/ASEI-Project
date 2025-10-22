@@ -62,7 +62,7 @@
     <!-- Add Connector -->
     <div class="mb-4 flex flex-col sm:flex-row gap-2">
       <input type="text" placeholder="Search connectors..." class="w-full sm:w-1/3 border rounded px-3 py-2">
-      <button class="px-4 py-2 bg-blue-600 text-white rounded w-full sm:w-auto">+ Add Connector</button>
+      <button  onclick="openMtnModal()" class="px-4 py-2 bg-blue-600 text-white rounded w-full sm:w-auto">+ Add Connector</button>
     </div>
 
     <!-- Connectors Table -->
@@ -115,7 +115,90 @@
     const saveImg = localStorage.getItem(imageStore);
     if(saveImg) applyPfpToDOM(saveImg);
   })
+
 </script>
   </main>
+  <!-- Add Connection (MTN) Modal -->
+<div id="mtnConnModal" class="hidden fixed inset-0 z-50 bg-black/40">
+  <div class="mx-auto mt-24 max-w-lg bg-white rounded-lg shadow p-6">
+    <h2 class="text-lg font-semibold mb-4">Add MTN Connection</h2>
+    <div class="space-y-3">
+      <input id="mtn_label" class="w-full border p-2 rounded" placeholder="Label e.g. MTN Sandbox">
+      <input id="mtn_subscriptionKey" class="w-full border p-2 rounded" placeholder="Subscription Key (Primary key)">
+      <input id="mtn_apiUserId" class="w-full border p-2 rounded" placeholder="API User ID (UUID)">
+      <input id="mtn_apiKey" class="w-full border p-2 rounded" placeholder="API Key (from /apikey)">
+      <input id="mtn_baseUrl" class="w-full border p-2 rounded" value="https://sandbox.momodeveloper.mtn.com">
+      <input id="mtn_callbackUrl" class="w-full border p-2 rounded" placeholder="Callback URL (optional)">
+      <div id="mtn_test_result" class="text-sm"></div>
+      <div class="flex gap-2 justify-end pt-2">
+        <button onclick="closeMtnModal()" class="px-3 py-2 border rounded">Cancel</button>
+        <button onclick="testMtnConnection()" class="px-3 py-2 bg-blue-600 text-white rounded">Test</button>
+        <button id="mtn_save_btn" onclick="saveMtnConnection()" disabled class="px-3 py-2 bg-green-600 text-white rounded opacity-50">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- existing scripts, including your profile & PFP ones -->
+
+<script>
+  // JS for MTN API integration
+  const BACKEND_URL = "http://localhost:3001";
+
+  function openMtnModal(){ document.getElementById('mtnConnModal').classList.remove('hidden'); }
+  function closeMtnModal(){ document.getElementById('mtnConnModal').classList.add('hidden'); }
+
+  async function testMtnConnection(){
+    const cfg = {
+      subscriptionKey: document.getElementById('mtn_subscriptionKey').value.trim(),
+      apiUserId:       document.getElementById('mtn_apiUserId').value.trim(),
+      apiKey:          document.getElementById('mtn_apiKey').value.trim(),
+      baseUrl:         document.getElementById('mtn_baseUrl').value.trim(),
+      targetEnvironment: "sandbox",
+      callbackUrl:     document.getElementById('mtn_callbackUrl').value.trim() || null
+    };
+    const label = document.getElementById('mtn_label').value.trim();
+    const res = await fetch(`${BACKEND_URL}/api/connections/test`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ provider:'mtn', env:'sandbox', label: label || 'MTN', config: cfg })
+    });
+    const j = await res.json();
+    const el = document.getElementById('mtn_test_result');
+    if (j.ok){
+      el.textContent = 'Connected ✅ Token: ' + j.tokenPreview;
+      const b = document.getElementById('mtn_save_btn');
+      b.disabled = false; b.classList.remove('opacity-50');
+    } else {
+      el.textContent = 'Failed ❌ ' + (j.error?.message || JSON.stringify(j.error || j));
+    }
+  }
+
+  async function saveMtnConnection(){
+    const cfg = {
+      subscriptionKey: document.getElementById('mtn_subscriptionKey').value.trim(),
+      apiUserId:       document.getElementById('mtn_apiUserId').value.trim(),
+      apiKey:          document.getElementById('mtn_apiKey').value.trim(),
+      baseUrl:         document.getElementById('mtn_baseUrl').value.trim(),
+      targetEnvironment: "sandbox",
+      callbackUrl:     document.getElementById('mtn_callbackUrl').value.trim() || null
+    };
+    const label = document.getElementById('mtn_label').value.trim();
+    const res = await fetch(`${BACKEND_URL}/api/connections`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ provider:'mtn', env:'sandbox', label, config: cfg })
+    });
+    const j = await res.json();
+    if (j.id){
+      closeMtnModal();
+      alert('Saved connection: ' + j.label);
+    } else {
+      alert('Save failed: ' + JSON.stringify(j));
+    }
+  }
+</script>
 </body>
 </html>
