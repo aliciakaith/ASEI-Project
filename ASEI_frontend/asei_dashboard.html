@@ -79,8 +79,13 @@
           <!-- Notification Bell -->
           <div class="relative">
             <button id="notifBtn" class="relative p-2 rounded-lg bg-white border border-neutral-200 hover:bg-neutral-50" aria-label="Notifications">
-              🔔
-              <span id="notifBadge" class="hidden absolute -top-1 -right-1 h-4 min-w-4 px-1 text-[10px] leading-4 text-center rounded-full bg-red-500 text-white"></span>
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              <span id="notifBadge"
+                    class="hidden absolute -top-1 -right-1 h-4 min-w-4 px-1 text-[10px] leading-4 text-center
+                          rounded-full bg-red-500 text-white"></span>
             </button>
             <div id="notifMenu" class="absolute hidden right-0 mt-2 w-80 max-h-96 overflow-y-auto bg-white border border-neutral-200 rounded-xl shadow-xl z-50">
               <div class="flex items-center justify-between px-3 py-2 border-b border-neutral-100">
@@ -90,8 +95,9 @@
             </div>
           </div>
 
-          <a href="settings.html" id="topProfileBtn" class="h-10 w-10 overflow-hidden rounded-full border border-neutral-200 hover:bg-neutral-800">
-            <img id="initialSidebarPfp" src="images/default_avatar.png" class="js-initial-pfp h-full w-full object-cover" alt="Default profile"/>
+          <a href="settings.html" id="topProfileBtn" class="relative h-10 w-10 overflow-hidden rounded-full border border-neutral-200 hover:bg-neutral-800" aria-label="Profile">
+            <img id="initialSidebarPfp" src="images/default_avatar.png" class="js-initial-pfp absolute inset-0 h-full w-full transform scale-[1.28] object-cover" alt="Default profile"/>
+            <img id="mainPfp" class="js-main-pfp h-12 w-12 rounded-full object-cover hidden" alt="Profile"/>
           </a>
         </div>
       </div>
@@ -100,7 +106,9 @@
       <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div class="bg-white border border-neutral-200 rounded-xl p-4">
           <div class="flex items-center gap-3">
-            <div class="h-9 w-9 rounded-xl bg-neutral-100 flex items-center justify-center">📈</div>
+            <div class="h-9 w-9 rounded-xl bg-neutral-100 flex items-center justify-center">
+              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/></svg>
+            </div>
             <div>
               <div class="text-2xl font-semibold"><span id="kpi-active-flows">–</span></div>
               <div class="text-xs text-neutral-500">Active Flows</div>
@@ -110,7 +118,9 @@
 
         <div class="bg-white border border-neutral-200 rounded-xl p-4">
           <div class="flex items-center gap-3">
-            <div class="h-9 w-9 rounded-xl bg-neutral-100 flex items-center justify-center">💳</div>
+            <div class="h-9 w-9 rounded-xl bg-neutral-100 flex items-center justify-center">
+              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h10M7 13h6"/></svg>
+            </div>
             <div>
               <div class="text-2xl font-semibold"><span id="kpi-transactions">–</span></div>
               <div class="text-xs text-neutral-500">Transactions</div>
@@ -120,7 +130,9 @@
 
         <div class="bg-white border border-neutral-200 rounded-xl p-4">
           <div class="flex items-center gap-3">
-            <div class="h-9 w-9 rounded-xl bg-neutral-100 flex items-center justify-center">⚠️</div>
+            <div class="h-9 w-9 rounded-xl bg-neutral-100 flex items-center justify-center">
+              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
             <div>
               <div class="text-2xl font-semibold"><span id="kpi-errors">–</span></div>
               <div class="text-xs text-neutral-500">Errors</div>
@@ -130,7 +142,9 @@
 
         <div class="bg-white border border-neutral-200 rounded-xl p-4">
           <div class="flex items-center gap-3">
-            <div class="h-9 w-9 rounded-xl bg-neutral-100 flex items-center justify-center">⏱️</div>
+            <div class="h-9 w-9 rounded-xl bg-neutral-100 flex items-center justify-center">
+              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
             <div>
               <div class="text-2xl font-semibold"><span id="kpi-latency">–</span></div>
               <div class="text-xs text-neutral-500">Average Latency</div>
