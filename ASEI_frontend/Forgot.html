@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Connectify • Forgot / Reset Password</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="icon" type="image/png" href="images/connectify_logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body class="bg-gray-900 min-h-screen">
+  <div class="flex flex-col items-center px-6 gap-6">
+    <header class="pt-10">
+      <a href="login.html" class="flex items-center text-2xl font-semibold text-white -ml-8">
+        <img class="w-auto h-10 mr-2" src="images/connectify_logo.png" alt="Logo">
+        Connectify
+      </a>
+    </header>
+
+    <main class="w-full max-w-md mx-auto">
+      <div class="bg-gray-800 rounded-lg shadow border border-gray-700">
+        <div class="p-6 sm:p-8">
+          <h1 id="page-title" class="text-xl font-bold leading-tight tracking-tight text-white md:text-2xl">
+            Forgot your password?
+          </h1>
+          <p id="page-subtitle" class="text-sm font-light text-gray-400">
+            Enter your email and we’ll send you a reset link.
+          </p>
+
+          <!-- ALERT -->
+          <div id="alert" class="hidden mt-3 text-sm rounded-md px-3 py-2"></div>
+
+          <!-- REQUEST RESET LINK -->
+          <form id="request-form" class="space-y-3 md:space-y-4 mt-4">
+            <div>
+              <label for="email" class="block mb-2 text-sm font-medium text-white">Email</label>
+              <input type="email" id="email"
+                     class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg block w-full p-2.5"
+                     required placeholder="you@example.com">
+            </div>
+
+            <button id="request-btn" type="submit"
+                    class="w-full text-white bg-[#3f9fff] hover:bg-[#1188ff] font-medium rounded-lg text-sm px-5 py-2.5">
+              Send reset link
+            </button>
+          </form>
+
+          <!-- RESET PASSWORD (shown if ?token=...) -->
+          <form id="reset-form" class="hidden space-y-3 md:space-y-4 mt-4">
+            <input type="hidden" id="token-input" />
+
+            <!-- New password -->
+            <div>
+              <label for="password" class="block mb-2 text-sm font-medium text-white">New password</label>
+              <input type="password" id="password"
+                     class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg block w-full p-2.5"
+                     required aria-describedby="pw-hints">
+              <!-- Live strength + rules (matches signup) -->
+              <div id="pw-hints" class="mt-2 space-y-2">
+                <div class="w-full h-1.5 bg-gray-700 rounded overflow-hidden">
+                  <div id="pw-strength" class="h-full bg-gray-500 w-0 transition-all duration-200"></div>
+                </div>
+                <ul class="text-xs space-y-1 text-gray-400" id="pw-rules" aria-live="polite">
+                  <li id="rule-length"  class="flex items-center gap-2"><span>•</span> At least 8 characters</li>
+                  <li id="rule-lower"   class="flex items-center gap-2"><span>•</span> At least one lowercase letter</li>
+                  <li id="rule-upper"   class="flex items-center gap-2"><span>•</span> At least one uppercase letter</li>
+                  <li id="rule-number"  class="flex items-center gap-2"><span>•</span> At least one number</li>
+                  <li id="rule-special" class="flex items-center gap-2"><span>•</span> At least one special (@ $ ! % * ? & . # ^)</li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- Confirm -->
+            <div>
+              <label for="confirm-password" class="block mb-2 text-sm font-medium text-white">Confirm new password</label>
+              <input type="password" id="confirm-password"
+                     class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg block w-full p-2.5"
+                     required aria-describedby="pw-match-msg">
+              <p id="pw-match-msg" class="text-xs mt-1 text-gray-400" aria-live="polite"></p>
+            </div>
+
+            <!-- Server-side errors (specific) -->
+            <div id="reset-error" class="hidden text-sm text-red-400"></div>
+
+            <button id="reset-btn" type="submit"
+                    class="w-full text-white bg-[#3f9fff] hover:bg-[#1188ff] font-medium rounded-lg text-sm px-5 py-2.5">
+              Reset password
+            </button>
+          </form>
+
+          <div class="text-center mt-4 text-sm">
+            <a href="login.html" class="font-medium text-[#5daeff] hover:underline">Back to login</a>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // ---- API endpoints (match your backend) ----
+    const REQUEST_RESET_ENDPOINT = "/api/auth/forgot";
+    const CONFIRM_RESET_ENDPOINT = "/api/auth/reset";
+
+    // ---- DOM ----
+    const requestForm = document.getElementById("request-form");
+    const resetForm   = document.getElementById("reset-form");
+    const pageTitle   = document.getElementById("page-title");
+    const pageSub     = document.getElementById("page-subtitle");
+    const alertBox    = document.getElementById("alert");
+
+    const tokenParam  = new URLSearchParams(location.search).get("token");
+    const tokenInput  = document.getElementById("token-input");
+
+    const passwordEl  = document.getElementById("password");
+    const confirmEl   = document.getElementById("confirm-password");
+    const matchMsg    = document.getElementById("pw-match-msg");
+    const resetError  = document.getElementById("reset-error");
+    const strengthEl  = document.getElementById("pw-strength");
+
+    const ruleEls = {
+      length:  document.getElementById("rule-length"),
+      lower:   document.getElementById("rule-lower"),
+      upper:   document.getElementById("rule-upper"),
+      number:  document.getElementById("rule-number"),
+      special: document.getElementById("rule-special"),
+    };
+
+    // ---- Helpers ----
+    function showAlert(kind, msg) {
+      alertBox.className = "mt-3 text-sm rounded-md px-3 py-2";
+      if (kind === "success") alertBox.classList.add("bg-green-700/40","text-green-300","border","border-green-600");
+      else if (kind === "error") alertBox.classList.add("bg-red-700/40","text-red-300","border","border-red-600");
+      else alertBox.classList.add("bg-yellow-700/40","text-yellow-200","border","border-yellow-600");
+      alertBox.textContent = msg;
+      alertBox.classList.remove("hidden");
+    }
+    function clearAlert() {
+      alertBox.className = "hidden mt-3 text-sm rounded-md px-3 py-2";
+      alertBox.textContent = "";
+    }
+
+    function checkRules(pw) {
+      return {
+        length:  /.{8,}/.test(pw),
+        lower:   /[a-z]/.test(pw),
+        upper:   /[A-Z]/.test(pw),
+        number:  /\d/.test(pw),
+        special: /[@$!%*?&.#^]/.test(pw), // ← same set as backend
+      };
+    }
+
+    function updateChecklist(pw) {
+      const res = checkRules(pw);
+      Object.entries(res).forEach(([key, ok]) => {
+        const el = ruleEls[key];
+        el.classList.toggle("text-green-400", ok);
+        el.classList.toggle("text-gray-400", !ok);
+        el.firstElementChild.textContent = ok ? "✓" : "•";
+      });
+      const passed = Object.values(res).filter(Boolean).length;
+      const pct = (passed / 5) * 100;
+      strengthEl.style.width = pct + "%";
+      strengthEl.className = "h-full transition-all duration-200 " +
+        (passed <= 2 ? "bg-red-500" :
+         passed === 3 ? "bg-yellow-500" :
+         passed === 4 ? "bg-lime-500" : "bg-green-500");
+      return passed === 5;
+    }
+
+    function updateMatch() {
+      const pw    = passwordEl.value;
+      const rules = updateChecklist(pw);
+      const match = pw.length > 0 && pw === confirmEl.value;
+      matchMsg.textContent = match ? "Passwords match." : (confirmEl.value ? "Passwords do not match." : "");
+      matchMsg.className = "text-xs mt-1 " + (match ? "text-green-400" : "text-red-400");
+      // Button enable/disable lives in submit handler
+      return rules && match;
+    }
+
+    // ---- Mode switch (token present → reset mode) ----
+    if (tokenParam) {
+      requestForm.classList.add("hidden");
+      resetForm.classList.remove("hidden");
+      pageTitle.textContent = "Set a new password";
+      pageSub.textContent   = "Choose a strong password for your account.";
+      tokenInput.value      = tokenParam;
+    }
+
+    // ---- Request reset link ----
+    requestForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      clearAlert();
+      const email = document.getElementById("email").value.trim();
+      const btn   = document.getElementById("request-btn");
+      if (!email) return showAlert("error","Please enter your email.");
+
+      btn.disabled = true; btn.textContent = "Sending...";
+      try {
+        const res = await fetch(REQUEST_RESET_ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ email })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) showAlert("success","If that email exists, we’ve sent a reset link.");
+        else showAlert("error", data?.error || "Could not send reset link.");
+      } catch {
+        showAlert("error","Network issue. Try again.");
+      } finally {
+        btn.disabled = false; btn.textContent = "Send reset link";
+      }
+    });
+
+    // ---- Reset password (matches signup UX) ----
+    passwordEl?.addEventListener("input", updateMatch);
+    confirmEl?.addEventListener("input", updateMatch);
+
+    resetForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      resetError.classList.add("hidden");
+      resetError.textContent = "";
+
+      // Client-side guard to match signup UX
+      if (!updateMatch()) return;
+
+      const btn = document.getElementById("reset-btn");
+      btn.disabled = true; btn.textContent = "Resetting...";
+
+      try {
+        const res = await fetch(CONFIRM_RESET_ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ token: tokenInput.value, password: passwordEl.value })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) {
+          showAlert("success","Password updated! Redirecting to login...");
+          setTimeout(() => (location.href = "login.html"), 1200);
+        } else {
+          // Show specific reasons from backend if present (e.g., contains name/email, etc.)
+          const reasons = Array.isArray(data.failures) && data.failures.length
+            ? "• " + data.failures.join("\n• ")
+            : (data.error || "Could not reset password.");
+          resetError.textContent = reasons;
+          resetError.classList.remove("hidden");
+        }
+      } catch (err) {
+        resetError.textContent = "Network error: " + err.message;
+        resetError.classList.remove("hidden");
+      } finally {
+        btn.disabled = false; btn.textContent = "Reset password";
+      }
+    });
+
+    // Optional: silent auth check to skip page if already logged in (do nothing on 401)
+    (async () => {
+      try {
+        const me = await fetch("/api/auth/me", { credentials: "include" });
+        if (me.ok) location.href = "asei_dashboard.html";
+      } catch {}
+    })();
+  </script>
+</body>
+</html>

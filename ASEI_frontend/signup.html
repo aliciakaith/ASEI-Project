@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ASEI – Unified Integration Platform • Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" href="images/connectify_logo.png">
+</head>
+
+<body class="bg-gray-900 min-h-screen">
+  <div class="flex flex-col items-center px-6 gap-6">
+    <header class="pt-10">
+      <a href="#" class="flex items-center text-2xl font-semibold text-white -ml-8">
+        <div class="w-16 h-12 mr-2">
+            <img class="w-full h-full object-contain" src="images/connectify_logo.png" alt="Logo">
+        </div>
+        Connectify    
+      </a>
+    </header>
+
+    <main class="w-full max-w-md mx-auto">
+      <div class="bg-gray-800 rounded-lg shadow border border-gray-700">
+        <div class="p-6 sm:p-8">
+          <h1 class="text-xl font-bold leading-tight tracking-tight text-white md:text-2xl">
+            Create an account
+          </h1>
+          <p class="text-sm font-light text-gray-400">
+            Already have an account? 
+            <a href="login.html" class="font-medium text-[#5daeff] hover:underline">Login here</a>
+          </p>
+
+          <!-- SIGNUP FORM -->
+          <form id="signup-form" action="/api/auth/signup" method="POST" class="space-y-3 md:space-y-4 mt-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label for="first-name" class="block mb-2 text-sm font-medium text-white">Given Name(s)</label>
+                <input type="text" id="first-name" name="firstName"
+                       class="bg-gray-700 border-gray-600 text-white text-sm rounded-lg block w-full p-2.5" required>
+              </div>
+              <div>
+                <label for="last-name" class="block mb-2 text-sm font-medium text-white">Surname</label>
+                <input type="text" id="last-name" name="lastName"
+                       class="bg-gray-700 border-gray-600 text-white text-sm rounded-lg block w-full p-2.5" required>
+              </div>
+            </div>
+          
+            <div>
+              <label for="email" class="block mb-2 text-sm font-medium text-white">Email</label>
+              <input type="email" id="email" name="email"
+                     class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg block w-full p-2.5" required>
+            </div>
+
+            <!-- Password -->
+            <div>
+              <label for="password" class="block mb-2 text-sm font-medium text-white">Password</label>
+              <div class="relative">
+              <input type="password" id="password" name="password"
+                     class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg block w-full p-2.5 pr-10"
+                     required aria-describedby="pw-hints" autocomplete="add-password">
+                <button type="button" id="toggle-password" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-white focus:outline-none" aria-label="Show password" aria-pressed="false">
+                    <!-- closed eye -->
+                    <svg id="closedEye" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17.94 17.94A10.5 10.5 0 0 1 12 19.5C6 19.5 1.5 12 1.5 12a18.53 18.53 0 0 1 4.06-4.94"/>
+                        <path d="M22.5 12s-3-7.5-10.5-7.5a10.3 10.3 0 0 0-2.19.25"/>
+                        <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/>
+                        <line x1="2" y1="2" x2="22" y2="22"/>
+                    </svg>                                    
+                    
+                    <!-- open eye -->
+                    <svg id="openEye" class="h-5 w-5 hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M1.5 12s4.5-7.5 10.5-7.5 10.5 7.5 10.5 7.5-4.5 7.5-10.5 7.5S1.5 12 1.5 12z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                </button>
+                </div>
+
+              <!-- Live strength + rules -->
+              <div id="pw-hints" class="mt-2 space-y-2">
+                <div class="w-full h-1.5 bg-gray-700 rounded overflow-hidden">
+                  <div id="pw-strength" class="h-full bg-gray-500 w-0 transition-all duration-200"></div>
+                </div>
+                <ul class="text-xs space-y-1 text-gray-400" id="pw-rules" aria-live="polite">
+                  <li id="rule-length"  class="flex items-center gap-2"><span>•</span> At least 8 characters</li>
+                  <li id="rule-lower"   class="flex items-center gap-2"><span>•</span> At least one lowercase letter</li>
+                  <li id="rule-upper"   class="flex items-center gap-2"><span>•</span> At least one uppercase letter</li>
+                  <li id="rule-number"  class="flex items-center gap-2"><span>•</span> At least one number</li>
+                  <li id="rule-special" class="flex items-center gap-2"><span>•</span> At least one special (@ $ ! % * ? & . # ^)</li>
+                </ul>
+              </div>
+            </div>
+
+              <!-- Confirm -->
+              <div>
+                <label for="confirm-password" class="block mb-2 text-sm font-medium text-white">Confirm password</label>
+                <div class="relative">
+                <input type="password" id="confirmedPassword" name="confirmedPassword"
+                        class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg block w-full p-2.5 pr-10"
+                        required aria-describedby="pw-hints" autocomplete="add-password">
+                <p id="pw-match-msg" class="text-xs mt-1 text-gray-400" aria-live="polite"></p>
+                <button type="button" id="toggle-confirmed-password" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-white focus:outline-none" aria-label="Show password" aria-pressed="false">
+                    <!-- closed eye -->
+                    <svg id="confirmedClosedEye" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17.94 17.94A10.5 10.5 0 0 1 12 19.5C6 19.5 1.5 12 1.5 12a18.53 18.53 0 0 1 4.06-4.94"/>
+                        <path d="M22.5 12s-3-7.5-10.5-7.5a10.3 10.3 0 0 0-2.19.25"/>
+                        <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/>
+                        <line x1="2" y1="2" x2="22" y2="22"/>
+                    </svg>                                    
+                    
+                    <!-- open eye -->
+                    <svg id="confirmedOpenEye" class="h-5 w-5 hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M1.5 12s4.5-7.5 10.5-7.5 10.5 7.5 10.5 7.5-4.5 7.5-10.5 7.5S1.5 12 1.5 12z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                </button>
+                </div>
+              </div>
+
+
+            <div class="flex items-start">
+              <div class="flex items-center h-5">
+                <input id="terms" type="checkbox" name="acceptTerms" value="on"
+                       class="w-4 h-4 border border-gray-600 rounded bg-gray-700" required>
+              </div>
+    
+            <div class="ml-3 text-sm text-gray-300">
+              <label for="terms" class="font-light">I accept the</label>
+              <button id="open-terms" type="button"
+                      class="font-medium text-[#5daeff] hover:underline ml-1 align-baseline">
+                Terms and Conditions
+              </button>
+            </div>
+
+            </div>
+          
+            <button type="submit" class="w-full text-white bg-[#3f9fff] hover:bg-[#1188ff] font-medium rounded-lg text-sm px-5 py-2.5 text-center">
+              Create an account
+            </button>
+          </form>
+
+          <div id="signup-error" class="mt-3 text-sm text-red-400 hidden"></div>
+
+          <div class="flex items-center my-6">
+            <div class="flex-grow border-t border-gray-500"></div>
+            <span class="px-3 text-sm text-gray-400">or</span>
+            <div class="flex-grow border-t border-gray-500"></div>
+          </div>
+
+          <h1 class="text-xl font-bold leading-tight tracking-tight text-white md:text-2xl mb-3">
+            Continue with
+          </h1>
+
+          <!-- Google option -->
+          <div class="space-y-3 w-full">
+            <a href="/api/auth/google"
+               class="w-full p-2.5 inline-flex items-center justify-center gap-3 rounded-lg border border-gray-600 bg-white text-gray-900 text-sm font-medium hover:bg-gray-50">
+              <img src="images/G_logo.png" alt="G" class="w-5 h-5"/>
+              <span>Sign up with Google</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+<!-- Existing signup JS -->
+<script>
+  const form = document.getElementById("signup-form");
+  const errorBox = document.getElementById("signup-error");
+  const passwordEl = document.getElementById("password");
+  const confirmEl  = document.getElementById("confirm-password");
+  const matchMsg   = document.getElementById("pw-match-msg");
+  const submitBtn  = form.querySelector('button[type="submit"]');
+  const strengthEl = document.getElementById("pw-strength");
+
+  const ruleEls = {
+    length:  document.getElementById("rule-length"),
+    lower:   document.getElementById("rule-lower"),
+    upper:   document.getElementById("rule-upper"),
+    number:  document.getElementById("rule-number"),
+    special: document.getElementById("rule-special"),
+  };
+
+  function checkRules(pw) {
+    return {
+      length:  /.{8,}/.test(pw),
+      lower:   /[a-z]/.test(pw),
+      upper:   /[A-Z]/.test(pw),
+      number:  /\d/.test(pw),
+      special: /[@$!%*?&.#^]/.test(pw),
+    };
+  }
+
+  function updateChecklist(pw) {
+    const res = checkRules(pw);
+    Object.entries(res).forEach(([key, ok]) => {
+      const el = ruleEls[key];
+      el.classList.toggle("text-green-400", ok);
+      el.classList.toggle("text-gray-400", !ok);
+      el.firstElementChild.textContent = ok ? "✓" : "•";
+    });
+
+    // simple strength meter = % rules satisfied
+    const passed = Object.values(res).filter(Boolean).length;
+    const pct = (passed / 5) * 100;
+    strengthEl.style.width = pct + "%";
+    strengthEl.className = "h-full transition-all duration-200 " +
+      (passed <= 2 ? "bg-red-500" : passed === 3 ? "bg-yellow-500" : passed === 4 ? "bg-lime-500" : "bg-green-500");
+
+    return passed === 5;
+  }
+
+  function updateMatch() {
+    const pw = passwordEl.value;
+    const okAllRules = updateChecklist(pw);
+    const match = pw.length > 0 && pw === confirmEl.value;
+
+    matchMsg.textContent = match ? "Passwords match." : (confirmEl.value ? "Passwords do not match." : "");
+    matchMsg.className = "text-xs mt-1 " + (match ? "text-green-400" : "text-red-400");
+
+    // Enable submit only if rules pass + match
+    submitBtn.disabled = !(okAllRules && match);
+    submitBtn.classList.toggle("opacity-50", submitBtn.disabled);
+    submitBtn.classList.toggle("cursor-not-allowed", submitBtn.disabled);
+  }
+
+  // live checks
+  passwordEl.addEventListener("input", updateMatch);
+  confirmEl.addEventListener("input", updateMatch);
+
+  // initial state
+  updateMatch();
+
+  // form.addEventListener("submit", (e) => {
+  //   errorBox.classList.add("hidden");
+
+  //   const rulesOk = updateChecklist(passwordEl.value);
+  //   const matchOk = passwordEl.value === confirmEl.value;
+  //   const termsOk = document.getElementById("terms").checked;
+
+  //   // Stop submission only if invalid
+  //   if (!(rulesOk && matchOk && termsOk)) {
+  //     e.preventDefault();
+  //     errorBox.textContent = "Please fix the highlighted fields and accept the Terms.";
+  //     errorBox.classList.remove("hidden");
+  //   }
+  //   // If valid, DO NOT preventDefault — browser will POST the form
+  //   // to /api/auth/signup and follow the backend redirect (e.g., /dashboard).
+  // });
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault(); // we'll post via fetch
+    errorBox.classList.add("hidden");
+
+    const rulesOk = updateChecklist(passwordEl.value);
+    const matchOk = passwordEl.value === confirmEl.value;
+    const termsOk = document.getElementById("terms").checked;
+
+    if (!(rulesOk && matchOk && termsOk)) {
+      errorBox.textContent = "Please fix the highlighted fields and accept the Terms.";
+      errorBox.classList.remove("hidden");
+      return;
+    }
+
+    const body = {
+      firstName: document.getElementById("first-name").value.trim(),
+      lastName:  document.getElementById("last-name").value.trim(),
+      email:     document.getElementById("email").value.trim(),
+      password:  passwordEl.value
+    };
+
+    try {
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",            // so the pending_email cookie can be set
+        body: JSON.stringify(body)
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        // Show specific password failures if backend provided them
+        if (data.failures && Array.isArray(data.failures)) {
+          errorBox.innerHTML = `<ul class="list-disc ml-5">${data.failures.map(m => `<li>${m}</li>`).join("")}</ul>`;
+        } else {
+          errorBox.textContent = data.error || `Signup failed (${res.status})`;
+        }
+        errorBox.classList.remove("hidden");
+        return;
+      }
+
+      // carry the email into the verify page; backend also sets a cookie
+      localStorage.setItem("pendingEmail", body.email);
+      sessionStorage.setItem("pendingEmail", body.email);
+      window.location.href = `verify.html?email=${encodeURIComponent(body.email)}`;
+    } catch (err) {
+      errorBox.textContent = "Network error: " + err.message;
+      errorBox.classList.remove("hidden");
+    }
+  });
+</script>
+
+<!-- Terms Modal (popup) -->
+<div id="terms-modal" class="fixed inset-0 z-50 hidden" aria-hidden="true">
+  <!-- overlay -->
+  <div id="terms-overlay" class="absolute inset-0 bg-black/60"></div>
+
+  <!-- dialog -->
+  <div class="absolute inset-0 flex items-center justify-center p-4">
+    <div role="dialog" aria-modal="true" aria-labelledby="terms-title"
+         class="w-full max-w-3xl rounded-xl border border-gray-700 bg-gray-800 shadow-xl outline-none text-white">
+      <!-- header -->
+      <div class="flex items-center justify-between px-5 py-3 border-b border-gray-700">
+        <h2 id="terms-title" class="text-lg font-semibold">Terms &amp; Conditions</h2>
+        <button type="button" id="terms-close"
+                class="p-2 rounded hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-[#5daeff]">
+          <span class="sr-only">Close</span> ✕
+        </button>
+      </div>
+
+      <!-- body (scrollable, inline content) -->
+      <div id="terms-body"
+           class="px-5 py-4 max-h-[70vh] overflow-y-auto leading-relaxed text-gray-200 space-y-5 text-sm">
+        <p class="text-xs text-gray-400">Last updated: 7 Oct 2025</p>
+
+        <h3 class="text-[#5daeff] font-semibold">About These Terms</h3>
+        <p>These Terms and Conditions govern your use of the Platform. By creating an account or continuing to use the Platform, you agree to these Terms for as long as your access remains active.</p>
+
+        <h3 class="text-[#5daeff] font-semibold">What the Platform Provides</h3>
+        <p>The Platform helps you integrate third-party APIs into enterprise systems with drag-and-drop tools to streamline workflows and improve efficiency.</p>
+
+        <h3 class="text-[#5daeff] font-semibold">Costs &amp; Fees</h3>
+        <p>There are currently no fees for using the Platform. If you are asked to pay more than an amount you explicitly approved, stop immediately and report it.</p>
+
+        <h3 class="text-[#5daeff] font-semibold">Risks You Should Know</h3>
+        <p>Using the Platform may allow us and approved third-party applications to access and process your data (including financial information where required by an integration). You are responsible for what you share with third parties. Connectify is not responsible for transactions or activity outside the Platform. We may update these Terms and will notify you of material changes.</p>
+
+        <h3 class="text-[#5daeff] font-semibold">Security</h3>
+        <p>We implement security controls to help protect your data. You must safeguard your account (use a strong password, keep details current, and never share credentials). Failure to do so may lead to suspension.</p>
+
+        <h3 class="text-[#5daeff] font-semibold">Account Management</h3>
+        <ul class="list-disc ml-5 space-y-1">
+          <li>Be alert to scams or imposters trying to access your account.</li>
+          <li>Do not share your password or authentication factors with anyone.</li>
+          <li>Notify us immediately if you suspect compromise; delays may affect liability.</li>
+          <li>Report mistaken payments as soon as possible so we can help mitigate issues.</li>
+          <li>You consent to sharing necessary personal/transactional info with specific providers solely to deliver services (see Third-party Access).</li>
+        </ul>
+
+        <h3 class="text-[#5daeff] font-semibold">Third-party Access</h3>
+        <p>The Platform connects to external providers (e.g., Google APIs, MTN, Flutterwave, Airtel). Availability depends on each provider’s systems, terms, and uptime.</p>
+
+        <h3 class="text-[#5daeff] font-semibold">Closing Your Account</h3>
+        <p>When you close your account, related personal details are removed from active systems subject to legal/operational retention. We may suspend or close accounts without prior notice if fraudulent, abusive, or malicious activity is suspected.</p>
+
+        <h3 class="text-[#5daeff] font-semibold">Your Responsibilities</h3>
+        <ul class="list-disc ml-5 space-y-1">
+          <li>Use the Platform only for lawful purposes.</li>
+          <li>Provide accurate information and keep it up to date.</li>
+          <li>Do not attempt to breach, probe, or interfere with Platform security or functionality.</li>
+        </ul>
+
+        <h3 class="text-[#5daeff] font-semibold">Monitoring &amp; Notifications</h3>
+        <p>If you detect suspicious or unauthorised activity, notify us immediately. System logs and notifications may help you monitor account activity.</p>
+
+        <h3 class="text-[#5daeff] font-semibold">Protecting Your Information</h3>
+        <p>You are responsible for keeping your personal information secure, including login credentials and authentication tools. Connectify will not request authentication without your consent. Do not provide information to untrusted sources.</p>
+
+        <h3 class="text-[#5daeff] font-semibold">Reporting Issues</h3>
+        <p>If you encounter issues while using the Platform, report them promptly through the designated support channel.</p>
+
+        <h3 class="text-[#5daeff] font-semibold">Acceptance</h3>
+        <p>By using the Platform, you confirm that you have read, understood, and agree to these Terms and Conditions.</p>
+      </div>
+
+      <!-- footer -->
+      <div class="flex items-center justify-end gap-3 px-5 py-4 border-t border-gray-700">
+        <button type="button" id="terms-cancel"
+                class="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600">
+          Cancel
+        </button>
+        <button type="button" id="terms-accept"
+                class="px-4 py-2 rounded-lg bg-[#3f9fff] hover:bg-[#1188ff]">
+          Accept &amp; close
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal script -->
+<script>
+  (function () {
+    const modal    = document.getElementById('terms-modal');
+    const overlay  = document.getElementById('terms-overlay');
+    const openBtn  = document.getElementById('open-terms');
+    const closeBtn = document.getElementById('terms-close');
+    const cancel   = document.getElementById('terms-cancel');
+    const accept   = document.getElementById('terms-accept');
+    const checkbox = document.getElementById('terms');
+
+    let lastFocused = null;
+
+    function onKeyDown(e) {
+      if (e.key === 'Escape') closeModal();
+      if (e.key === 'Tab') trapFocus(e);
+    }
+
+    function trapFocus(e) {
+      if (modal.classList.contains('hidden')) return;
+      const focusables = modal.querySelectorAll(
+        'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
+      );
+      if (!focusables.length) return;
+      const first = focusables[0];
+      const last  = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) { last.focus(); e.preventDefault(); }
+      else if (!e.shiftKey && document.activeElement === last) { first.focus(); e.preventDefault(); }
+    }
+
+    function openModal() {
+      lastFocused = document.activeElement;
+      modal.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+      (closeBtn || modal).focus();
+      document.addEventListener('keydown', onKeyDown);
+    }
+
+    function closeModal() {
+      modal.classList.add('hidden');
+      document.body.style.overflow = '';
+      document.removeEventListener('keydown', onKeyDown);
+      if (lastFocused) lastFocused.focus();
+    }
+
+    openBtn.addEventListener('click', openModal);
+    overlay.addEventListener('click', closeModal);
+    closeBtn.addEventListener('click', closeModal);
+    cancel.addEventListener('click', closeModal);
+
+    // Accept = tick the checkbox and close
+    accept.addEventListener('click', () => {
+      checkbox.checked = true;
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+      closeModal();
+    });
+
+    // Optional: /signup#terms opens the modal
+    if (location.hash === '#terms') openModal();
+  })();
+</script>
+
+<!-- toggle eye -->
+<script>
+    const passW = document.getElementById('password');
+    const confirmedPassW = document.getElementById('confirmedPassword');
+    const btn = document.getElementById('toggle-password');
+    const confirmedBtn = document.getElementById('toggle-confirmed-password');
+    const openEye = document.getElementById('openEye');
+    const closedEye = document.getElementById('closedEye');
+    const confirmedOpenEye = document.getElementById('confirmedOpenEye');
+    const confirmedClosedEye = document.getElementById('confirmedClosedEye');
+
+    btn.addEventListener('click', () =>{
+        const isHidden = passW.type === 'password';
+        passW.type=isHidden ? 'text' : 'password';
+        btn.setAttribute('aria-label', isHidden? 'Hide password' : 'Show password');
+
+        openEye.classList.toggle('hidden', !isHidden);
+        closedEye.classList.toggle('hidden', isHidden);
+    });
+
+    confirmedBtn.addEventListener('click', () =>{
+        const isHidden = confirmedPassW.type === 'password';
+        confirmedPassW.type=isHidden ? 'text' : 'password';
+        confirmedBtn.setAttribute('aria-label', isHidden? 'Hide confirmedPassword' : 'Show confirmedPassword');
+
+        confirmedOpenEye.classList.toggle('hidden', !isHidden);
+        confirmedClosedEye.classList.toggle('hidden', isHidden);
+    });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ASEI – Unified Integration Platform • Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="images/connectify_logo.png">
+
+    <style>
+        .signin-button {
+        width: 210px;
+        height: 40px;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-900 min-h-screen">
+    <div class="flex flex-col items-center px-6 gap-6">
+        <header class="pt-10">
+            <a href="#" class="flex items-center text-2xl font-semibold text-white -ml-8">
+                <div class="w-16 h-12 mr-2">
+                    <img class="w-full h-full object-contain" src="images/connectify_logo.png" alt="Logo">
+                </div>
+                Connectify    
+            </a>
+        </header>
+
+        <main class="w-full max-w-md mx-auto">
+            <div class="bg-gray-800 rounded-lg shadow border border-gray-700">
+                <div class="p-6 sm:p-8">
+                    <h1 class="text-xl font-bold leading-tight tracking-tight md:text-2xl text-white">
+                        Sign in to your account
+                    </h1>
+                    <p class="text-sm font-light text-gray-400">
+                        Don’t have an account yet? <a href="signup.html" class="font-medium text-[#5daeff] hover:underline">Sign up</a>
+                    </p>
+
+                    <form id="login-form" class="space-y-3 md:space-y-4 mt-4">
+                        <div>
+                            <label for="email" class="block mb-2 text-sm font-medium text-white">Email</label>
+                            <input type="email" name="email" id="email" class="bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5" required="">
+                        </div>
+                        <div>
+                            <label for="password" class="block mb-2 text-sm font-medium text-white">Password</label>
+                            <div class="relative">
+                                <input type="password" name="password" id="password" class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 pr-10" required="" autocomplete="added-password">
+                                <button type="button" id="toggle-password" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-white focus:outline-none" aria-label="Show password" aria-pressed="false">
+                                    <!-- closed eye -->
+                                    <svg id="closedEye" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M17.94 17.94A10.5 10.5 0 0 1 12 19.5C6 19.5 1.5 12 1.5 12a18.53 18.53 0 0 1 4.06-4.94"/>
+                                        <path d="M22.5 12s-3-7.5-10.5-7.5a10.3 10.3 0 0 0-2.19.25"/>
+                                        <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/>
+                                        <line x1="2" y1="2" x2="22" y2="22"/>
+                                    </svg>                                    
+                                    
+                                    <!-- open eye -->
+                                    <svg id="openEye" class="h-5 w-5 hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M1.5 12s4.5-7.5 10.5-7.5 10.5 7.5 10.5 7.5-4.5 7.5-10.5 7.5S1.5 12 1.5 12z"/>
+                                        <circle cx="12" cy="12" r="3"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-start">
+                                <div class="flex items-center h-5">
+                                <input id="remember" aria-describedby="remember" type="checkbox"
+                                class="w-4 h-4 border border-gray-600 rounded bg-gray-700 focus:ring-3 focus:ring-offset-gray-800">
+                                </div>
+                                <div class="ml-3 text-sm">
+                                <label for="remember" class="text-gray-300">Remember me</label>
+                                </div>
+                            </div>
+                            <a href="Forgot.html" class="text-sm font-medium text-[#5daeff] hover:underline">Forgot password?</a>
+                        </div>
+                        <button type="submit" class="w-full text-white bg-[#3f9fff] hover:bg-[#1188ff] focus:ring-4 focus:outline-none focus:ring-primary-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center">Sign in</button>
+                        
+                        <div class="flex items-center my-6">
+                            <div class="flex-grow border-t border-gray-500"></div>
+                            <span class="px-3 text-sm text-gray-400">or</span>
+                            <div class="flex-grow border-t border-gray-500"></div>
+                        </div>
+
+                        <h1 class="text-xl font-bold leading-tight tracking-tight text-white md:text-2xl">
+                            Continue with
+                        </h1>
+
+        <!-- Google and Apple option -->
+                        <div class="space-y-3 w-full">
+                            <a href="/api/auth/google" class="w-full p-2.5 inline-flex items-center justify-center gap-3 rounded-lg border border-gray-600 bg-white text-gray-900 text-sm font-medium hover:bg-gray-50">
+                                <img src="images/G_logo.png" alt="G" class="w-5 h-5"/>
+                                <span>Sign in with Google</span>
+                            </a>
+
+                        </div>
+<script>
+document.getElementById("login-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  // ✅ query after the element exists
+  const errorBox = document.getElementById("login-error");
+  errorBox.classList.add("hidden");
+
+  const body = {
+    email: document.getElementById("email").value.trim(),
+    password: document.getElementById("password").value,
+    remember: document.getElementById("remember").checked  
+  };
+
+  try {
+    const res = await fetch("/api/auth/login", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  credentials: "include",
+  body: JSON.stringify(body)
+});
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      errorBox.textContent = data.error || `Login failed (${res.status})`;
+      errorBox.classList.remove("hidden");
+      return;
+    }
+    window.location.href = "asei_dashboard.html";
+  } catch (err) {
+    errorBox.textContent = "Network error: " + err.message;
+    errorBox.classList.remove("hidden");
+  }
+});
+</script>
+
+
+                    </form>
+                    <div id="login-error" class="hidden mt-3 text-sm text-red-400"></div>
+
+                </div>
+            </div>
+        </main>
+
+        <script src="https://accounts.google.com/gsi/client" async></script>
+    </div>
+        <script>
+            const body = {
+            email: document.getElementById("email").value.trim(),
+            password: document.getElementById("password").value,
+            remember: document.getElementById("remember").checked   
+            };
+            const passW = document.getElementById('password');
+            const btn = document.getElementById('toggle-password');
+            const openEye = document.getElementById('openEye');
+            const closedEye = document.getElementById('closedEye');
+
+            btn.addEventListener('click', () =>{
+                const isHidden = passW.type === 'password';
+                passW.type=isHidden ? 'text' : 'password';
+                btn.setAttribute('aria-label', isHidden? 'Hide password' : 'Show password');
+
+                openEye.classList.toggle('hidden', !isHidden);
+                closedEye.classList.toggle('hidden', isHidden);
+            });
+
+  // If already authenticated, skip login screen
+  (async () => {
+    try {
+      const res = await fetch("/api/auth/me", { credentials: "include" });
+      if (res.ok) {
+        // already logged in -> go to dashboard
+        window.location.href = "asei_dashboard.html";
+      }
+    } catch {}
+  })();
+        </script>
+</body>
+</html>

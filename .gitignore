@@ -1,4 +1,43 @@
+cat > .gitignore << 'EOF'
+# macOS / editor
+.DS_Store
+*.log
+.vscode/
+.idea/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Env / secrets
 .env
 .env.*
-node_modules
-.DS_Store
+*.local
+
+# Builds / coverage
+dist/
+build/
+coverage/
+.cache/
+.tmp/
+
+# Frontend specific
+ASEI_frontend/node_modules
+ASEI_frontend/dist
+ASEI_frontend/.env
+ASEI_frontend/.env.*
+
+# Backend specific
+backend/node_modules
+backend/dist
+backend/.env
+backend/.env.*
+
+# In case someone accidentally nested a copy of the project in the repo
+ASEI-Project/node_modules
+ASEI-Project/.env
+ASEI-Project/.env.*
+ASEI-Project/dist
+EOF
