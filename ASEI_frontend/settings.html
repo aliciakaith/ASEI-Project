@@ -87,16 +87,12 @@
     </div>
   </aside>
 
-<main class="p-6 ml-40 md:ml-64 space-y-8">
 
-  <header>
-    <h1 class="text-2xl font-semibold mb-2">Settings</h1>
-    <p class="text-sm text-neutral-500 dark:text-neutral-400">
-      Manage your profile, preferences, and account configurations below.
-    </p>
-  </header>
+<main class="p-6 ml-40 md:ml-64">
+<h2 class="text-xl font-semibold mb-4">Settings</h2>
 
-  <div class="bg-white dark:bg-neutral-800 rounded-xl shadow p-6 max-w-3xl mx-auto space-y-8 transition-colors">
+  <div class="bg-white dark:bg-neutral-800 dark:text-neutral-100
+            p-6 rounded shadow space-y-6 max-w-2xl mx-auto transition-colors">
 
 
 
@@ -121,129 +117,209 @@
         <button id="editBtn" class="ml-auto px-4 py-1 bg-blue-500 hover:bg-blue-600 rounded-full">
           <label class="text-sm font-small text-white">Edit</label>
         </button>
+        <button id="cancelBtn" class="hidden ml-2 px-4 py-1 bg-gray-400 hover:bg-gray-500 rounded-full">
+          <label class="text-sm font-small text-white">Cancel</label>
+        </button>
+      </div>
+      <div>
         <div>
-          <h3 class="font-medium text-lg">Insert User Name</h3>
-          <p class="text-sm text-neutral-500 dark:text-neutral-400">user@example.com</p>
+          <label class="block text-sm font-medium">Given Names</label>
+          <p id="viewFName" class="rounded px-3 py-1 w-full mb-2">asd</p>
+          <input id="editFName" type="text" class="hidden border rounded px-3 py-2 w-full lg:w-1/2 mb-4">
         </div>
-        <input type="file" id="updatePfp" accept="image/*" class="hidden">
-      </div>
 
-      <div class="grid sm:grid-cols-2 gap-4">
         <div>
-          <label class="block text-sm font-medium mb-1">Given Name</label>
-          <input id="editFName" type="text" class="border rounded px-3 py-2 w-full dark:bg-neutral-700 dark:border-neutral-600" placeholder="First Name">
+          <label class="block text-sm font-medium"> Surname</label>
+          <p id="viewLName" class="rounded px-3 py-1 w-full mb-2">asd</p>
+          <input id="editLName" type="text" class="hidden border rounded px-3 py-2 w-full lg:w-1/2 mb-4">
         </div>
+
         <div>
-          <label class="block text-sm font-medium mb-1">Surname</label>
-          <input id="editLName" type="text" class="border rounded px-3 py-2 w-full dark:bg-neutral-700 dark:border-neutral-600" placeholder="Last Name">
+          <label class="block text-sm font-medium">Email</label>
+          <p id="viewEmail" class="rounded px-3 py-1 w-full mb-2">asd</p>
+          <input id="editEmail" type="text" class="hidden border rounded px-3 py-2 w-full lg:w-1/2 mb-4">
         </div>
-        <div class="sm:col-span-2">
-          <label class="block text-sm font-medium mb-1">Email</label>
-          <input id="editEmail" type="email" class="border rounded px-3 py-2 w-full dark:bg-neutral-700 dark:border-neutral-600" placeholder="Email Address">
+
+        <div class="hidden">
+          <label class="block text-sm font-medium">Change Password</label>
+          <input id="changePassword" type="text" class="border rounded px-3 py-2 w-full lg:w-1/2 mb-4">
+        </div>
+
+        <div class="hidden">
+          <label class="block text-sm font-medium text-red-400">*Enter old password to confirm</label>
+          <input type="password" id="confirmPassword" name="confirmPassword" class="border rounded px-3 py-2 w-full lg:w-1/2 mb-4">
         </div>
       </div>
-    </section>
 
-    <hr class="border-neutral-200 dark:border-neutral-700">
+<div class="flex-grow border-t border-gray-400 dark:border-neutral-700 mb-2">
 
-    <!-- 🌗 Preferences -->
-    <section>
-      <h2 class="text-lg font-semibold mb-3 flex items-center gap-2">🌗 Appearance</h2>
-      <div class="flex items-center gap-4">
-        <span class="text-sm font-medium">Light / Dark Mode</span>
-        <input type="checkbox" id="darkmode-toggle" class="peer sr-only">
-        <label for="darkmode-toggle" class="relative inline-block h-8 w-14 rounded-full bg-neutral-300 transition peer-checked:bg-neutral-700 cursor-pointer
-          after:absolute after:top-1 after:left-[3px] after:h-6 after:w-6 after:rounded-full after:bg-white after:transition-transform peer-checked:after:translate-x-[25.5px]"></label>
-      </div>
-    </section>
+        <div class="flex flex-col">
+          <label for="Theme" class="font-semibold mb-2">Theme</label>
+          <div class="flex items-center gap-3">
+            <input type="checkbox" id="darkmode-toggle" class="peer sr-only"/>
+            <label for="darkmode-toggle" class="relative inline-block h-8 w-14 rounded-full bg-neutral-300 transition-colors peer-checked:bg-neutral-900 cursor-pointer
+            after:absolute after:top-1 after:left-[3px] after:h-6 after:w-6 after:rounded-full after:bg-white after:transition-transform peer-checked:after:translate-x-[25.5px]"></label>
+          </div>
 
-    <hr class="border-neutral-200 dark:border-neutral-700">
+        </div>
+<div class="flex-grow border-t border-gray-400 dark:border-neutral-700 mb-2">
 
-    <!-- 🔐 Security -->
-    <section>
-      <h2 class="text-lg font-semibold mb-3 flex items-center gap-2">🔐 Security</h2>
-      <div class="space-y-2">
-        <label class="flex items-center gap-2">
-          <input type="checkbox" class="form-checkbox h-4 w-4"> 
-          <span>Enable IP Whitelist</span>
-        </label>
-        <label class="flex items-center gap-2">
-          <input type="checkbox" class="form-checkbox h-4 w-4"> 
-          <span>2FA Verification</span>
-        </label>
-      </div>
-    </section>
+        <div>
+          <h3 class="font-semibold mb-2">Security</h3>
+          <label class="flex items-center space-x-2">
+            <input type="checkbox" class="form-checkbox"> <span>Allow IP Whitelist Only</span>
+          </label>
+        </div>
+<div class="flex-grow border-t border-gray-400 dark:border-neutral-700 mb-2">
 
-    <hr class="border-neutral-200 dark:border-neutral-700">
+        <div>
+          <h3 class="font-semibold mb-2">Notifications</h3>
+          <label class="flex items-center space-x-2">
+            <input type="checkbox" checked class="form-checkbox"> <span>Send error alerts</span>
+          </label>
+        </div>
+<div class="flex-grow border-t border-gray-400 dark:border-neutral-700 mb-2">
 
-    <!-- 🔔 Notifications -->
-    <section>
-      <h2 class="text-lg font-semibold mb-3 flex items-center gap-2">🔔 Notifications</h2>
-      <div class="space-y-2">
-        <label class="flex items-center gap-2">
-          <input type="checkbox" checked class="form-checkbox h-4 w-4"> 
-          <span>Email Alerts for Errors</span>
-        </label>
-        <label class="flex items-center gap-2">
-          <input type="checkbox" class="form-checkbox h-4 w-4">
-          <span>Weekly Usage Reports</span>
-        </label>
-      </div>
-    </section>
+          <div>
+            <h3 class="font-semibold mb-2">Advance Settings</h3>
+            <label class="block text-sm font-medium">API Rate Limit</label>
+              <input type="number" value="1000" class="border rounded px-3 py-2 w-full sm:w-48 mb-4">
+          </div>
+<div class="flex-grow border-t border-gray-400 dark:border-neutral-700 mb-2">
 
-    <hr class="border-neutral-200 dark:border-neutral-700">
-
-    <!-- ⚙️ Advanced -->
-    <section>
-      <h2 class="text-lg font-semibold mb-3 flex items-center gap-2">⚙️ Advanced Settings</h2>
-      <label class="block text-sm font-medium mb-1">API Rate Limit</label>
-      <input type="number" value="1000" class="border rounded px-3 py-2 w-40 dark:bg-neutral-700 dark:border-neutral-600" min="100" step="100">
-      <p class="text-xs text-neutral-500 mt-1">Limit the maximum API requests per hour.</p>
-    </section>
-
-    <div class="pt-4 flex justify-end gap-3 border-t border-neutral-200 dark:border-neutral-700">
-      <button id="resetEdit" class="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-neutral-900 rounded transition">Reset</button>
-      <button id="saveEdit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition">Save Changes</button>
+    <div class="flex space-x-3">
+      <button id="saveEdit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded">Save Changes</button>
+      <button id="resetEdit" class="px-4 py-2 bg-gray-400 hover:bg-gray-500 text-white rounded">Reset</button>
     </div>
-  </div>
-</main>
 
-<!-- Profile Picture Update Script -->
+</main>
+<!-- Edit profile -->
+  <script>
+
+    const editBtn = document.getElementById('editBtn');
+    const editBtnLabel = editBtn.querySelector('label');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const viewFName = document.getElementById('viewFName');
+    const editFName = document.getElementById('editFName');
+    const viewLName = document.getElementById('viewLName');
+    const editLName = document.getElementById('editLName');
+    const viewEmail = document.getElementById('viewEmail');
+    const editEmail = document.getElementById('editEmail');
+    const changePassword = document.getElementById('changePassword');
+    const confirmPassword = document.getElementById('confirmPassword');
+    const wrapChangeP = changePassword.parentElement;
+    const wrapConfirmP = confirmPassword.parentElement;
+    const show = el => el.classList.remove('hidden');
+    const hide = el => el.classList.add('hidden');
+
+    let editing = false;
+
+    function toggleEdit(){
+      editFName.value = viewFName.textContent || '';
+      editLName.value = viewLName.textContent || '';
+      editEmail.value = viewEmail.textContent ||'';
+
+      show(editFName); show(editLName); show(editEmail); show(wrapChangeP); show(cancelBtn);
+      hide(viewFName); hide(viewLName); hide (viewEmail); hide(wrapConfirmP);
+
+      editBtnLabel.textContent = 'Save';
+      editing = true;
+    }
+
+    function editNSave(){
+      viewFName.textContent = editFName.value.trim();
+      viewLName.textContent = editLName.value.trim();
+      viewEmail.textContent = editEmail.value.trim();
+
+      show(viewFName); show(viewLName); show(viewEmail);
+      hide(editFName); hide(editLName); hide(editEmail); hide(wrapChangeP); hide(wrapConfirmP); hide(cancelBtn);
+
+      editBtnLabel.textContent = 'Edit';
+      editing = false;
+    }
+
+    function toggleCP(){
+      const showCP = editFName.value.trim() || editLName.value.trim() || editEmail.value.trim() || changePassword.value.trim();
+      wrapConfirmP.classList.toggle('hidden', !showCP);
+    }
+    [editFName, editLName, editEmail, wrapChangeP].forEach(input =>
+      input.addEventListener('input', toggleCP)
+    );
+
+    function cancel(){
+      editFName.value = (viewFName.textContent || '').trim();
+      editLName.value = (viewLName.textContent || '').trim();
+      editEmail.value = (viewEmail.textContent || '').trim();
+      changePassword.value = '';
+      confirmPassword.value = '';
+
+      show(viewFName); show(viewLName); show(viewEmail);
+      hide(editFName); hide(editLName); hide(editEmail); hide(wrapChangeP); hide(wrapConfirmP); hide(cancelBtn);
+      editBtnLabel.textContent = 'Edit';
+      editing = false;
+    }
+
+    editBtn.addEventListener('click', () => {
+      if(!editing){
+        toggleEdit();
+      }
+      else{editNSave()};
+    });
+
+    cancelBtn.addEventListener('click', cancel);
+
+  </script>
+
+<!-- Update sidebar & setting Pfp -->
 <script>
   const pfpTrigger = document.getElementById("pfpTrigger");
   const updatePfp = document.getElementById("updatePfp");
   const imageStore = "connectify.pfpUrl";
 
-  if (pfpTrigger && updatePfp) {
+  if(pfpTrigger && updatePfp){
     pfpTrigger.addEventListener("click", () => updatePfp.click());
     updatePfp.addEventListener("change", (e) => {
       const file = e.target.files[0];
-      if (!file || !file.type.startsWith("image/")) return alert("Please choose a valid image.");
+
+      if(!file){
+        return;
+      }
+
+      if(!file.type.startsWith("image/")){
+        alert("Please choose an image.");
+        return;
+      }
       const reader = new FileReader();
-      reader.onload = () => {
+      reader.onload = () =>{
         const pfpUrl = reader.result;
-        localStorage.setItem(imageStore, pfpUrl);
+        try{
+          localStorage.setItem(imageStore, pfpUrl)
+        }
+        catch (e){
+          console.warn("Could not save avatar. Try again.", e);
+        }
         applyPfpToDOM(pfpUrl);
       };
       reader.readAsDataURL(file);
     });
   }
-
-  function applyPfpToDOM(dataUrl) {
-    document.querySelectorAll(".js-main-pfp").forEach(img => {
+  function applyPfpToDOM(dataUrl){
+    document.querySelectorAll(".js-main-pfp").forEach(img =>{
       img.src = dataUrl;
       img.classList.remove("hidden");
     });
-    document.querySelectorAll(".js-initial-pfp").forEach(el => el.classList.add("hidden"));
+    document.querySelectorAll(".js-initial-pfp, .js-hover-pfp").forEach(element =>{
+      element.classList.add("hidden");
+    });
   }
+  function hydrate(){
+    const saveImg = localStorage.getItem(imageStore);
+    if(saveImg) applyPfpToDOM(saveImg);
+  }
+  document.addEventListener('DOMContentLoaded', hydrate);
 
-  document.addEventListener("DOMContentLoaded", () => {
-    const saved = localStorage.getItem(imageStore);
-    if (saved) applyPfpToDOM(saved);
-  });
 </script>
 
-<!-- Theme Toggle -->
 <!-- Light Dark mode toggle -->
 <script>
   const STORAGE_KEY = 'connectify.theme';
@@ -268,5 +344,8 @@
     });
   }
 </script>
+
+
+
 </body>
 </html>
