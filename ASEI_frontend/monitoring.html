@@ -66,68 +66,157 @@
 
 
 
-<main class="p-6 ml-40 md:ml-64 overflow-x-auto">
-<h2 class="text-xl font-semibold mb-4">Monitoring</h2>
-  <div class="flex justify-between items-center mb-4">
-    <h2 class="text-xl font-semibold">Execution Logs</h2>
-    <button class="px-4 py-2 bg-gray-600 text-white rounded">Download Logs</button>
-  </div>
+<main class="p-6 ml-40 md:ml-64 overflow-x-auto space-y-6">
+  <h2 class="text-2xl font-semibold mb-4">Monitoring Dashboard</h2>
 
-  <!-- Filters -->
-  <div class="flex space-x-3 mb-4">
-    <select class="border rounded px-3 py-2">
-      <option value="all">All Status</option>
-      <option value="success">Success</option>
-      <option value="error">Error</option>
-    </select>
-    <label class="flex items-center space-x-2">
-      <input type="checkbox" class="form-checkbox"> <span class="text-sm">Auto Refresh</span>
-    </label>
-  </div>
+  <!-- KPI Cards -->
+  <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="bg-white border border-neutral-200 rounded-xl p-4 shadow-sm">
+      <div class="text-2xl font-semibold text-green-600">99.97%</div>
+      <div class="text-xs text-neutral-500">System Uptime</div>
+    </div>
+    <div class="bg-white border border-neutral-200 rounded-xl p-4 shadow-sm">
+      <div class="text-2xl font-semibold text-blue-600">78%</div>
+      <div class="text-xs text-neutral-500">CPU Utilization</div>
+    </div>
+    <div class="bg-white border border-neutral-200 rounded-xl p-4 shadow-sm">
+      <div class="text-2xl font-semibold text-orange-600">64%</div>
+      <div class="text-xs text-neutral-500">Memory Usage</div>
+    </div>
+    <div class="bg-white border border-neutral-200 rounded-xl p-4 shadow-sm">
+      <div class="text-2xl font-semibold text-indigo-600">1,482</div>
+      <div class="text-xs text-neutral-500">API Calls (24h)</div>
+    </div>
+  </section>
 
-  <!-- Logs Table -->
-  <table class="w-full bg-white rounded shadow text-sm">
-    <thead>
-      <tr class="bg-neutral-200">
-        <th class="p-3 text-left">Flow</th>
-        <th class="p-3 text-left">Timestamp</th>
-        <th class="p-3 text-left">Status</th>
-        <th class="p-3 text-left">Details</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr class="border-t">
-        <td class="p-3">Payment Flow</td>
-        <td class="p-3">2025-09-03 12:45</td>
-        <td class="p-3"><span class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">Success</span></td>
-        <td class="p-3"><button class="px-2 py-1 bg-blue-500 text-white rounded text-xs">View</button></td>
-      </tr>
-      <tr class="border-t">
-        <td class="p-3">Settlement Flow</td>
-        <td class="p-3">2025-09-03 12:50</td>
-        <td class="p-3"><span class="px-2 py-1 bg-red-100 text-red-700 rounded text-xs">Error</span></td>
-        <td class="p-3"><button class="px-2 py-1 bg-blue-500 text-white rounded text-xs">View</button></td>
-      </tr>
-    </tbody>
-  </table>
+  <!-- Charts Section -->
+  <section class="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+    <h3 class="text-lg font-semibold mb-2">Performance Overview</h3>
+    <p class="text-sm text-neutral-500 mb-4">
+      Below is a placeholder for upcoming live performance graphs. It will visualize CPU, memory, and API usage over time.
+    </p>
+    <div class="h-48 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-lg flex items-center justify-center text-neutral-400">
+      📈 Chart Placeholder — Real-time Monitoring Coming Soon
+    </div>
+  </section>
 
-<!-- Update sidebar Pfp -->
+  <!-- Health and Alerts -->
+  <section class="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+    <h3 class="text-lg font-semibold mb-4">System Health & Alerts</h3>
+    <ul class="divide-y divide-neutral-200 text-sm">
+      <li class="py-3 flex items-center justify-between">
+        <span><strong>API Gateway</strong> responding normally.</span>
+        <span class="text-green-600 font-medium">Healthy</span>
+      </li>
+      <li class="py-3 flex items-center justify-between">
+        <span><strong>MTN Integration</strong> timeout threshold reached twice in the last hour.</span>
+        <span class="text-yellow-600 font-medium">Warning</span>
+      </li>
+      <li class="py-3 flex items-center justify-between">
+        <span><strong>Database Sync</strong> failed at 3:10 AM.</span>
+        <span class="text-red-600 font-medium">Error</span>
+      </li>
+    </ul>
+  </section>
+
+  <!-- Execution Summary -->
+  <section class="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="text-lg font-semibold">Execution Logs</h3>
+      <button class="px-4 py-2 bg-gray-600 text-white rounded">Download Logs</button>
+    </div>
+
+    <!-- Filters -->
+    <div class="flex space-x-3 mb-4">
+      <select class="border rounded px-3 py-2">
+        <option value="all">All Status</option>
+        <option value="success">Success</option>
+        <option value="error">Error</option>
+      </select>
+      <label class="flex items-center space-x-2">
+        <input type="checkbox" class="form-checkbox"> <span class="text-sm">Auto Refresh</span>
+      </label>
+    </div>
+
+    <!-- Logs Table -->
+    <div class="overflow-x-auto">
+      <table class="w-full bg-white border border-neutral-200 rounded text-sm">
+        <thead>
+          <tr class="bg-neutral-200">
+            <th class="p-3 text-left">Flow</th>
+            <th class="p-3 text-left">Timestamp</th>
+            <th class="p-3 text-left">Status</th>
+            <th class="p-3 text-left">Details</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="border-t hover:bg-neutral-50">
+            <td class="p-3">Payment Flow</td>
+            <td class="p-3">2025-10-22 10:45</td>
+            <td class="p-3"><span class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">Success</span></td>
+            <td class="p-3"><button class="px-2 py-1 bg-blue-500 text-white rounded text-xs">View</button></td>
+          </tr>
+          <tr class="border-t hover:bg-neutral-50">
+            <td class="p-3">Settlement Flow</td>
+            <td class="p-3">2025-10-22 10:50</td>
+            <td class="p-3"><span class="px-2 py-1 bg-red-100 text-red-700 rounded text-xs">Error</span></td>
+            <td class="p-3"><button class="px-2 py-1 bg-blue-500 text-white rounded text-xs">View</button></td>
+          </tr>
+          <tr class="border-t hover:bg-neutral-50">
+            <td class="p-3">Customer Sync</td>
+            <td class="p-3">2025-10-22 10:55</td>
+            <td class="p-3"><span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs">Warning</span></td>
+            <td class="p-3"><button class="px-2 py-1 bg-blue-500 text-white rounded text-xs">View</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Recent Activity -->
+  <section class="bg-white rounded-xl shadow-sm border border-neutral-200 p-6">
+    <h3 class="text-lg font-semibold mb-4">Recent Monitoring Events</h3>
+    <ul class="space-y-4 text-sm">
+      <li class="flex items-start gap-3">
+        <span class="h-3 w-3 mt-1 bg-green-500 rounded-full"></span>
+        <div>
+          <p><strong>API Gateway</strong> latency dropped back to normal levels.</p>
+          <p class="text-neutral-500 text-xs">Oct 22, 2025 - 10:45 AM</p>
+        </div>
+      </li>
+      <li class="flex items-start gap-3">
+        <span class="h-3 w-3 mt-1 bg-yellow-400 rounded-full"></span>
+        <div>
+          <p><strong>MTN API</strong> retry mechanism triggered (3 retries).</p>
+          <p class="text-neutral-500 text-xs">Oct 22, 2025 - 10:38 AM</p>
+        </div>
+      </li>
+      <li class="flex items-start gap-3">
+        <span class="h-3 w-3 mt-1 bg-red-500 rounded-full"></span>
+        <div>
+          <p><strong>Database Sync</strong> failed due to connection timeout.</p>
+          <p class="text-neutral-500 text-xs">Oct 22, 2025 - 10:25 AM</p>
+        </div>
+      </li>
+    </ul>
+  </section>
+
+</main>
+
+<!-- Sidebar PFP Script -->
 <script>
   const imageStore = 'connectify.pfpUrl';
-  function applyPfpToDOM(pfpUrl){
-    document.querySelectorAll('.js-main-pfp').forEach(img =>{
+  function applyPfpToDOM(pfpUrl) {
+    document.querySelectorAll('.js-main-pfp').forEach(img => {
       img.src = pfpUrl;
       img.classList.remove("hidden");
     });
-    document.querySelectorAll(".js-initial-pfp, .js-hover-pfp").forEach(element =>{
-      element.classList.add("hidden");
-    });
+    document.querySelectorAll(".js-initial-pfp").forEach(el => el.classList.add("hidden"));
   }
-  document.addEventListener('DOMContentLoaded', () =>{
+  document.addEventListener('DOMContentLoaded', () => {
     const saveImg = localStorage.getItem(imageStore);
-    if(saveImg) applyPfpToDOM(saveImg);
-  })
+    if (saveImg) applyPfpToDOM(saveImg);
+  });
 </script>
-</main>
 </body>
-</html>
+</html>sssss
