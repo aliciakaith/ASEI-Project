@@ -103,14 +103,14 @@
       </div>
 
       <!-- KPI cards -->
-      <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div class="bg-white border border-neutral-200 rounded-xl p-4">
           <div class="flex items-center gap-3">
             <div class="h-9 w-9 rounded-xl bg-neutral-100 flex items-center justify-center">
               <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/></svg>
             </div>
             <div>
-              <div class="text-2xl font-semibold"><span id="kpi-active-flows">–</span></div>
+              <div class="text-2xl font-semibold" id="kpi-active-flows">12</div>
               <div class="text-xs text-neutral-500">Active Flows</div>
             </div>
           </div>
@@ -122,7 +122,7 @@
               <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h10M7 13h6"/></svg>
             </div>
             <div>
-              <div class="text-2xl font-semibold"><span id="kpi-transactions">–</span></div>
+              <div class="text-2xl font-semibold" id="kpi-transactions">425</div>
               <div class="text-xs text-neutral-500">Transactions</div>
             </div>
           </div>
@@ -134,7 +134,7 @@
               <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
             </div>
             <div>
-              <div class="text-2xl font-semibold"><span id="kpi-errors">–</span></div>
+              <div class="text-2xl font-semibold" id="kpi-errors">3</div>
               <div class="text-xs text-neutral-500">Errors</div>
             </div>
           </div>
@@ -146,7 +146,7 @@
               <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
             </div>
             <div>
-              <div class="text-2xl font-semibold"><span id="kpi-latency">–</span></div>
+              <div class="text-2xl font-semibold" id="kpi-latency">245ms</div>
               <div class="text-xs text-neutral-500">Average Latency</div>
             </div>
           </div>
@@ -189,17 +189,55 @@
       </section>
 
       <!-- Service Integrations -->
-      <section class="bg-white border border-neutral-200 rounded-xl p-4">
-        <div class="text-sm font-medium mb-4">Services Integrations</div>
-        <div id="services-list" class="space-y-4">
-          <div class="animate-pulse h-4 bg-neutral-200 rounded w-1/2"></div>
-          <div class="animate-pulse h-4 bg-neutral-200 rounded w-1/3"></div>
-        </div>
-      </section>
-
-      <footer class="py-10"></footer>
-    </main>
+<!-- Service Integrations -->
+<section class="bg-white border border-neutral-200 rounded-xl p-4">
+  <div class="flex items-center justify-between mb-4">
+    <div class="text-sm font-medium">Service Integrations</div>
+    <a href="connectors.html" class="text-xs text-blue-600 hover:underline">View All</a>
   </div>
+
+  <!-- Integration List -->
+  <div id="services-list" class="space-y-3 text-sm">
+
+    <!-- Integration Row 1 -->
+    <div class="flex items-center justify-between p-3 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition">
+      <div>
+        <div class="font-medium">PayLink API</div>
+        <div class="text-xs text-neutral-500">Payments Connector • Last sync: 2 mins ago</div>
+      </div>
+      <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700">Active</span>
+    </div>
+
+    <!-- Integration Row 2 -->
+    <div class="flex items-center justify-between p-3 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition">
+      <div>
+        <div class="font-medium">Kora Banking Core</div>
+        <div class="text-xs text-neutral-500">Banking Integration • Last sync: 10 mins ago</div>
+      </div>
+      <span class="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-700">Pending</span>
+    </div>
+
+    <!-- Integration Row 3 -->
+    <div class="flex items-center justify-between p-3 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition">
+      <div>
+        <div class="font-medium">FinRemit Gateway</div>
+        <div class="text-xs text-neutral-500">Remittance Flow • Last sync: 45 mins ago</div>
+      </div>
+      <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700">Active</span>
+    </div>
+
+    <!-- Integration Row 4 -->
+    <div class="flex items-center justify-between p-3 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition">
+      <div>
+        <div class="font-medium">UtilityPay Service</div>
+        <div class="text-xs text-neutral-500">Utility Billing • Last sync: 2 hours ago</div>
+      </div>
+      <span class="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-700">Error</span>
+    </div>
+
+  </div>
+</section>
+
 
   <!-- Modals -->
   <div id="integrationModal" class="fixed inset-0 bg-black bg-opacity-50 hidden grid place-items-center z-50">
