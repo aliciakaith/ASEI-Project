@@ -189,17 +189,55 @@
       </section>
 
       <!-- Service Integrations -->
-      <section class="bg-white border border-neutral-200 rounded-xl p-4">
-        <div class="text-sm font-medium mb-4">Services Integrations</div>
-        <div id="services-list" class="space-y-4">
-          <div class="animate-pulse h-4 bg-neutral-200 rounded w-1/2"></div>
-          <div class="animate-pulse h-4 bg-neutral-200 rounded w-1/3"></div>
-        </div>
-      </section>
-
-      <footer class="py-10"></footer>
-    </main>
+<!-- Service Integrations -->
+<section class="bg-white border border-neutral-200 rounded-xl p-4">
+  <div class="flex items-center justify-between mb-4">
+    <div class="text-sm font-medium">Service Integrations</div>
+    <a href="connectors.html" class="text-xs text-blue-600 hover:underline">View All</a>
   </div>
+
+  <!-- Integration List -->
+  <div id="services-list" class="space-y-3 text-sm">
+
+    <!-- Integration Row 1 -->
+    <div class="flex items-center justify-between p-3 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition">
+      <div>
+        <div class="font-medium">PayLink API</div>
+        <div class="text-xs text-neutral-500">Payments Connector • Last sync: 2 mins ago</div>
+      </div>
+      <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700">Active</span>
+    </div>
+
+    <!-- Integration Row 2 -->
+    <div class="flex items-center justify-between p-3 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition">
+      <div>
+        <div class="font-medium">Kora Banking Core</div>
+        <div class="text-xs text-neutral-500">Banking Integration • Last sync: 10 mins ago</div>
+      </div>
+      <span class="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-700">Pending</span>
+    </div>
+
+    <!-- Integration Row 3 -->
+    <div class="flex items-center justify-between p-3 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition">
+      <div>
+        <div class="font-medium">FinRemit Gateway</div>
+        <div class="text-xs text-neutral-500">Remittance Flow • Last sync: 45 mins ago</div>
+      </div>
+      <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700">Active</span>
+    </div>
+
+    <!-- Integration Row 4 -->
+    <div class="flex items-center justify-between p-3 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition">
+      <div>
+        <div class="font-medium">UtilityPay Service</div>
+        <div class="text-xs text-neutral-500">Utility Billing • Last sync: 2 hours ago</div>
+      </div>
+      <span class="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-700">Error</span>
+    </div>
+
+  </div>
+</section>
+
 
   <!-- Modals -->
   <div id="integrationModal" class="fixed inset-0 bg-black bg-opacity-50 hidden grid place-items-center z-50">
