@@ -1,11 +1,12 @@
 // src/index.js
-
 import dotenv from "dotenv";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
 import express from "express";
 import cookieParser from "cookie-parser";
+import { createServer } from "http";
+import { Server } from "socket.io";
 
 import flowsRouter from "./routes/flows.js";
 import rolesRouter from "./routes/roles.js";
@@ -27,7 +28,7 @@ dotenv.config({ path: path.resolve(__dirname, "../.env") });
 // ------------------------------------------------------
 const app = express();
 app.set("trust proxy", 1);
-app.use(express.urlencoded({ extended: true })); // for render2
+app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cookieParser());
 
@@ -55,12 +56,11 @@ app.use("/api/mtn", requireAuth, mtnRouter);
 // Serve static frontend
 // ------------------------------------------------------
 const candidates = [
-  process.env.STATIC_ROOT,                                 // preferred path from .env
-  path.resolve(__dirname, "../../../ASEI_frontend"),       // /Assignment/ASEI_frontend
-  path.resolve(__dirname, "../../ASEI_frontend"),          // /Assignment/ASEI-Project/ASEI_frontend
+  process.env.STATIC_ROOT,
+  path.resolve(__dirname, "../../../ASEI_frontend"),
+  path.resolve(__dirname, "../../ASEI_frontend"),
 ].filter(Boolean);
 
-// pick the first folder that exists and has login.html
 let FRONTEND_DIR =
   candidates.find(
     (p) => fs.existsSync(p) && fs.existsSync(path.join(p, "login.html"))
@@ -73,9 +73,7 @@ console.log("Serving static from:", FRONTEND_DIR);
 
 app.use(express.static(FRONTEND_DIR, { index: false }));
 
-// helper to send pages
-const send = (f) => (_req, res) =>
-  res.sendFile(path.join(FRONTEND_DIR, f));
+const send = (f) => (_req, res) => res.sendFile(path.join(FRONTEND_DIR, f));
 
 // ------------------------------------------------------
 // Frontend routes
@@ -85,27 +83,37 @@ app.get("/login", send("login.html"));
 app.get("/signup", send("signup.html"));
 app.get("/dashboard", send("asei_dashboard.html"));
 app.get("/flow-designer", send("flow_designer.html"));
-app.get("/connectors", send("Connectors.html")); // note: capital C
+app.get("/connectors", send("Connectors.html"));
 app.get("/templates", send("templates.html"));
 app.get("/deployments", send("deployments.html"));
 app.get("/monitoring", send("monitoring.html"));
 app.get("/settings", send("settings.html"));
 app.get("/terms", send("termsAndConditions.html"));
-app.get("/forgot", send("forgot.html")); // or send("Forgot.html") if that’s the actual name
-
+app.get("/forgot", send("forgot.html"));
 
 // ------------------------------------------------------
 // 404 handling
 // ------------------------------------------------------
-app.use("/api", (_req, res) =>
-  res.status(404).json({ error: "Not found" })
-);
+app.use("/api", (_req, res) => res.status(404).json({ error: "Not found" }));
 app.use((_req, res) => res.status(404).send("Page not found"));
 
 // ------------------------------------------------------
-// Start the server
+// Start the server + Socket.IO
 // ------------------------------------------------------
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () =>
-  console.log(`App running at http://localhost:${PORT}`)
-);
+const server = createServer(app);
+
+const io = new Server(server, {
+  cors: { origin: true, credentials: true },
+});
+app.set("io", io);
+
+io.on("connection", (socket) => {
+  socket.on("join-org", (orgId) => {
+    if (orgId) socket.join(`org:${orgId}`);
+  });
+});
+
+server.listen(PORT, () => {
+  console.log(`App running at http://localhost:${PORT}`);
+});
