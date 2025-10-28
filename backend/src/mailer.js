@@ -11,6 +11,15 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+// --- Verify SMTP connection at startup (helpful for debugging) ---
+transporter.verify()
+  .then(() => {
+    console.log("✅ SMTP transporter ready — mail will be sent using", process.env.SMTP_HOST);
+  })
+  .catch((err) => {
+    console.error("❌ SMTP transporter verify failed:", err && err.message ? err.message : err);
+  });
+
 export async function sendMail({ to, subject, text, html }) {
   return transporter.sendMail({
     from: process.env.MAIL_FROM || process.env.SMTP_USER,

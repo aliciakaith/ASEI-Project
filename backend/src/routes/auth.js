@@ -102,13 +102,18 @@ router.post("/forgot", async (req, res) => {
       // Link to your frontend page (make sure the filename matches)
       const resetLink = `${FRONTEND_BASE}/forgot.html?token=${encodeURIComponent(resetToken)}`;
 
-      await sendMail({
-        to: email,
-        subject: "Reset your Connectify password",
-        text: `Use this link to reset your password (valid for 15 minutes): ${resetLink}`,
-        html: `<p>Use this link to reset your password (valid for 15 minutes):</p>
+            try {
+        await sendMail({
+         to: email,
+          subject: "Reset your Connectify password",
+          text: `Use this link to reset your password (valid for 15 minutes): ${resetLink}`,
+          html: `<p>Use this link to reset your password (valid for 15 minutes):</p>
                <p><a href="${resetLink}">${resetLink}</a></p>`
       });
+     } catch (mailErr) {
+       console.error("MAIL_SEND_FAIL (forgot)", mailErr?.response || mailErr);
+       // do NOT rethrow — we always return 200 to avoid enumeration
+      }
     }
 
     return res.json({ message: "If that email exists, a reset link has been sent." });
