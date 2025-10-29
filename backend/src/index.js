@@ -16,6 +16,11 @@ import { requireAuth } from "./middleware/authMiddleware.js";
 import connectionsRouter from "./routes/connections.js";
 import mtnRouter from "./routes/mtn.js";
 
+// logging
+import expressWinston from "express-winston";
+import { logger } from "./logging/logger.js";
+import { requestContext } from "./middleware/requestContext.js";
+
 // ------------------------------------------------------
 // Load environment variables from backend/.env
 // ------------------------------------------------------
@@ -31,6 +36,27 @@ app.set("trust proxy", 1);
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cookieParser());
+
+// attach correlation IDs BEFORE any logging
+app.use(requestContext);
+
+// request logs (skip noisy health checks)
+app.use(
+  expressWinston.logger({
+    winstonInstance: logger,
+    meta: true,
+    dynamicMeta: (req, res) => ({
+      requestId: req.id,
+      ip: req.ip,
+      ua: req.headers["user-agent"],
+      route: req.originalUrl,
+      method: req.method,
+      status: res.statusCode
+    }),
+    msg: "HTTP {{req.method}} {{req.originalUrl}} {{res.statusCode}}",
+    ignoreRoute: (req) => req.originalUrl.startsWith("/health")
+  })
+);
 
 // ------------------------------------------------------
 // Health check route
@@ -96,6 +122,13 @@ app.get("/forgot", send("forgot.html"));
 // ------------------------------------------------------
 app.use("/api", (_req, res) => res.status(404).json({ error: "Not found" }));
 app.use((_req, res) => res.status(404).send("Page not found"));
+
+// error logs (must be AFTER routes/handlers)
+app.use(
+  expressWinston.errorLogger({
+    winstonInstance: logger
+  })
+);
 
 // ------------------------------------------------------
 // Start the server + Socket.IO
