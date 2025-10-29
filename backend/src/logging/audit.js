@@ -1,14 +1,27 @@
+// backend/src/logging/audit.js
 import { logger } from "./logger.js";
-import { pool } from "../db/postgres.js"; // your existing pg Pool
+import { pool } from "../db/postgres.js"; // now exported as named, may be null in CI
 
-export async function audit(req, {
-  userId = null,
-  action,
-  targetType = null,
-  targetId = null,
-  statusCode = 200,
-  metadata = {}
-}) {
+// No-op fast path if DB is disabled or pool not created
+const hasPool = !!pool;
+
+export async function audit(
+  req,
+  {
+    userId = null,
+    action,
+    targetType = null,
+    targetId = null,
+    statusCode = 200,
+    metadata = {}
+  }
+) {
+  if (!hasPool) {
+    // In CI (or when DB disabled), don't attempt to write
+    logger.debug?.({ msg: "audit_noop", action, targetType, targetId });
+    return;
+  }
+
   try {
     await pool.query(
       `INSERT INTO audit_log
@@ -25,7 +38,7 @@ export async function audit(req, {
         req?.headers?.["user-agent"] ?? null,
         statusCode,
         req?.id ?? null,
-        metadata
+        metadata // assumes JSON/JSONB column
       ]
     );
   } catch (e) {
