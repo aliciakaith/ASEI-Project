@@ -20,23 +20,24 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # Build image from repo root (Dockerfile at ./)
+      # Build the BACKEND image from backend/Dockerfile
       - name: Build (load for smoke test)
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: Dockerfile
+          context: ./backend
+          file: ./backend/Dockerfile
           load: true
-          tags: asei-frontend:ci
+          tags: asei-backend:ci
 
       - name: Smoke test container
         run: |
-          docker run -d --rm -p 3000:3000 --name asei asei-frontend:ci
+          docker run -d --rm -p 3001:3001 --name asei asei-backend:ci
+          # hit a health endpoint if you have one, otherwise just check it’s listening
           sleep 5
-          curl -sSf http://localhost:3000/ | head -c 200
+          (curl -fsS http://localhost:3001/health || curl -fsS http://localhost:3001/) | head -c 200 || (docker logs asei && exit 1)
           docker stop asei
 
-      # Optional: push to GHCR
+      # Login to GHCR
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
@@ -48,7 +49,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/asei-frontend
+          images: ghcr.io/${{ github.repository_owner }}/asei-backend
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -57,9 +58,10 @@ jobs:
       - name: Build and push (GHCR)
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: Dockerfile
+          context: ./backend
+          file: ./backend/Dockerfile
           push: true
           platforms: linux/amd64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
