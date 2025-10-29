@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 import { query } from "../db/postgres.js";
 import { Issuer, generators } from "openid-client";
 import { sendMail, verificationEmail } from "../mailer.js";
+import { audit } from "../logging/audit.js";
 
 // ---- Password policy helper (server-side) ----
 function validatePassword(password, { email, firstName, lastName } = {}) {
@@ -19,7 +20,7 @@ function validatePassword(password, { email, firstName, lastName } = {}) {
   ];
 
   // optional hardening: avoid obvious personal info
-  const lowerPw = password.toLowerCase();
+  const lowerPw = String(password || "").toLowerCase();
   const partsToAvoid = [];
   if (email) {
     const local = String(email).toLowerCase().split("@")[0];
@@ -32,7 +33,6 @@ function validatePassword(password, { email, firstName, lastName } = {}) {
     failures.push("Password should not contain your name or email.");
   }
 
-  // simple repeated/sequence checks (optional)
   if (/(.)\1{2,}/.test(password)) {
     failures.push("Should not contain 3+ repeated characters in a row.");
   }
@@ -42,33 +42,28 @@ function validatePassword(password, { email, firstName, lastName } = {}) {
 
   for (const r of rules) if (!r.ok) failures.push(r.msg);
 
-  return {
-    ok: failures.length === 0,
-    failures
-  };
+  return { ok: failures.length === 0, failures };
 }
-
 
 // --- Google OpenID Connect setup ---
 const GOOGLE_REDIRECT =
-  process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3001/api/auth/google/callback';
+  process.env.GOOGLE_REDIRECT_URI || "http://localhost:3001/api/auth/google/callback";
 
 const FRONTEND_BASE =
-  process.env.FRONTEND_ORIGIN || 'http://localhost:3000'; // your env already sets this
+  process.env.FRONTEND_ORIGIN || "http://localhost:3000";
 
 let googleClient;
 async function getGoogleClient() {
   if (googleClient) return googleClient;
-  const googleIssuer = await Issuer.discover('https://accounts.google.com');
+  const googleIssuer = await Issuer.discover("https://accounts.google.com");
   googleClient = new googleIssuer.Client({
     client_id: process.env.GOOGLE_CLIENT_ID,
     client_secret: process.env.GOOGLE_CLIENT_SECRET,
     redirect_uris: [GOOGLE_REDIRECT],
-    response_types: ['code'],
+    response_types: ["code"],
   });
   return googleClient;
 }
-
 
 const router = express.Router();
 const SECRET = process.env.JWT_SECRET || "supersecret";
@@ -90,35 +85,39 @@ router.post("/forgot", async (req, res) => {
   if (!email) return res.status(400).json({ error: "Email is required." });
 
   try {
+    // Audit the request (no enumeration: we audit regardless of user existence)
+    await audit(req, {
+      userId: null,
+      action: "PWD_RESET_REQUEST",
+      targetType: "user",
+      targetId: email,
+      statusCode: 200
+    });
+
     // Silent lookup (no user enumeration)
     const { rows, rowCount } = await query("SELECT id FROM users WHERE email=$1", [email]);
 
     if (rowCount) {
       const userId = rows[0].id;
 
-      // Short-lived, purpose-scoped token
       const resetToken = jwt.sign({ sub: userId, kind: "pwd_reset" }, SECRET, { expiresIn: "15m" });
-
-      // Link to your frontend page (make sure the filename matches)
       const resetLink = `${FRONTEND_BASE}/forgot.html?token=${encodeURIComponent(resetToken)}`;
 
-            try {
+      try {
         await sendMail({
-         to: email,
+          to: email,
           subject: "Reset your Connectify password",
           text: `Use this link to reset your password (valid for 15 minutes): ${resetLink}`,
           html: `<p>Use this link to reset your password (valid for 15 minutes):</p>
-               <p><a href="${resetLink}">${resetLink}</a></p>`
-      });
-     } catch (mailErr) {
-       console.error("MAIL_SEND_FAIL (forgot)", mailErr?.response || mailErr);
-       // do NOT rethrow — we always return 200 to avoid enumeration
+                 <p><a href="${resetLink}">${resetLink}</a></p>`
+        });
+      } catch (mailErr) {
+        // do NOT rethrow — we always return 200 to avoid enumeration
       }
     }
 
     return res.json({ message: "If that email exists, a reset link has been sent." });
   } catch (e) {
-    console.error("Forgot error:", e);
     return res.status(500).json({ error: "Server error" });
   }
 });
@@ -129,16 +128,31 @@ router.post("/forgot", async (req, res) => {
 router.post("/reset", async (req, res) => {
   const { token, password } = req.body || {};
   if (!token || !password) {
+    await audit(req, {
+      userId: null,
+      action: "PWD_RESET_FAILURE",
+      targetType: "user",
+      targetId: null,
+      statusCode: 400,
+      metadata: { reason: "missing_params" }
+    });
     return res.status(400).json({ error: "Token and new password are required." });
   }
 
   try {
     const payload = jwt.verify(token, SECRET); // throws if bad/expired
     if (payload.kind !== "pwd_reset") {
+      await audit(req, {
+        userId: null,
+        action: "PWD_RESET_FAILURE",
+        targetType: "user",
+        targetId: null,
+        statusCode: 400,
+        metadata: { reason: "invalid_kind" }
+      });
       return res.status(400).json({ error: "Invalid reset token." });
     }
 
-    // Validate strength (no personal info at this step)
     const { ok, failures } = validatePassword(password);
     if (!ok) {
       return res.status(400).json({
@@ -150,16 +164,31 @@ router.post("/reset", async (req, res) => {
     const hash = await bcrypt.hash(password, 10);
     await query("UPDATE users SET password_hash=$1 WHERE id=$2", [hash, payload.sub]);
 
+    await audit(req, {
+      userId: payload.sub,
+      action: "PWD_RESET_SUCCESS",
+      targetType: "user",
+      targetId: payload.sub,
+      statusCode: 200
+    });
+
     return res.json({ message: "Password updated successfully." });
   } catch (e) {
-    if (e.name === "TokenExpiredError") {
-      return res.status(400).json({ error: "Reset link has expired. Request a new one." });
-    }
-    console.error("Reset error:", e);
-    return res.status(400).json({ error: "Invalid reset token." });
+    const reason = e?.name === "TokenExpiredError" ? "expired" : "invalid_token";
+    await audit(req, {
+      userId: null,
+      action: "PWD_RESET_FAILURE",
+      targetType: "user",
+      targetId: null,
+      statusCode: 400,
+      metadata: { reason }
+    });
+    const msg = e?.name === "TokenExpiredError"
+      ? "Reset link has expired. Request a new one."
+      : "Invalid reset token.";
+    return res.status(400).json({ error: msg });
   }
 });
-
 
 /* ============================
    SIGNUP (always leads to verify)
@@ -170,21 +199,17 @@ router.post("/signup", async (req, res) => {
     return res.status(400).json({ error: "Email and password are required." });
   }
 
-  // 🔐 Enforce server-side password policy
   const { ok, failures } = validatePassword(password, { email, firstName, lastName });
-if (!ok) {
-  const message = failures.length
-    ? `${failures.join("; ")}`
-    : "Password does not meet requirements.";
-
-  return res.status(400).json({ error: message, failures });
-}
-
+  if (!ok) {
+    const message = failures.length
+      ? `${failures.join("; ")}`
+      : "Password does not meet requirements.";
+    return res.status(400).json({ error: message, failures });
+  }
 
   try {
     const lowerEmail = email.toLowerCase();
 
-    // block if already verified
     const dupUser = await query("SELECT 1 FROM users WHERE email=$1", [lowerEmail]);
     if (dupUser.rowCount) {
       return res.status(400).json({ error: "Email already registered. Try logging in." });
@@ -218,13 +243,20 @@ if (!ok) {
     // save pending email in cookie for 15 min
     res.cookie("pending_email", lowerEmail, cookieOpts(15 * 60 * 1000));
 
+    await audit(req, {
+      userId: null,
+      action: "SIGNUP_SUBMITTED",
+      targetType: "user",
+      targetId: lowerEmail,
+      statusCode: 201
+    });
+
     return res.status(201).json({
       message: "Check your email for a verification code",
       email: lowerEmail,
     });
   } catch (err) {
-    console.error("Signup error:", err);
-    res.status(500).json({ error: "Server error" });
+    return res.status(500).json({ error: "Server error" });
   }
 });
 
@@ -267,10 +299,17 @@ router.post("/verify", async (req, res) => {
     await query("DELETE FROM pending_users WHERE email=$1", [email]);
     res.clearCookie("pending_email", cookieOpts(0));
 
+    await audit(req, {
+      userId: created.rows[0].id,
+      action: "ACCOUNT_VERIFIED",
+      targetType: "user",
+      targetId: created.rows[0].id,
+      statusCode: 200
+    });
+
     res.json({ message: "Account verified successfully", user: created.rows[0] });
   } catch (err) {
-    console.error("Verify error:", err);
-    res.status(500).json({ error: "Server error" });
+    return res.status(500).json({ error: "Server error" });
   }
 });
 
@@ -295,7 +334,7 @@ router.post("/resend-code", async (req, res) => {
       return res.status(400).json({ error: "No pending account for this email." });
     }
 
-    const COOLDOWN_SEC = 60; // <-- set your window here
+    const COOLDOWN_SEC = 60;
     const now = new Date();
     const last = rows[0].last_verification_email_sent_at
       ? new Date(rows[0].last_verification_email_sent_at)
@@ -312,7 +351,6 @@ router.post("/resend-code", async (req, res) => {
       }
     }
 
-    // Generate & save new code + update cooldown timestamp
     const code = String(Math.floor(100000 + Math.random() * 900000));
     await query(
       `UPDATE pending_users
@@ -330,11 +368,17 @@ router.post("/resend-code", async (req, res) => {
       html,
     });
 
-    // Tell client exactly when they can click again
+    await audit(req, {
+      userId: null,
+      action: "VERIFY_CODE_RESENT",
+      targetType: "user",
+      targetId: email,
+      statusCode: 200
+    });
+
     res.json({ message: "Verification code resent.", nextEligibleAtMs: now.getTime() + COOLDOWN_SEC * 1000 });
   } catch (err) {
-    console.error("Resend code error:", err);
-    res.status(500).json({ error: "Server error" });
+    return res.status(500).json({ error: "Server error" });
   }
 });
 
@@ -356,27 +400,40 @@ router.post("/login", async (req, res) => {
       [lowerEmail]
     );
     if (!rowCount) {
+      await audit(req, {
+        userId: null,
+        action: "LOGIN_FAILURE",
+        targetType: "user",
+        targetId: lowerEmail,
+        statusCode: 401,
+        metadata: { reason: "no_user" }
+      });
       return res.status(401).json({ error: "Invalid email or password." });
     }
 
     const user = rows[0];
     const ok = await bcrypt.compare(password, user.password_hash || "");
     if (!ok) {
+      await audit(req, {
+        userId: null,
+        action: "LOGIN_FAILURE",
+        targetType: "user",
+        targetId: lowerEmail,
+        statusCode: 401,
+        metadata: { reason: "bad_password" }
+      });
       return res.status(401).json({ error: "Invalid email or password." });
     }
 
-    // Cookie + token lifetimes
-    const jwtTtl = remember ? "30d" : "1d";                 // token lifetime
-    const cookieMaxAge = remember ? 30*24*60*60*1000 : 24*60*60*1000; // 30d vs 1d
+    const jwtTtl = remember ? "30d" : "1d";
+    const cookieMaxAge = remember ? 30*24*60*60*1000 : 24*60*60*1000;
 
-    // Issue JWT
     const token = jwt.sign(
       { id: user.id, email: user.email, org: user.org_id },
       SECRET,
       { expiresIn: jwtTtl }
     );
 
-    // Set cookie
     res.cookie("token", token, {
       httpOnly: true,
       sameSite: "lax",
@@ -385,68 +442,75 @@ router.post("/login", async (req, res) => {
       path: "/",
     });
 
-    res.json({
+    await audit(req, {
+      userId: user.id,
+      action: "LOGIN_SUCCESS",
+      targetType: "user",
+      targetId: user.id,
+      statusCode: 200
+    });
+
+    return res.json({
       ok: true,
       user: { id: user.id, email: user.email, firstName: user.first_name, lastName: user.last_name }
     });
   } catch (err) {
-    console.error("Login error:", err);
-    res.status(500).json({ error: "Server error" });
+    return res.status(500).json({ error: "Server error" });
   }
 });
 
-
-
 // POST /api/auth/logout
-router.post("/logout", (req, res) => {
-  // If you set a JWT cookie on login, clear it here.
-  // (Change 'token' to your actual cookie name if different.)
+router.post("/logout", async (req, res) => {
   res.clearCookie("token", {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
   });
 
-  // Also clear the pending email cookie used during signup/verify (harmless if absent)
   res.clearCookie("pending_email", {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
   });
 
-  // If you also stash anything in localStorage on the client, clear it there (frontend).
+  await audit(req, {
+    userId: req.user?.id || null,
+    action: "LOGOUT",
+    targetType: "user",
+    targetId: req.user?.id || null,
+    statusCode: 204
+  });
+
   return res.status(204).end();
 });
 
 // Start Google sign-in
-router.get('/google', async (req, res) => {
+router.get("/google", async (req, res) => {
   try {
     const client = await getGoogleClient();
     const state = generators.state();
     const nonce = generators.nonce();
 
-    const secure = process.env.NODE_ENV === 'production';
-    res.cookie('g_state', state, { httpOnly: true, sameSite: 'lax', secure });
-    res.cookie('g_nonce', nonce, { httpOnly: true, sameSite: 'lax', secure });
+    const secure = process.env.NODE_ENV === "production";
+    res.cookie("g_state", state, { httpOnly: true, sameSite: "lax", secure });
+    res.cookie("g_nonce", nonce, { httpOnly: true, sameSite: "lax", secure });
 
     const authUrl = client.authorizationUrl({
-      scope: 'openid email profile',
+      scope: "openid email profile",
       state,
       nonce,
-      prompt: 'select_account',
+      prompt: "select_account",
     });
 
     return res.redirect(authUrl);
   } catch (e) {
-    console.error('Google init error:', e);
-    res.status(500).json({ error: 'Google OAuth init failed' });
+    return res.status(500).json({ error: "Google OAuth init failed" });
   }
 });
 
 // Google OAuth callback
-// Google OAuth callback
-router.get('/google/callback', async (req, res) => {
-  const dev = process.env.NODE_ENV !== 'production';
+router.get("/google/callback", async (req, res) => {
+  const dev = process.env.NODE_ENV !== "production";
   try {
     const client = await getGoogleClient();
     const params = client.callbackParams(req);
@@ -454,34 +518,28 @@ router.get('/google/callback', async (req, res) => {
     const cookieState = req.cookies?.g_state;
     const cookieNonce = req.cookies?.g_nonce;
 
-    if (!params.code) console.error('[OAuth] Missing code param:', req.url);
-    if (!cookieState) console.error('[OAuth] Missing g_state cookie');
-    if (!cookieNonce) console.error('[OAuth] Missing g_nonce cookie');
-
     // IMPORTANT: pass the same redirect URI you registered
     const tokenSet = await client.callback(GOOGLE_REDIRECT, params, {
       state: cookieState,
       nonce: cookieNonce,
     });
 
-    // Prefer claims over userinfo; 'email' is in the ID token when scope has 'email'
     const claims = tokenSet.claims();
-    const email = (claims.email || '').toLowerCase();
+    const email = (claims.email || "").toLowerCase();
     if (!email) {
-      const msg = '[OAuth] No email in ID token claims';
-      console.error(msg, claims);
-      return dev ? res.status(400).json({ error: msg, claims }) 
-                 : res.status(400).send('Google did not return an email address.');
+      const msg = "[OAuth] No email in ID token claims";
+      return dev ? res.status(400).json({ error: msg, claims })
+                 : res.status(400).send("Google did not return an email address.");
     }
 
     // ----- UPSERT USER -----
-    let { rows, rowCount } = await query('SELECT id, org_id FROM users WHERE email=$1', [email]);
+    let { rows, rowCount } = await query("SELECT id, org_id FROM users WHERE email=$1", [email]);
     let user;
     if (!rowCount) {
-      const orgRes = await query('SELECT id FROM organizations WHERE name=$1', ['DefaultOrg']);
+      const orgRes = await query("SELECT id FROM organizations WHERE name=$1", ["DefaultOrg"]);
       const orgId = orgRes.rowCount
         ? orgRes.rows[0].id
-        : (await query('INSERT INTO organizations (name) VALUES ($1) RETURNING id', ['DefaultOrg'])).rows[0].id;
+        : (await query("INSERT INTO organizations (name) VALUES ($1) RETURNING id", ["DefaultOrg"])).rows[0].id;
 
       const firstName = claims.given_name || null;
       const lastName  = claims.family_name || null;
@@ -497,30 +555,35 @@ router.get('/google/callback', async (req, res) => {
       user = rows[0];
     }
 
-    // ----- SESSION COOKIE -----
-    const token = jwt.sign({ id: user.id, email, org: user.org_id }, SECRET, { expiresIn: '7d' });
-    res.cookie('token', token, {
+    const token = jwt.sign({ id: user.id, email, org: user.org_id }, SECRET, { expiresIn: "7d" });
+    res.cookie("token", token, {
       httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      path: '/',
+      path: "/",
     });
 
-    // clear temp cookies
-    const secure = process.env.NODE_ENV === 'production';
-    res.clearCookie('g_state', { httpOnly: true, sameSite: 'lax', secure });
-    res.clearCookie('g_nonce', { httpOnly: true, sameSite: 'lax', secure });
+    const secure = process.env.NODE_ENV === "production";
+    res.clearCookie("g_state", { httpOnly: true, sameSite: "lax", secure });
+    res.clearCookie("g_nonce", { httpOnly: true, sameSite: "lax", secure });
+
+    // (Optional) You can also audit OAuth login success:
+    // await audit(req, {
+    //   userId: user.id,
+    //   action: "LOGIN_SUCCESS_OAUTH",
+    //   targetType: "user",
+    //   targetId: user.id,
+    //   statusCode: 302
+    // });
 
     return res.redirect(`${FRONTEND_BASE}/asei_dashboard.html`);
   } catch (e) {
     const details = e?.response?.body || e?.message || String(e);
-    console.error('Google callback error:', details);
-    // In dev, expose details so you can see the exact cause
-    if (process.env.NODE_ENV !== 'production') {
-      return res.status(500).json({ error: 'Google OAuth callback failed', details });
+    if (process.env.NODE_ENV !== "production") {
+      return res.status(500).json({ error: "Google OAuth callback failed", details });
     }
-    return res.status(500).json({ error: 'Google OAuth callback failed' });
+    return res.status(500).json({ error: "Google OAuth callback failed" });
   }
 });
 
@@ -547,8 +610,5 @@ router.get("/me", async (req, res) => {
     return res.status(401).json({ error: "Session expired" });
   }
 });
-
-
-
 
 export default router;
