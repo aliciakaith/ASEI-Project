@@ -30,35 +30,48 @@ jobs:
           tags: asei-backend:ci
 
       # 👇 Replace your old smoke test block with this
-      - name: Smoke test container (robust)
+      - name: Smoke test container (robust, keep logs)
         run: |
           set -euxo pipefail
 
-          # Start container with lightweight envs (adjust as needed)
-          docker run -d --rm --name asei \
+          CID=$(docker run -d --name asei \
             -p 3001:3001 \
             -e PORT=3001 \
             -e CI=true \
             -e DISABLE_DB=1 \
-            asei-backend:ci
+            -e STATIC_ROOT=/app/ci-static \
+            -e JWT_SECRET=dummy \
+            asei-backend:ci)
 
-          # Wait up to ~60s for the container to respond
+          # Wait up to ~60s
           for i in $(seq 1 30); do
-            if ! docker ps --format '{{.Names}}' | grep -q '^asei$'; then
-              echo "Container exited early:"; docker logs -n 200 asei || true; exit 1
+            # still running?
+            if ! docker ps --format '{{.ID}}' | grep -q "$CID"; then
+              echo "❌ Container exited early. Logs:"
+              docker logs "$CID" || true
+              docker inspect "$CID" || true
+              exit 1
             fi
+
+            # health check
             if curl -fsS http://localhost:3001/health >/dev/null 2>&1 || \
-               curl -fsS http://localhost:3001/ >/dev/null 2>&1; then
-              echo "✅ App responded"; break
+              curl -fsS http://localhost:3001/ >/dev/null 2>&1; then
+              echo "✅ App responded"
+              break
             fi
+
             sleep 2
             if [ "$i" -eq 30 ]; then
-              echo "❌ App never responded"; docker logs asei || true; exit 1
+              echo "❌ App never responded. Final logs:"
+              docker logs "$CID" || true
+              docker inspect "$CID" || true
+              exit 1
             fi
           done
 
-          docker logs --tail 50 asei || true
-          docker stop asei
+          docker logs --tail 50 "$CID" || true
+          docker rm -f "$CID" || true
+
 
       # Login to GHCR
       - name: Log in to GHCR
