@@ -1,0 +1,25 @@
+name: DAST - OWASP ZAP Baseline
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 14 * * 1"  # weekly; adjust as you like
+
+jobs:
+  zap:
+    runs-on: ubuntu-latest
+    steps:
+      - name: ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          target: ${{ secrets.ZAP_TARGET_URL }}     # set in repo Settings > Secrets > Actions
+          cmd_options: >
+            -a               # show all alerts
+            -m 5             # 5 min spider
+            -I               # don't fail build on WARN (good for baseline)
+      - name: Upload ZAP report
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report
+          path: |
+            zap_report.html
+            zap.out
