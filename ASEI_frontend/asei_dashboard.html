@@ -96,8 +96,8 @@
           </div>
 
           <a href="settings.html" id="topProfileBtn" class="relative h-10 w-10 overflow-hidden rounded-full border border-neutral-200 hover:bg-neutral-800" aria-label="Profile">
-            <img id="initialSidebarPfp" src="images/default_avatar.png" class="js-initial-pfp absolute inset-0 h-full w-full transform scale-[1.28] object-cover" alt="Default profile"/>
-            <img id="mainPfp" class="js-main-pfp h-12 w-12 rounded-full object-cover hidden" alt="Profile"/>
+            <img id="initialTopPfp" src="images/default_avatar.png" class="js-initial-pfp absolute inset-0 h-full w-full transform scale-[1.28] object-cover" alt="Default profile"/>
+            <img id="mainTopPfp" class="js-main-pfp h-12 w-12 rounded-full object-cover hidden" alt="Profile"/>
           </a>
         </div>
       </div>
@@ -323,11 +323,11 @@
     window.addEventListener('click', e => { if (e.target === modal) modal.classList.add('hidden'); });
 
     // Sandbox Modal
-    const sandboxModal = document.getElementById('sandboxModal');
-    document.getElementById('openSandboxBtn').addEventListener('click', () => sandboxModal.classList.remove('hidden'));
-    document.getElementById('closeSandbox').addEventListener('click', () => sandboxModal.classList.add('hidden'));
-    document.getElementById('cancelSandbox').addEventListener('click', () => sandboxModal.classList.add('hidden'));
-    window.addEventListener('click', e => { if (e.target === sandboxModal) sandboxModal.classList.add('hidden'); });
+    //const sandboxModal = document.getElementById('sandboxModal');
+   // document.getElementById('openSandboxBtn').addEventListener('click', () => sandboxModal.classList.remove('hidden'));
+    // document.getElementById('closeSandbox').addEventListener('click', () => sandboxModal.classList.add('hidden'));
+   // document.getElementById('cancelSandbox').addEventListener('click', () => sandboxModal.classList.add('hidden'));
+   // window.addEventListener('click', e => { if (e.target === sandboxModal) sandboxModal.classList.add('hidden'); });
 
     // Compliance Modal
     const complianceModal = document.getElementById('complianceModal');
@@ -339,47 +339,129 @@
 
 <!-- Transaction Chart -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/date-fns@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-  const base = new Date();
-  base.setMinutes(0, 0, 0);
-  const data = Array.from({length: 24}, (_, i) => ({
-    x: new Date(base.getTime() - (23 - i) * 60 * 60 * 1000),
-    y: Math.floor(10 + Math.random() * 50)
-  }));
+  // Quick Action -> call /dev/seed-demo, then refresh KPIs & chart
+  const openSandboxBtn = document.getElementById('openSandboxBtn');
+  openSandboxBtn.addEventListener('click', async () => {
+    try {
+      const r = await fetch('/api/dashboard/dev/seed-demo', {
+        method: 'POST',
+        credentials: 'include'
+      });
+      if (!r.ok) throw new Error('Seed failed');
 
-  const showDate = document.getElementById('txDate');
-  if(showDate) showDate.textContent = new Date().toLocaleDateString();
+      // Refresh KPIs and chart if present
+      if (window.__refreshDashboard) await window.__refreshDashboard();
+      // Optional mini toast:
+      openSandboxBtn.textContent = 'Seeded ✅';
+      setTimeout(()=> (openSandboxBtn.textContent = 'Test Sandbox API'), 1500);
+    } catch (e) {
+      openSandboxBtn.textContent = 'Error ❌';
+      setTimeout(()=> (openSandboxBtn.textContent = 'Test Sandbox API'), 1500);
+      console.error(e);
+    }
+  });
+  
+</script>
 
-  const ctx = document.getElementById('txChart');
-  new Chart(ctx, {
+<script>
+  async function loadNotifs() {
+    const res = await fetch('/api/dashboard/notifications?limit=20', { credentials:'include' });
+    if (!res.ok) return;
+    const items = await res.json();
+    const list = document.getElementById('notifList');
+    const badge = document.getElementById('notifBadge');
+
+    list.innerHTML = items.map(n => `
+      <div class="p-3">
+        <div class="text-xs uppercase tracking-wide text-neutral-500">${n.type}</div>
+        <div class="text-sm font-medium">${n.title}</div>
+        <div class="text-xs text-neutral-600">${n.message}</div>
+      </div>
+    `).join('');
+
+    const unread = items.filter(n => !n.isRead).length;
+    badge.textContent = unread ? String(unread) : '';
+    badge.classList.toggle('hidden', unread === 0);
+  }
+
+  // Toggle menu + fetch on open
+  document.getElementById('notifBtn').addEventListener('click', async () => {
+    document.getElementById('notifMenu').classList.toggle('hidden');
+    await loadNotifs();
+  });
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+  const basePath = '/api/dashboard';
+  const $ = (id) => document.getElementById(id);
+  const setText = (id, v) => { const el = $(id); if (el) el.textContent = v; };
+
+  const showDate = $('txDate');
+  if (showDate) showDate.textContent = new Date().toLocaleDateString();
+
+  async function loadKpis() {
+    const res = await fetch(`${basePath}/kpis`, { credentials: 'include' });
+    if (!res.ok) throw new Error('Failed to load KPIs');
+    const k = await res.json();
+    setText('kpi-active-flows', k.activeFlows ?? 0);
+    setText('kpi-transactions', k.transactions ?? 0);
+    setText('kpi-errors', k.errors ?? 0);
+    setText('kpi-latency', (k.avgLatencyMs ?? 0) + 'ms');
+  }
+
+  async function loadSeries() {
+    const res = await fetch(`${basePath}/transactions/series`, { credentials: 'include' });
+    if (!res.ok) throw new Error('Failed to load series');
+    const { points } = await res.json();
+    return points.map(p => ({ x: new Date(Number(p.t)), y: p.count }));
+  }
+
+  // Build chart
+  const ctx = $('txChart');
+  const initialData = await loadSeries();
+  const chart = new Chart(ctx, {
     type: 'line',
-    data: {datasets: [{ data, borderWidth: 2, tension: 0.3, borderColor: '#000000', pointRadius: 0}]},
+    data: { datasets: [{ data: initialData, borderWidth: 2, tension: 0.3, borderColor: '#000000', pointRadius: 0 }]},
     options: {
-      responsive: true,
-      maintainAspectRatio: false,   
-      plugins: {legend: {display: false}, tooltip: {displayColors: false, callbacks: {
-        title(items){
-          const d = new Date(items[0].parsed.x);
-          const hoverDate = d.toLocaleDateString(undefined, {year: 'numeric', month: 'short', day:'2-digit'});
-          const t = d.getHours();
-          const suffix = t >= 12? "pm" : "am";
-          const hour12 = (t % 12) || 12;
-          const hoverTime = `${hour12}:00 ${suffix}`;
-          return `${hoverDate}      ${hoverTime}`;
-        },
-        label(item){
-          return `Transactions: ${item.parsed.y}`;
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          displayColors: false,
+          callbacks: {
+            title(items){
+              const d = new Date(items[0].parsed.x);
+              const hoverDate = d.toLocaleDateString(undefined, { year:'numeric', month:'short', day:'2-digit' });
+              const t = d.getHours(), suffix = t >= 12 ? 'pm' : 'am', hour12 = (t % 12) || 12;
+              return `${hoverDate}      ${hour12}:00 ${suffix}`;
+            },
+            label(item){ return `Transactions: ${item.parsed.y}`; }
+          }
         }
-      }}},
-      interaction: {mode: 'index', intersect: false},
+      },
+      interaction: { mode: 'index', intersect: false },
       scales: {
-        x: {type: 'time', time: {unit: 'hour', displayFormats: {hour: 'HH:mm'}}, ticks:{autoSkip: true, maxTicksLimit: 6}, grid: {display: false}},
-        y: {beginAtZero: true, ticks: {precision: 0}}
+        x: { type: 'time', time: { unit: 'hour', displayFormats: { hour: 'HH:mm' }}, ticks: { autoSkip: true, maxTicksLimit: 6 }, grid: { display: false }},
+        y: { beginAtZero: true, ticks: { precision: 0 } }
       }
     }
   });
+
+  // One function to refresh everything (KPIs + chart data)
+  window.__refreshDashboard = async () => {
+    await loadKpis();
+    const fresh = await loadSeries();
+    chart.data.datasets[0].data = fresh;
+    chart.update();
+  };
+
+  // First paint KPIs and set an auto-refresh
+  await loadKpis();
+  setInterval(window.__refreshDashboard, 30000);
 });
 </script>
 

@@ -52,3 +52,5 @@ CREATE TABLE IF NOT EXISTS notifications (
 
 CREATE INDEX IF NOT EXISTS idx_notifications_org_created
   ON notifications (org_id, created_at DESC);
+
+

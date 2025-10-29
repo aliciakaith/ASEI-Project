@@ -33,16 +33,18 @@ router.post("/dev/seed-demo", async (req, res) => {
   );
 
   // recent tx events
-  await query(
-    `
-    INSERT INTO tx_events (org_id, success, latency_ms, created_at) VALUES
-      ($1, true ,120, now() - interval '3 hour'),
-      ($1, false,260, now() - interval '2 hour'),
-      ($1, true , 95,  now() - interval '1 hour'),
-      ($1, true , 80,  now() - interval '10 minutes');
+await query(
+  `
+  INSERT INTO tx_events (org_id, success, latency_ms, created_at) VALUES
+    ($1, true ,120, now() - interval '3 hour'),
+    ($1, false,260, now() - interval '2 hour'),
+    ($1, true , 95, now() - interval '1 hour'),
+    ($1, true , 80, now() - interval '10 minutes')
+  ;
   `,
-    [orgId]
-  );
+  [orgId]
+);
+
 
   // notifications
   await query(

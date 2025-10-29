@@ -23,23 +23,30 @@ export class MTNConnector {
     };
   }
 
-  async requestToPay({ amount, currency, msisdn, externalId, referenceId, message, callbackUrl }) {
-    const url = `${this.baseUrl}/collection/v1_0/requesttopay`;
-    const headers = await this._headers();
-    const body = {
-      amount,
-      currency,
-      externalId,
-      payer: { partyIdType: "MSISDN", partyId: msisdn },
-      payerMessage: message || "Payment Request",
-      payeeNote: "Connectify API",
-      callbackUrl,
-    };
-    await axios.post(url, body, {
-      headers: { ...headers, "X-Reference-Id": referenceId },
-    });
-    return { referenceId, status: "PENDING" };
-  }
+async requestToPay({ amount, currency, msisdn, externalId, referenceId, message, callbackUrl }) {
+  const url = `${this.baseUrl}/collection/v1_0/requesttopay`;
+  const headers = await this._headers();
+  const body = {
+    amount,
+    currency,
+    externalId,
+    payer: { partyIdType: "MSISDN", partyId: msisdn },
+    payerMessage: message || "Payment Request",
+    payeeNote: "Connectify API"
+    // ❌ do not include callbackUrl in the body
+  };
+  await axios.post(url, body, {
+  headers: {
+    ...headers,
+    "X-Reference-Id": referenceId,
+    "X-Callback-Url": callbackUrl,   // ✅ header (not in body)
+  },
+  timeout: 15000,
+});
+  // MTN usually returns 202 Accepted with no body
+  return { referenceId, status: "PENDING" };
+}
+
 
   async getStatus(referenceId) {
     const url = `${this.baseUrl}/collection/v1_0/requesttopay/${referenceId}`;
