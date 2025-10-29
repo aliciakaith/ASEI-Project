@@ -329,157 +329,322 @@
     </div>
   </div>
 
-  <!-- Modal Scripts -->
-  <script>
-    // Add Integration Modal
-    const modal = document.getElementById('integrationModal');
-    document.getElementById('addIntegrationBtn').addEventListener('click', () => modal.classList.remove('hidden'));
-    document.getElementById('closeModal').addEventListener('click', () => modal.classList.add('hidden'));
-    document.getElementById('cancelModal').addEventListener('click', () => modal.classList.add('hidden'));
-    window.addEventListener('click', e => { if (e.target === modal) modal.classList.add('hidden'); });
-
-    // Sandbox Modal
-    //const sandboxModal = document.getElementById('sandboxModal');
-   // document.getElementById('openSandboxBtn').addEventListener('click', () => sandboxModal.classList.remove('hidden'));
-    // document.getElementById('closeSandbox').addEventListener('click', () => sandboxModal.classList.add('hidden'));
-   // document.getElementById('cancelSandbox').addEventListener('click', () => sandboxModal.classList.add('hidden'));
-   // window.addEventListener('click', e => { if (e.target === sandboxModal) sandboxModal.classList.add('hidden'); });
-
-    // Compliance Modal
-    const complianceModal = document.getElementById('complianceModal');
-    document.getElementById('openComplianceBtn').addEventListener('click', () => complianceModal.classList.remove('hidden'));
-    document.getElementById('closeCompliance').addEventListener('click', () => complianceModal.classList.add('hidden'));
-    document.getElementById('cancelCompliance').addEventListener('click', () => complianceModal.classList.add('hidden'));
-    window.addEventListener('click', e => { if (e.target === complianceModal) complianceModal.classList.add('hidden'); });
-  </script>
-
-<!-- Transaction Chart -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/date-fns@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/date-fns@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
 <script>
-  // Quick Action -> call /dev/seed-demo, then refresh KPIs & chart
-  const openSandboxBtn = document.getElementById('openSandboxBtn');
-  openSandboxBtn.addEventListener('click', async () => {
-    try {
-      const r = await fetch('/api/dashboard/dev/seed-demo', {
-        method: 'POST',
-        credentials: 'include'
-      });
-      if (!r.ok) throw new Error('Seed failed');
+(() => {
+const api = {
+  me: '/api/dashboard/me',
+  kpis: '/api/dashboard/kpis',
+  series: '/api/dashboard/transactions/series',
+  notifs: (limit=20) => `/api/dashboard/notifications?limit=${limit}`,
+  // your backend supports per-id read and read-all; we’ll use read-all after open:
+  notifReadAll: '/api/dashboard/notifications/read-all',
+  integrationsStatus: '/api/dashboard/integrations',
+  addIntegration: '/api/dashboard/integrations',
+  complianceGenerate: '/api/dashboard/compliance/generate', // if you add it later; otherwise leave unused
+  seedDemo: '/api/dashboard/dev/seed-demo',
+  // you’re using Socket.IO for pushes, not SSE:
+  socket: '/socket.io/socket.io.js'
+};
 
-      // Refresh KPIs and chart if present
-      if (window.__refreshDashboard) await window.__refreshDashboard();
-      // Optional mini toast:
-      openSandboxBtn.textContent = 'Seeded ✅';
-      setTimeout(()=> (openSandboxBtn.textContent = 'Test Sandbox API'), 1500);
-    } catch (e) {
-      openSandboxBtn.textContent = 'Error ❌';
-      setTimeout(()=> (openSandboxBtn.textContent = 'Test Sandbox API'), 1500);
-      console.error(e);
-    }
-  });
-  
-</script>
 
-<script>
-  async function loadNotifs() {
-    const res = await fetch('/api/dashboard/notifications?limit=20', { credentials:'include' });
-    if (!res.ok) return;
-    const items = await res.json();
-    const list = document.getElementById('notifList');
-    const badge = document.getElementById('notifBadge');
-
-    list.innerHTML = items.map(n => `
-      <div class="p-3">
-        <div class="text-xs uppercase tracking-wide text-neutral-500">${n.type}</div>
-        <div class="text-sm font-medium">${n.title}</div>
-        <div class="text-xs text-neutral-600">${n.message}</div>
-      </div>
-    `).join('');
-
-    const unread = items.filter(n => !n.isRead).length;
-    badge.textContent = unread ? String(unread) : '';
-    badge.classList.toggle('hidden', unread === 0);
-  }
-
-  // Toggle menu + fetch on open
-  document.getElementById('notifBtn').addEventListener('click', async () => {
-    document.getElementById('notifMenu').classList.toggle('hidden');
-    await loadNotifs();
-  });
-</script>
-
-<script>
-document.addEventListener('DOMContentLoaded', async () => {
-  const basePath = '/api/dashboard';
   const $ = (id) => document.getElementById(id);
   const setText = (id, v) => { const el = $(id); if (el) el.textContent = v; };
+  const qsa = (sel, root=document) => Array.from(root.querySelectorAll(sel));
 
-  const showDate = $('txDate');
-  if (showDate) showDate.textContent = new Date().toLocaleDateString();
+  async function fetchJson(url, options = {}) {
+    const res = await fetch(url, { credentials: 'include', ...options });
+    if (!res.ok) throw new Error(`${options.method||'GET'} ${url} → ${res.status}`);
+    return res.status === 204 ? null : res.json();
+  }
 
+  function toast(btnEl, okText='Done ✓', revertText='Done', ms=1500) {
+    if (!btnEl) return;
+    const orig = btnEl.textContent;
+    btnEl.textContent = okText;
+    setTimeout(() => { btnEl.textContent = revertText; }, ms);
+  }
+
+  // ---------- Profile (name + avatar) ----------
+  async function initProfile() {
+    try {
+      const me = await fetchJson(api.me);
+      const name = me?.fullName || 'User';
+      // Sidebar + top avatar/name
+      qsa('#profileBtn span').forEach(el => el.textContent = name);
+      // Prefer real avatar if provided
+      if (me?.avatarUrl) {
+        qsa('.js-main-pfp').forEach(img => { img.src = me.avatarUrl; img.classList.remove('hidden'); });
+        qsa('.js-initial-pfp').forEach(img => img.classList.add('hidden'));
+      }
+    } catch (e) { console.warn('Profile load failed', e); }
+  }
+
+  // ---------- Notifications ----------
+  async function loadNotifs() {
+    try {
+      const items = await fetchJson(api.notifs(20));
+      const list = $('notifList');
+      const badge = $('notifBadge');
+      if (!list) return;
+
+      list.innerHTML = items.map(n => `
+        <div class="p-3">
+          <div class="text-[10px] uppercase tracking-wide text-neutral-500">${n.type||'Info'}</div>
+          <div class="text-sm font-medium">${n.title||'Notification'}</div>
+          <div class="text-xs text-neutral-600">${n.message||''}</div>
+        </div>
+      `).join('');
+
+      const unread = items.filter(n => !n.isRead).length;
+      badge.textContent = unread ? String(unread) : '';
+      badge.classList.toggle('hidden', unread === 0);
+
+    // Mark as read after opening once (your backend supports read-all)
+    if (items.some(n => !n.isRead)) {
+      fetchJson(api.notifReadAll, { method: 'POST' }).catch(()=>{ /* non-blocking */ });
+    }
+    } catch (e) { console.warn('Notifications failed', e); }
+  }
+
+  (function initNotifUI(){
+    const btn = $('notifBtn'), menu = $('notifMenu');
+    if (!btn || !menu) return;
+
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      menu.classList.toggle('hidden');
+      if (!menu.classList.contains('hidden')) await loadNotifs();
+    });
+    document.addEventListener('click', (e) => {
+      if (!menu.contains(e.target) && e.target !== btn) menu.classList.add('hidden');
+    });
+  })();
+
+  // ---------- KPI + Chart ----------
+  let chart;
   async function loadKpis() {
-    const res = await fetch(`${basePath}/kpis`, { credentials: 'include' });
-    if (!res.ok) throw new Error('Failed to load KPIs');
-    const k = await res.json();
+    const k = await fetchJson(api.kpis);
     setText('kpi-active-flows', k.activeFlows ?? 0);
     setText('kpi-transactions', k.transactions ?? 0);
     setText('kpi-errors', k.errors ?? 0);
     setText('kpi-latency', (k.avgLatencyMs ?? 0) + 'ms');
   }
-
   async function loadSeries() {
-    const res = await fetch(`${basePath}/transactions/series`, { credentials: 'include' });
-    if (!res.ok) throw new Error('Failed to load series');
-    const { points } = await res.json();
+    const { points = [] } = await fetchJson(api.series);
     return points.map(p => ({ x: new Date(Number(p.t)), y: p.count }));
   }
-
-  // Build chart
-  const ctx = $('txChart');
-  const initialData = await loadSeries();
-  const chart = new Chart(ctx, {
-    type: 'line',
-    data: { datasets: [{ data: initialData, borderWidth: 2, tension: 0.3, borderColor: '#000000', pointRadius: 0 }]},
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          displayColors: false,
-          callbacks: {
-            title(items){
-              const d = new Date(items[0].parsed.x);
-              const hoverDate = d.toLocaleDateString(undefined, { year:'numeric', month:'short', day:'2-digit' });
-              const t = d.getHours(), suffix = t >= 12 ? 'pm' : 'am', hour12 = (t % 12) || 12;
-              return `${hoverDate}      ${hour12}:00 ${suffix}`;
-            },
-            label(item){ return `Transactions: ${item.parsed.y}`; }
+  async function initChart() {
+    const canvas = $('txChart');
+    if (!canvas) return;
+    const data = await loadSeries();
+    const ds = [{ data, borderWidth: 2, tension: 0.3, borderColor: '#000', pointRadius: 0 }];
+    chart = new Chart(canvas, {
+      type: 'line',
+      data: { datasets: ds },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            displayColors: false,
+            callbacks: {
+              title(items){
+                const d = new Date(items[0].parsed.x);
+                const hoverDate = d.toLocaleDateString(undefined, { year:'numeric', month:'short', day:'2-digit' });
+                const t = d.getHours(), suffix = t >= 12 ? 'pm' : 'am', hour12 = (t % 12) || 12;
+                return `${hoverDate}      ${hour12}:00 ${suffix}`;
+              },
+              label(item){ return `Transactions: ${item.parsed.y}`; }
+            }
           }
+        },
+        interaction: { mode: 'index', intersect: false },
+        scales: {
+          x: { type: 'time', time: { unit: 'hour', displayFormats: { hour: 'HH:mm' }}, ticks: { autoSkip: true, maxTicksLimit: 6 }, grid: { display: false }},
+          y: { beginAtZero: true, ticks: { precision: 0 } }
         }
-      },
-      interaction: { mode: 'index', intersect: false },
-      scales: {
-        x: { type: 'time', time: { unit: 'hour', displayFormats: { hour: 'HH:mm' }}, ticks: { autoSkip: true, maxTicksLimit: 6 }, grid: { display: false }},
-        y: { beginAtZero: true, ticks: { precision: 0 } }
       }
-    }
-  });
+    });
+  }
 
-  // One function to refresh everything (KPIs + chart data)
+  // public refresh for seed-demo
   window.__refreshDashboard = async () => {
     await loadKpis();
-    const fresh = await loadSeries();
-    chart.data.datasets[0].data = fresh;
-    chart.update();
+    if (chart) {
+      chart.data.datasets[0].data = await loadSeries();
+      chart.update();
+    }
   };
 
-  // First paint KPIs and set an auto-refresh
-  await loadKpis();
-  setInterval(window.__refreshDashboard, 30000);
-});
-</script>
+  // ---------- Service Integrations list ----------
+  async function initServices() {
+    const rows = await fetchJson(api.integrationsStatus);
+    wrap.innerHTML = rows.map(r => {
+      const status = r.status || 'pending';
+      const badge = (s) => {
+        const S = String(s).toLowerCase();
+        const map = {
+          active:  ['bg-green-100','text-green-700'],
+          pending: ['bg-yellow-100','text-yellow-700'],
+          error:   ['bg-red-100','text-red-700']
+        };
+        const cls = (map[S] || ['bg-neutral-100','text-neutral-700']).join(' ');
+        return `<span class="px-2 py-1 text-xs font-medium rounded-full ${cls}">${s[0].toUpperCase()+s.slice(1)}</span>`;
+      };
+      return `
+        <div class="flex items-center justify-between p-3 border border-neutral-200 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-700 dark:border-neutral-700 transition">
+          <div>
+            <div class="font-medium">${r.name}</div>
+            <div class="text-xs text-neutral-500">Integration • Last sync: —</div>
+          </div>
+          ${badge(status)}
+        </div>`;
+    }).join('');
 
+  }
+
+  // ---------- Modals: open/close + submit ----------
+  // Add Integration
+  (function(){
+    const modal = $('integrationModal');
+    const openBtn = $('addIntegrationBtn');
+    const close = $('closeModal');
+    const cancel = $('cancelModal');
+    if (!modal || !openBtn) return;
+
+    const hide = () => modal.classList.add('hidden');
+    const show = () => modal.classList.remove('hidden');
+
+    openBtn.addEventListener('click', show);
+    close?.addEventListener('click', hide);
+    cancel?.addEventListener('click', hide);
+    window.addEventListener('click', e => { if (e.target === modal) hide(); });
+
+    const form = $('integration-form');
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = $('integration-name')?.value?.trim();
+      const apiKey = $('integration-apikey')?.value?.trim();
+      if (!name || !apiKey) return;
+
+      try {
+        await fetchJson(api.addIntegration, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, apiKey })
+        });
+        hide();
+        await initServices();
+      } catch (err) {
+        alert('Failed to add integration. Check API key.');
+      }
+    });
+  })();
+
+  // Sandbox (seed demo)
+  (function(){
+    const btn = $('openSandboxBtn');
+    if (!btn) return;
+    btn.addEventListener('click', async () => {
+      try {
+        await fetchJson(api.seedDemo, { method: 'POST' });
+        await window.__refreshDashboard();
+        toast(btn, 'Seeded ✅', 'Test Sandbox API');
+      } catch (e) {
+        console.error(e);
+        toast(btn, 'Error ❌', 'Test Sandbox API');
+      }
+    });
+  })();
+
+  // Compliance
+  (function(){
+    const modal = $('complianceModal');
+    const openBtn = $('openComplianceBtn');
+    const close = $('closeCompliance');
+    const cancel = $('cancelCompliance');
+    const hide = () => modal.classList.add('hidden');
+    const show = () => modal.classList.remove('hidden');
+    openBtn?.addEventListener('click', show);
+    close?.addEventListener('click', hide);
+    cancel?.addEventListener('click', hide);
+    window.addEventListener('click', e => { if (e.target === modal) hide(); });
+
+    const form = $('compliance-form');
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const type = form.querySelector('select')?.value || 'Security Audit';
+      const email = form.querySelector('input[type="email"]')?.value?.trim();
+      if (!email) return;
+      try {
+        await fetchJson(api.complianceGenerate, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type, email })
+        });
+        hide();
+        alert('Report generation started. Check your email.');
+      } catch (err) {
+        alert('Failed to generate report.');
+      }
+    });
+  })();
+
+  // ---------- Live updates via SSE (fallback to 30s polling) ----------
+  function startSSE() {
+    try {
+      const es = new EventSource(api.sse, { withCredentials: true });
+      es.addEventListener('message', (ev) => {
+        // generic channel
+        try {
+          const msg = JSON.parse(ev.data);
+          if (msg.topic === 'kpis') loadKpis();
+          if (msg.topic === 'series' && chart) {
+            chart.data.datasets[0].data = msg.payload.map(p => ({ x: new Date(Number(p.t)), y: p.count }));
+            chart.update();
+          }
+          if (msg.topic === 'notif') loadNotifs();
+        } catch {}
+      });
+      es.onerror = () => { /* keep it open; browser will retry */ };
+      return true;
+    } catch { return false; }
+  }
+
+  async function initAll() {
+    setText('txDate', new Date().toLocaleDateString());
+    await initProfile();
+    await Promise.all([loadKpis(), initChart(), initServices()]);
+    // 30s fallback polling
+    setInterval(() => window.__refreshDashboard(), 30000);
+    // Try SSE
+    startSSE();
+  }
+
+  document.addEventListener('DOMContentLoaded', initAll);
+})();
+</script>
+<!-- 👇 Add this block right before </body> -->
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  (function initSocket(){
+    const socket = io({ withCredentials: true });
+
+    socket.on('connect', () => {
+      console.log('✅ Connected to Socket.IO');
+    });
+
+    // When backend emits updates
+    socket.on('notifications:update', async () => {
+      if (typeof loadNotifs === 'function') await loadNotifs();
+    });
+
+    socket.on('kpis:update', () => window.__refreshDashboard?.());
+    socket.on('series:update', () => window.__refreshDashboard?.());
+  })();
+</script>
 </body>
 </html>
