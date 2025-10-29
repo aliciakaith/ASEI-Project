@@ -111,11 +111,22 @@
             </div>
           </div>
 
-          <a href="settings.html" id="topProfileBtn" class="relative h-10 w-10 overflow-hidden rounded-full border border-neutral-200 hover:bg-neutral-800" aria-label="Profile">
-            <img id="initialTopPfp" src="images/default_avatar.png" class="js-initial-pfp absolute inset-0 h-full w-full transform scale-[1.28] object-cover" alt="Default profile"/>
-            <img id="mainTopPfp" class="js-main-pfp h-12 w-12 rounded-full object-cover hidden" alt="Profile"/>
-          </a>
+          <div class="relative">
+            <button id="topProfileBtn" class="relative h-10 w-10 overflow-hidden rounded-full border border-neutral-200 dark:border-gray-400 hover:bg-neutral-800 dark:hover:bg-neutral-600" aria-label="Profile">
+              <img id="initialSidebarPfp" src="images/default_avatar.png" class="js-initial-pfp absolute inset-0 h-full w-full transform scale-[1.28] object-cover" alt="Default profile"/>
+              <img id="mainPfp" class="js-main-pfp h-12 w-12 rounded-full object-cover hidden" alt="Profile"/>
+            </button>
+            <div id="profileMenu" class="hidden absolute top-full right-0 w-48 mt-2 rounded-lg z-50">
+              <button id="logoutBtn" class="px-3 py-3 w-full bg-neutral-200 hover:bg-neutral-300 text-red-500 hover:text-red-600 border border-neutral-300 dark:bg-neutral-600 dark:hover:bg-neutral-500 dark:text-red-500 dark:hover:text-red-400 dark:border-neutral-700 shadow-lg rounded-lg">Sign Out</button>
+            </div>
+          </div>
         </div>
+        <script>
+          const btn = document.getElementById('topProfileBtn');
+          const menu = document.getElementById('profileMenu');
+          btn.addEventListener('click', (e) => {e.stopPropagation(); menu.classList.toggle('hidden'); });
+          document.addEventListener('click', (e) => {if(!menu.contains(e.target) && e.target !== btn) menu.classList.add('hidden'); });
+        </script>
       </div>
 
       <!-- KPI cards -->
