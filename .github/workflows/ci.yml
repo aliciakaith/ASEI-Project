@@ -29,12 +29,35 @@ jobs:
           load: true
           tags: asei-backend:ci
 
-      - name: Smoke test container
+      # 👇 Replace your old smoke test block with this
+      - name: Smoke test container (robust)
         run: |
-          docker run -d --rm -p 3001:3001 --name asei asei-backend:ci
-          # hit a health endpoint if you have one, otherwise just check it’s listening
-          sleep 5
-          (curl -fsS http://localhost:3001/health || curl -fsS http://localhost:3001/) | head -c 200 || (docker logs asei && exit 1)
+          set -euxo pipefail
+
+          # Start container with lightweight envs (adjust as needed)
+          docker run -d --rm --name asei \
+            -p 3001:3001 \
+            -e PORT=3001 \
+            -e CI=true \
+            -e DISABLE_DB=1 \
+            asei-backend:ci
+
+          # Wait up to ~60s for the container to respond
+          for i in $(seq 1 30); do
+            if ! docker ps --format '{{.Names}}' | grep -q '^asei$'; then
+              echo "Container exited early:"; docker logs -n 200 asei || true; exit 1
+            fi
+            if curl -fsS http://localhost:3001/health >/dev/null 2>&1 || \
+               curl -fsS http://localhost:3001/ >/dev/null 2>&1; then
+              echo "✅ App responded"; break
+            fi
+            sleep 2
+            if [ "$i" -eq 30 ]; then
+              echo "❌ App never responded"; docker logs asei || true; exit 1
+            fi
+          done
+
+          docker logs --tail 50 asei || true
           docker stop asei
 
       # Login to GHCR
@@ -64,4 +87,3 @@ jobs:
           platforms: linux/amd64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-
