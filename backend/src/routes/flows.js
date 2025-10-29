@@ -1,6 +1,7 @@
 // src/routes/flows.js
-import express from 'express';
-import { query } from '../db/postgres.js';
+import express from "express";
+import { query } from "../db/postgres.js";
+import { audit } from "../logging/audit.js";
 
 const router = express.Router();
 
@@ -52,6 +53,17 @@ router.post('/', async (req, res) => {
       `,
       [orgId, name, description || null]
     );
+
+    // ✅ Audit: flow created
+    await audit(req, {
+      userId: req.user?.id ?? null,
+      action: "FLOW_CREATE",
+      targetType: "flow",
+      targetId: result.rows[0].id,
+      statusCode: 201,
+      metadata: { name: result.rows[0].name }
+    });
+
     res.status(201).json(result.rows[0]);
   } catch (e) {
     console.error(e);
@@ -99,7 +111,7 @@ router.post('/:id/versions', async (req, res) => {
 
   try {
     // check flow exists
-    const flowRes = await query(`SELECT id FROM flows WHERE id = $1 AND is_deleted = FALSE`, [id]);
+    const flowRes = await query(`SELECT id, name FROM flows WHERE id = $1 AND is_deleted = FALSE`, [id]);
     if (flowRes.rows.length === 0) return res.status(404).json({ error: 'Flow not found' });
 
     // compute next version
@@ -115,6 +127,16 @@ router.post('/:id/versions', async (req, res) => {
 
     // bump updated_at on flow
     await query(`UPDATE flows SET updated_at = now() WHERE id = $1`, [id]);
+
+    //new version created
+    await audit(req, {
+      userId: req.user?.id ?? null,
+      action: "FLOW_VERSION_CREATE",
+      targetType: "flow_version",
+      targetId: ins.rows[0].id,
+      statusCode: 201,
+      metadata: { flowId: id, flowName: flowRes.rows[0].name, version: ins.rows[0].version }
+    });
 
     res.status(201).json(ins.rows[0]);
   } catch (e) {
@@ -174,6 +196,16 @@ router.delete('/:id', async (req, res) => {
   try {
     const upd = await query(`UPDATE flows SET is_deleted = TRUE, updated_at = now() WHERE id = $1`, [id]);
     if (upd.rowCount === 0) return res.status(404).json({ error: 'Flow not found' });
+
+    // flow deleted
+    await audit(req, {
+      userId: req.user?.id ?? null,
+      action: "FLOW_DELETE",
+      targetType: "flow",
+      targetId: id,
+      statusCode: 200
+    });
+
     res.json({ ok: true });
   } catch (e) {
     console.error(e);
