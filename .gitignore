@@ -41,3 +41,12 @@ ASEI-Project/.env
 ASEI-Project/.env.*
 ASEI-Project/dist
 EOF
+
+# Runtime logs (Winston rotation + audit)
+logs/
+backend/logs/
+*.log
+*.log.gz
+*.json
+!package-lock.json
+
