@@ -29,7 +29,6 @@ export async function audit(req, {
       ]
     );
   } catch (e) {
-    // never throw from auditing; just log it
     logger.error({ msg: "audit_log_insert_failed", error: e.message });
   }
 }
