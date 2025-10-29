@@ -79,7 +79,7 @@ app.use("/api/mtn", requireAuth, mtnRouter);
 
 
 // ------------------------------------------------------
-// Serve static frontend
+// Serve static frontend (optional in CI)
 // ------------------------------------------------------
 const candidates = [
   process.env.STATIC_ROOT,
@@ -88,34 +88,35 @@ const candidates = [
 ].filter(Boolean);
 
 let FRONTEND_DIR =
-  candidates.find(
-    (p) => fs.existsSync(p) && fs.existsSync(path.join(p, "login.html"))
-  ) ||
-  candidates.find((p) => fs.existsSync(p)) ||
-  candidates[0];
+  candidates.find(p => fs.existsSync(p) && fs.existsSync(path.join(p, "login.html"))) ||
+  candidates.find(p => fs.existsSync(p)) ||
+  null;
 
 console.log("STATIC_ROOT =", process.env.STATIC_ROOT);
-console.log("Serving static from:", FRONTEND_DIR);
+console.log("Serving static from:", FRONTEND_DIR || "(disabled)");
 
-app.use(express.static(FRONTEND_DIR, { index: false }));
+// Only enable static if we actually have a directory
+if (FRONTEND_DIR) {
+  app.use(express.static(FRONTEND_DIR, { index: false }));
+  const send = (f) => (_req, res) => res.sendFile(path.join(FRONTEND_DIR, f));
 
-const send = (f) => (_req, res) => res.sendFile(path.join(FRONTEND_DIR, f));
-
-// ------------------------------------------------------
-// Frontend routes
-// ------------------------------------------------------
-app.get("/", send("login.html"));
-app.get("/login", send("login.html"));
-app.get("/signup", send("signup.html"));
-app.get("/dashboard", send("asei_dashboard.html"));
-app.get("/flow-designer", send("flow_designer.html"));
-app.get("/connectors", send("Connectors.html"));
-app.get("/templates", send("templates.html"));
-app.get("/deployments", send("deployments.html"));
-app.get("/monitoring", send("monitoring.html"));
-app.get("/settings", send("settings.html"));
-app.get("/terms", send("termsAndConditions.html"));
-app.get("/forgot", send("forgot.html"));
+  // Frontend routes
+  app.get("/", send("login.html"));
+  app.get("/login", send("login.html"));
+  app.get("/signup", send("signup.html"));
+  app.get("/dashboard", send("asei_dashboard.html"));
+  app.get("/flow-designer", send("flow_designer.html"));
+  app.get("/connectors", send("Connectors.html"));
+  app.get("/templates", send("templates.html"));
+  app.get("/deployments", send("deployments.html"));
+  app.get("/monitoring", send("monitoring.html"));
+  app.get("/settings", send("settings.html"));
+  app.get("/terms", send("termsAndConditions.html"));
+  app.get("/forgot", send("forgot.html"));
+} else {
+  // Safe default so CI still returns 200 on /
+  app.get("/", (_req, res) => res.status(200).send("Backend OK"));
+}
 
 // ------------------------------------------------------
 // 404 handling
@@ -147,6 +148,6 @@ io.on("connection", (socket) => {
   });
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`App running at http://localhost:${PORT}`);
 });
