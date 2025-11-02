@@ -111,7 +111,9 @@
       <div class="mt-4 flex space-x-2">
         <button class="preview-btn px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded dark:bg-gray-600 dark:hover:bg-gray-700" 
           data-title="Mobile Money → Bank Settlement"
-          data-desc="Automates transfers from mobile wallets into bank accounts with real-time reconciliation and API hooks.">
+          data-desc="Automates transfers from mobile wallets into bank accounts with real-time reconciliation and API hooks."
+          data-img="images/template-1.png"
+          data-img-dark="images/template-1Dark.png">
           Preview
         </button>
         <button class="use-template-btn px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded" data-template-id="card-1">Use Template</button>
@@ -128,7 +130,9 @@
       <div class="mt-4 flex space-x-2">
         <button class="preview-btn px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded dark:bg-gray-600 dark:hover:bg-gray-700"
           data-title="Utility Bills → Core Banking"
-          data-desc="Integrates utility payment collections directly into core banking using RESTful APIs.">
+          data-desc="Integrates utility payment collections directly into core banking using RESTful APIs."
+          data-img="images/template-2.png"
+          data-img-dark="images/template-2Dark.png">
           Preview
         </button>
         <button class="use-template-btn px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded" data-template-id="card-2">Use Template</button>
@@ -145,7 +149,9 @@
       <div class="mt-4 flex space-x-2">
         <button class="preview-btn px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded dark:bg-gray-600 dark:hover:bg-gray-700"
           data-title="Remittance → Wallet"
-          data-desc="Maps remittances to mobile wallets using AML checks, FX conversions, and partner APIs.">
+          data-desc="Maps remittances to mobile wallets using AML checks, FX conversions, and partner APIs."
+          data-img="images/template-3.png"
+          data-img-dark="images/template-3Dark.png">
           Preview
         </button>
         <button class="use-template-btn px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded" data-template-id="card-3">Use Template</button>
@@ -163,8 +169,11 @@
       <button id="closePreview" class="text-neutral-500 hover:text-neutral-900 text-2xl leading-none">&times;</button>
     </div>
     <p id="previewDesc" class="text-sm text-neutral-700 dark:text-neutral-400 mb-4"></p>
-    <div class="bg-neutral-100 dark:bg-neutral-600 border border-neutral-200 dark:border-neutral-700 rounded-lg h-48 flex items-center justify-center text-neutral-500 text-sm italic">
-      (Flow diagram or configuration preview)
+    <div class="bg-white dark:bg-neutral-800 rounded-lg h-48 flex items-center justify-center">
+      <img id="previewImg" src="" alt="previewImg" class="max-h-48 w-auto rounded-lg hidden">
+      <p id="previewNoImg" class="text-neutral-500 text-sm italic py-12">
+        (Flow diagram or configuration preview)
+      </p>
     </div>
     <div class="flex justify-end gap-2 mt-6">
       <button id="closePreviewBtn" class="px-4 py-2 rounded-lg bg-neutral-200 hover:bg-neutral-300 dark:bg-neutral-400 dark:hover:bg-neutral-500 border dark:border-neutral-500">Close</button>
@@ -196,11 +205,24 @@
   const closePreview = document.getElementById("closePreview");
   const closePreviewBtn = document.getElementById("closePreviewBtn");
 
+  const previewImg = document.getElementById("previewImg");
+  const previewNoImg = document.getElementById("previewNoImg");
   let templateId = null;
   document.querySelectorAll(".preview-btn").forEach(btn => {
     btn.addEventListener("click", () => {
       previewTitle.textContent = btn.dataset.title;
       previewDesc.textContent = btn.dataset.desc;
+
+      const isDark = document.documentElement.classList.contains('dark');
+      const img = btn.dataset.img;
+      const darkImg = btn.dataset.imgDark;
+      const finalImg = isDark && darkImg ? darkImg : img;
+      if(finalImg){
+        previewImg.src = finalImg;
+        previewImg.classList.remove("hidden");
+        previewNoImg.classList.add('hidden');
+      }
+
       previewModal.classList.remove("hidden");
 
       const useTemplateInPreviewBtn = btn.parentElement.querySelector("[data-template-id]");
