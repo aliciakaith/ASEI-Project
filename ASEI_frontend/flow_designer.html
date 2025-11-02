@@ -131,26 +131,26 @@
   <h2 class="text-xl font-semibold mb-4">Flow Designer</h2>
 
   <!-- Toolbar -->
-  <div class="flex items-center justify-between mb-2">
-    <div class="text-neutral-500 text-sm">Drag nodes onto the grid and connect them by dragging from the right dot to another node’s left dot.</div>
-    <div class="flex gap-2">
+  <div class="flex flex-col mb-2">
+    <div class="flex gap-2 justify-end">
       <button class="px-3 py-2 bg-gray-300 hover:bg-gray-400 dark:bg-gray-500 dark:hover:bg-gray-600 border dark:border-neutral-600 rounded" onclick="exportFlow()">Export</button>
       <button class="px-3 py-2 bg-gray-500 hover:bg-gray-600 dark:bg-gray-700 dark:hover:bg-gray-800 border dark:border-neutral-800 text-white rounded" onclick="saveFlow('draft')">Save Draft</button>
       <button class="px-3 py-2 bg-blue-500 hover:bg-blue-600 dark:bg-blue-700 dark:hover:bg-blue-800 boder dark:border-blue-800 text-white rounded" onclick="saveFlow('deployed')">Deploy Flow</button>
     </div>
+    <div class="text-neutral-500 text-sm text-left">Drag nodes onto the grid and connect them by dragging from the right dot to another node’s left dot.</div>
   </div>
 
-  <div class="grid grid-cols-12 gap-4">
+  <div class="flex flex-col gap-4">
     <!-- Node Library -->
     <aside class="col-span-12 md:col-span-3 bg-white dark:bg-neutral-800 dark:text-neutral-200 rounded shadow p-4 overflow-auto">
       <div class="text-sm font-semibold mb-3">Node Library</div>
       <div class="text-xs uppercase text-neutral-500 dark:text-neutral-400 mb-2">General</div>
-      <div class="space-y-2 mb-4">
+      <div class="flex gap-2 mb-4">
         <button class="w-full border dark:border-neutral-700 rounded px-2 py-2 text-left" onclick="createNode('start')">Start</button>
         <button class="w-full border dark:border-neutral-700 rounded px-2 py-2 text-left" onclick="createNode('end')">End</button>
       </div>
       <div class="text-xs uppercase text-neutral-500 dark:text-neutral-400 mb-2">MTN (Collections)</div>
-      <div class="space-y-2">
+      <div class="grid grid-cols-2 gap-2">
         <button class="w-full border dark:border-neutral-700 rounded px-2 py-2 text-left" onclick="createNode('mtn.requestToPay','api','MTN • Request to Pay')">MTN • Request to Pay</button>
         <button class="w-full border dark:border-neutral-700 rounded px-2 py-2 text-left" onclick="createNode('mtn.checkStatus','api','MTN • Check Status')">MTN • Check Status</button>
         <button class="w-full border dark:border-neutral-700 rounded px-2 py-2 text-left" onclick="createNode('mtn.getBalance','api','MTN • Get Balance')">MTN • Get Balance</button>
@@ -196,6 +196,10 @@ document.addEventListener('DOMContentLoaded', () => {
   canvas.addEventListener('click', () => {
     document.getElementById('propertiesPanel').classList.add('hidden');
   });
+
+  if(typeof loadTemplate === "function"){
+    loadTemplate();
+  }
 });
 
 function createNode(type, kindOverride, nameOverride) {
@@ -236,6 +240,10 @@ function openProps(id, name) {
     <input id="prop_name" class="w-full dark:bg-neutral-600 border dark:border-neutral-700 rounded px-2 py-1 mb-3" value="${name}">
     <button class="px-3 py-2 bg-blue-500 border border-blue-600 hover:bg-blue-600 text-white rounded" onclick="saveNodeLabel('${id}')">Save</button>
   `;
+
+  window.scrollTo({
+    top: document.body.scrollHeight, behavior: "smooth"
+  });
 }
 
 function saveNodeLabel(id) {
@@ -276,6 +284,85 @@ function clearCanvas() {
     if(saveImg) applyPfpToDOM(saveImg);
   });
 </script>
+
+<!-- loading templates -->
+ <script>
+  function loadTemplate(){
+    const template = localStorage.getItem("connectify.selectedTemplate");
+    if (!template) return;
+
+    let temp;
+    try{
+      temp = JSON.parse(template)
+    }
+    catch(e){
+      console.warn("no template", e);
+      return;
+    }
+    clearCanvas();
+    renderTemplate(temp);
+    localStorage.removeItem("connectify.selectedTemplate")
+  }
+
+  function renderTemplate(temp){
+    if(!temp || !Array.isArray(temp.nodes))
+    return;
+
+    temp.nodes.forEach(nodeDef => {
+      createNodeFromTemplate(nodeDef);
+    });
+
+    const edges = temp.edges || temp.connections || [];
+    edges.forEach(edge => {
+      try{
+        jsPlumbInstance.connect({
+          source: edge.from,
+          target: edge.to
+        });
+      }
+      catch(err){
+        console.warn("no connections", edge, err);
+      }
+    });
+  }
+
+  function createNodeFromTemplate(nodeDef){
+    const id = nodeDef.id;
+    const kind = nodeDef.kind || nodeDef.type || "api";
+    const name = nodeDef.label || nodeDef.name || nodeDef.id;
+    const element = document.createElement("div");
+
+    element.className = `node ${kind}`;
+    element.id = id;
+    element.style.left = (nodeDef.x ?? 80) + "px";
+    element.style.top = (nodeDef.y ?? 80) +"px";
+    element.innerHTML = `
+      <div class="connector-dot dot-left" id="${id}_left"></div>
+      <span>${name}</span>
+      <div class="connector-dot dot-right" id="${id}_right"></div>
+    `;
+    canvas.appendChild(element);
+    jsPlumbInstance.draggable(element, {grid: [10, 10]});
+    jsPlumbInstance.makeSource(document.getElementById(id + "_right"), {
+      parent: element,
+      anchor: "Right"
+    });
+    jsPlumbInstance.makeTarget(document.getElementById(id + "_left"), {
+      parent: element,
+      anchor: "Left"
+    });
+
+    element.addEventListener('click', (e) =>{
+      e.stopPropagation();
+      openProps(id, name);
+    });
+
+    nodes.push({
+      id, type: nodeDef.type || kind, kind, name, x:element.offsetLeft, y:element.offsetTop
+    });
+  }
+ </script>
+
 </body>
 </html>
 

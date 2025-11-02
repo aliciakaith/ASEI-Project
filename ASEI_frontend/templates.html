@@ -114,7 +114,7 @@
           data-desc="Automates transfers from mobile wallets into bank accounts with real-time reconciliation and API hooks.">
           Preview
         </button>
-        <button onclick="window.location.href='flow_designer.html'" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded">Use Template</button>
+        <button class="use-template-btn px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded" data-template-id="card-1">Use Template</button>
       </div>
     </div>
 
@@ -211,6 +211,64 @@
     if (e.target === previewModal) previewModal.classList.add("hidden");
   });
 </script>
+
+<script>
+  const connectify_templates = {
+    "card-1": {
+      id: "card-1",
+      name: "Mobile Money → Bank Settlement",
+      nodes: [
+        {id: "start", type: "start", kind: "start", label: "Start", x: 100, y: 100},
+
+        {id: "accHolder", type: "mtn.getAccountHolder", kind: "api", label: "MTN • Account Holder", x: 300, y: 100},
+
+        {id: "reqToPay", type: "mtn.requestToPay", kind: "api", label: "MTN • Request to Pay", x: 100, y: 200},
+
+        {id: "checkStatus", type: "mtn.checkStatus", kind: "api", label: "MTN • Check Status", x: 350, y: 200},
+
+        {id: "getBalance", type: "mtn.getBalance", kind: "api", label: "MTN • Get Balance", x: 100, y: 300},
+
+        {id: "end", type: "end", kind: "end", label: "→ Bank Settlement", x: 350, y: 300}
+      ],
+      edges: [
+        {from: "start", to: "accHolder"},
+        {from: "accHolder", to: "reqToPay"},
+        {from: "reqToPay", to: "checkStatus"},
+        {from: "checkStatus", to: "getBalance"},
+        {from: "getBalance", to: "end"}
+      ]
+    },
+    "utility-core-banking": {
+      id: "utility-core-banking",
+      name: "Utility Bills → Core Banking",
+      nodes: [
+        {id: "start", type: "start", kind: "start", label: "Webhook: Bill Paid", x: 120, y: 140},
+        {id: "map", type: "transform", kind: "transform", label: "Map to CBS Format", x: 360, y: 140},
+        {id: "post", type: "api", kind: "api", label: "POST to CBS", x: 600, y: 140}
+      ],
+      edges: [
+        {from: "start", to: "map"},
+        {from: "map", to: "post"}
+      ]
+    }
+  };
+
+  // When "Use Template" is clicked
+  document.querySelectorAll(".use-template-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.templateId;
+      const temp = connectify_templates[id];
+      if (!temp) return alert("Template not found");
+
+      // Save to localStorage for flow_designer.html to pick up
+      localStorage.setItem("connectify.selectedTemplate", JSON.stringify(temp));
+
+      // Redirect
+      window.location.href = "flow_designer.html?from=templates";
+    });
+  });
+</script>
+
 
 </body>
 </html>
