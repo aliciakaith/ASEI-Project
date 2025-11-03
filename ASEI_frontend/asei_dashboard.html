@@ -468,7 +468,7 @@ async function loadNotifs() {
       list.innerHTML = `<div class="p-3 text-xs text-neutral-500">No notifications</div>`;
     } else {
         list.innerHTML = visible.map(n => `
-        <div class="relative p-3 hover:bg-neutral-50 dard:hover:bg-neutral-600">
+        <div class="relative p-3 hover:bg-neutral-50 dark:hover:bg-neutral-600">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
               ${typeChip(n.type)}
@@ -562,6 +562,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const { points = [] } = await fetchJson(api.series);
     return points.map(p => ({ x: new Date(Number(p.t)), y: p.count }));
   }
+  
+  const isDark = document.documentElement.classList.contains('dark');
+  const axisColour = isDark ? '#ffffff' : '#000000';
+  const tickColour = isDark ? '#9ca3af' : '#9ca3af';
   async function initChart() {
     const canvas = $('txChart');
     if (!canvas) return;
@@ -587,10 +591,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
           }
         },
+
         interaction: { mode: 'index', intersect: false },
         scales: {
-          x: { type: 'time', time: { unit: 'hour', displayFormats: { hour: 'HH:mm' }}, ticks: { autoSkip: true, maxTicksLimit: 6 }, grid: { display: false }},
-          y: { beginAtZero: true, ticks: { precision: 0 } }
+          x: { type: 'time', time: { unit: 'hour', displayFormats: { hour: 'HH:mm' }}, ticks: { autoSkip: true, maxTicksLimit: 6, color: tickColour }, grid: {color: 'transparent', borderColor: axisColour}},
+          y: { beginAtZero: true, ticks: { precision: 0, color: tickColour }, grid: {color: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)', borderColor: axisColour} }
         }
       }
     });
