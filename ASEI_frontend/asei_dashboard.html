@@ -220,7 +220,7 @@
         </div>
       </section>
 
-      <!-- Service Integrations -->
+
 <!-- Service Integrations -->
 <section class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4">
   <div class="flex items-center justify-between mb-4">
@@ -468,7 +468,7 @@ async function loadNotifs() {
       list.innerHTML = `<div class="p-3 text-xs text-neutral-500">No notifications</div>`;
     } else {
         list.innerHTML = visible.map(n => `
-        <div class="relative p-3 hover:bg-neutral-50 dark:hover:bg-neutral-600">
+        <div class="relative p-3 hover:bg-neutral-50 dark:hover:bg-neutral-600" data-id="${n.id}">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
               ${typeChip(n.type)}
@@ -479,7 +479,7 @@ async function loadNotifs() {
           <div class="mt-1 pr-8 text-xs text-neutral-600 dark:text-gray-200">${n.message || ''}</div>
           ${!n.isRead ? `<span class="mt-2 inline-block h-1.5 w-1.5 rounded-full bg-red-500"></span>` : ''}
 
-          <button class="js-notif-bin absolute bottom-2 right-2 p-1.5 rounded hover:bg-neutral-100" data-id="${n.id}" aria-label="Remove">
+          <button class="js-notif-bin absolute bottom-2 right-2 p-1.5 rounded data-id="${n.id}" aria-label="Remove">
             <svg class="w-4 h-4 text-gray-800 dark:text-white" aria-hidden="true" width="24" height="24" fill="none" viewBox="0 0 24 24">
               <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 7h14m-9 3v8m4-8v8M10 3h4a1 1 0 0 1 1 1v3H9V4a1 1 0 0 1 1-1ZM6 7h12v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7Z"/>
             </svg>
@@ -493,13 +493,13 @@ async function loadNotifs() {
     badge.classList.toggle('hidden', unread === 0);
 
     if(!list._wired){
-      list.wired = true;
+      list._wired = true;
       list.addEventListener('click', async(e) =>{
         const bin = e.target.closest('.js-notif-bin');
         if(!bin) return;
 
         const id = bin.dataset.id;
-        remberRemove(id);
+        rmberRemove(id);
 
         const row = bin.closest('[data-id]');
         row?.remove();
