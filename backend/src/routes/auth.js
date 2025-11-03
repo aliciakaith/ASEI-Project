@@ -37,7 +37,7 @@ function validatePassword(password, { email, firstName, lastName } = {}) {
     failures.push("Should not contain 3+ repeated characters in a row.");
   }
   if (/1234|abcd|qwer|password|letmein|welcome/i.test(password)) {
-    failures.push("Avoid common/weak patterns (e.g., 'password', '1234').");
+    failures.push("Avoid common or weak patterns (e.g., 'password', '1234').");
   }
 
   for (const r of rules) if (!r.ok) failures.push(r.msg);
