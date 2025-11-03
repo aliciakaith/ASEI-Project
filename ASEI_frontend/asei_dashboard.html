@@ -468,7 +468,7 @@ async function loadNotifs() {
       list.innerHTML = `<div class="p-3 text-xs text-neutral-500">No notifications</div>`;
     } else {
         list.innerHTML = visible.map(n => `
-        <div class="relative p-3 hover:bg-neutral-50">
+        <div class="relative p-3 hover:bg-neutral-50 dard:hover:bg-neutral-600">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
               ${typeChip(n.type)}
