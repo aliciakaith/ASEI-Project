@@ -509,12 +509,25 @@ async function loadNotifs() {
         const bin = e.target.closest('.js-notif-bin');
         if(!bin) return;
 
+        e.stopPropagation();
+
         const id = bin.dataset.id;
         rmberRemove(id);
 
-        const row = bin.closest('[data-id]');
-        row?.remove();
-      })
+        bin.closest('[data-id]')?.remove();
+
+        const remaining = list.querySelectorAll('[data-id]').length;
+        if(!remaining){
+          list.innerHTML = `<div class="p-3 text-xs text-neutral-500">No notifications</div>`;
+          badge.textContent = '';
+          badge.classList.add('hidden');
+        }
+        else{
+          const unread = list.querySelectorAll('[data-id] .bg-red-500').length;
+          badge.textContent = unread ? String(unread) : '';
+          badge.classList.toggle('hidden', unread === 0);
+        }
+      });
     }
 
     // Optional auto mark-all (keep or remove)
