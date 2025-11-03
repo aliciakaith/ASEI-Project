@@ -103,13 +103,19 @@
                     class="hidden absolute -top-1 -right-1 h-4 min-w-4 px-1 text-[10px] leading-4 text-center
                           rounded-full bg-red-500 text-white"></span>
             </button>
-            <div id="notifMenu" class="absolute hidden right-0 mt-2 w-80 max-h-96 overflow-y-auto bg-white border border-neutral-200 rounded-xl shadow-xl z-50">
-              <div class="flex items-center justify-between px-3 py-2 border-b border-neutral-100">
-                <div class="text-sm font-medium">Notifications</div>
-              </div>
-              <div id="notifList" class="divide-y divide-neutral-100"></div>
-            </div>
-          </div>
+  <!-- ADD this wrapper back -->
+  <div id="notifMenu" class="absolute hidden right-0 mt-2 w-80 max-h-96 overflow-y-auto
+                              bg-white border border-neutral-200 rounded-xl shadow-xl z-50">
+    <div class="flex items-center justify-between px-3 py-2 border-b border-neutral-100">
+      <div class="text-sm font-medium">Notifications</div>
+      <button id="notifMarkAll" class="text-xs px-2 py-1 rounded bg-neutral-100 hover:bg-neutral-200">
+        Mark all read
+      </button>
+    </div>
+
+    <div id="notifList" class="divide-y divide-neutral-100"></div>
+  </div>
+</div>
 
           <div class="relative">
             <button id="topProfileBtn" class="relative h-10 w-10 overflow-hidden rounded-full border border-neutral-200 dark:border-gray-400 hover:bg-neutral-800 dark:hover:bg-neutral-600" aria-label="Profile">
@@ -117,7 +123,7 @@
               <img id="mainPfp" class="js-main-pfp h-12 w-12 rounded-full object-cover hidden" alt="Profile"/>
             </button>
             <div id="profileMenu" class="hidden absolute top-full right-0 w-48 mt-2 rounded-lg z-50">
-              <button id="logoutBtn" class="px-3 py-3 w-full bg-neutral-200 hover:bg-neutral-300 text-red-500 hover:text-red-600 border border-neutral-300 dark:bg-neutral-600 dark:hover:bg-neutral-500 dark:text-red-500 dark:hover:text-red-400 dark:border-neutral-700 shadow-lg rounded-lg">Sign Out</button>
+              <button href="login.html"id="logoutBtn" class="px-3 py-3 w-full bg-neutral-200 hover:bg-neutral-300 text-red-500 hover:text-red-600 border border-neutral-300 dark:bg-neutral-600 dark:hover:bg-neutral-500 dark:text-red-500 dark:hover:text-red-400 dark:border-neutral-700 shadow-lg rounded-lg">Sign Out</button>
             </div>
           </div>
         </div>
@@ -394,31 +400,76 @@ const api = {
   }
 
   // ---------- Notifications ----------
-  async function loadNotifs() {
-    try {
-      const items = await fetchJson(api.notifs(20));
-      const list = $('notifList');
-      const badge = $('notifBadge');
-      if (!list) return;
+function timeAgo(tsMs){
+  const s = Math.floor((Date.now() - tsMs)/1000);
+  if (s < 60) return `${s}s ago`;
+  const m = Math.floor(s/60); if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m/60); if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h/24); return `${d}d ago`;
+}
 
+async function loadNotifs() {
+  try {
+    const items = await fetchJson(api.notifs(20)); // uses your existing helper
+    const list = $('notifList');
+    const badge = $('notifBadge');
+    if (!list) return;
+
+    const typeChip = (t) => {
+      const T = String(t || 'info').toLowerCase();
+      const map = {
+        info:  'bg-blue-100 text-blue-700',
+        warn:  'bg-yellow-100 text-yellow-800',
+        error: 'bg-red-100 text-red-700'
+      };
+      const cls = map[T] || 'bg-neutral-100 text-neutral-700';
+      const label = T.charAt(0).toUpperCase() + T.slice(1);
+      return `<span class="text-[10px] px-1.5 py-0.5 rounded ${cls}">${label}</span>`;
+    };
+
+    if (!items.length) {
+      list.innerHTML = `<div class="p-3 text-xs text-neutral-500">No notifications</div>`;
+    } else {
       list.innerHTML = items.map(n => `
-        <div class="p-3">
-          <div class="text-[10px] uppercase tracking-wide text-neutral-500">${n.type||'Info'}</div>
-          <div class="text-sm font-medium">${n.title||'Notification'}</div>
-          <div class="text-xs text-neutral-600">${n.message||''}</div>
+        <div class="p-3 hover:bg-neutral-50">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              ${typeChip(n.type)}
+              <div class="text-sm font-medium">${n.title || 'Notification'}</div>
+            </div>
+            <div class="text-[10px] text-neutral-500">${n.ts ? timeAgo(n.ts) : ''}</div>
+          </div>
+          <div class="mt-1 text-xs text-neutral-600">${n.message || ''}</div>
+          ${!n.isRead ? `<span class="mt-2 inline-block h-1.5 w-1.5 rounded-full bg-red-500"></span>` : ''}
         </div>
       `).join('');
-
-      const unread = items.filter(n => !n.isRead).length;
-      badge.textContent = unread ? String(unread) : '';
-      badge.classList.toggle('hidden', unread === 0);
-
-    // Mark as read after opening once (your backend supports read-all)
-    if (items.some(n => !n.isRead)) {
-      fetchJson(api.notifReadAll, { method: 'POST' }).catch(()=>{ /* non-blocking */ });
     }
-    } catch (e) { console.warn('Notifications failed', e); }
+
+    const unread = items.filter(n => !n.isRead).length;
+    badge.textContent = unread ? String(unread) : '';
+    badge.classList.toggle('hidden', unread === 0);
+
+    // Optional auto mark-all (keep or remove)
+    // if (items.some(n => !n.isRead)) {
+    //   fetchJson(api.notifReadAll, { method: 'POST' }).catch(()=>{});
+    // }
+  } catch (e) {
+    console.warn('Notifications failed', e);
   }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const mark = $('notifMarkAll');
+  if (mark) {
+    mark.addEventListener('click', async () => {
+      try {
+        await fetchJson(api.notifReadAll, { method: 'POST' });
+        await loadNotifs();
+      } catch {}
+    });
+  }
+});
+
 
   (function initNotifUI(){
     const btn = $('notifBtn'), menu = $('notifMenu');
@@ -493,6 +544,8 @@ const api = {
   // ---------- Service Integrations list ----------
   async function initServices() {
     const rows = await fetchJson(api.integrationsStatus);
+    const wrap = document.getElementById('services-list'); // add this line
+     if (!wrap) return;
     wrap.innerHTML = rows.map(r => {
       const status = r.status || 'pending';
       const badge = (s) => {
@@ -625,19 +678,64 @@ const api = {
     } catch { return false; }
   }
 
-  async function initAll() {
-    setText('txDate', new Date().toLocaleDateString());
-    await initProfile();
-    await Promise.all([loadKpis(), initChart(), initServices()]);
-    // 30s fallback polling
-    setInterval(() => window.__refreshDashboard(), 30000);
-    // Try SSE
-    startSSE();
-  }
+async function initAll() {
+  setText('txDate', new Date().toLocaleDateString());
+  await initProfile();
+  await Promise.all([loadKpis(), initChart(), initServices(), loadNotifs()]); // ← add loadNotifs()
+  setInterval(() => window.__refreshDashboard(), 30000);
+  startSSE();
+}
+
 
   document.addEventListener('DOMContentLoaded', initAll);
 })();
 </script>
+<script>
+  // Graceful JSON fetch that auto-redirects on 401 (optional but recommended)
+  async function fetchJsonAuth(url, options = {}) {
+    const res = await fetch(url, { credentials: 'include', ...options });
+    if (res.status === 401) {
+      // Unauthenticated -> back to login
+      window.location.href = 'login.html';
+      return Promise.reject(new Error('401'));
+    }
+    if (!res.ok) throw new Error(`${options.method || 'GET'} ${url} → ${res.status}`);
+    return res.status === 204 ? null : res.json();
+  }
+
+  // Bind Sign Out
+  (function initLogout(){
+    const btn = document.getElementById('logoutBtn');
+    if (!btn) return;
+
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+
+      // 1) Ask backend to clear the httpOnly session cookie
+      try {
+        await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+      } catch (_) {
+        // ignore network errors – we’ll still clean up locally
+      }
+
+      // 2) Keep theme, clear everything else
+      const THEME_KEY = 'connectify.theme';
+      const theme = localStorage.getItem(THEME_KEY);
+
+      try { sessionStorage.clear(); } catch(_) {}
+      try { localStorage.clear(); } catch(_) {}
+
+      if (theme) localStorage.setItem(THEME_KEY, theme);
+
+      // 3) Extra belt-and-braces if your cookie is NOT httpOnly (dev only)
+      // document.cookie = 'token=; Max-Age=0; path=/;';
+
+      // 4) Hop to login
+      window.location.href = 'login.html';
+    });
+  })();
+</script>
+
 <!-- 👇 Add this block right before </body> -->
 <script src="/socket.io/socket.io.js"></script>
 <script>
