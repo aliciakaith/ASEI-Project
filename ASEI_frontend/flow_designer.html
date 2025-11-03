@@ -152,8 +152,8 @@
       <div class="text-sm font-semibold mb-3">Node Library</div>
       <div class="text-xs uppercase text-neutral-500 dark:text-neutral-400 mb-2">General</div>
       <div class="flex gap-2 mb-4">
-        <button class="w-full border dark:border-neutral-700 rounded px-2 py-2 text-left text-blue-400 dark:text-blue-500" onclick="createNode('start')">Start</button>
-        <button class="w-full border border-blue-500 dark:border-blue-700 rounded px-2 py-2 text-left text-blue-400" onclick="createNode('end')">End</button>
+        <button class="w-full border dark:border-neutral-700 rounded px-2 py-2 text-left text-blue-400" onclick="createNode('start')">Start</button>
+        <button class="w-full border dark:border-neutral-700 rounded px-2 py-2 text-left text-blue-400" onclick="createNode('end')">End</button>
       </div>
 
       <div class="flex gap-1 items-center cursor-pointer" onclick="toggleMTN()">
@@ -168,10 +168,10 @@
         </svg>
       </div>
       <div id="mtnBtn" class="grid grid-cols-2 gap-2">
-        <button class="w-full border dark:border-neutral-700 rounded px-2 py-2 text-left text-green-600 dark:text-green-700" onclick="createNode('mtn.requestToPay','api','Request to Pay')">Request to Pay</button>
-        <button class="w-full border dark:border-neutral-700 rounded px-2 py-2 text-left text-green-600 dark:text-green-700" onclick="createNode('mtn.checkStatus','api','Check Status')">Check Status</button>
-        <button class="w-full border dark:border-neutral-700 rounded px-2 py-2 text-left text-green-600 dark:text-green-700" onclick="createNode('mtn.getBalance','api','Get Balance')">Get Balance</button>
-        <button class="w-full border dark:border-neutral-700 rounded px-2 py-2 text-left text-green-600 dark:text-green-700" onclick="createNode('mtn.getAccountHolder','api','Account Holder')">Account Holder</button>
+        <button class="w-full border dark:border-neutral-700 rounded px-2 py-2 text-left text-green-600 dark:text-green-600" onclick="createNode('mtn.requestToPay','api','Request to Pay')">Request to Pay</button>
+        <button class="w-full border dark:border-neutral-700 rounded px-2 py-2 text-left text-green-600 dark:text-green-600" onclick="createNode('mtn.checkStatus','api','Check Status')">Check Status</button>
+        <button class="w-full border dark:border-neutral-700 rounded px-2 py-2 text-left text-green-600 dark:text-green-600" onclick="createNode('mtn.getBalance','api','Get Balance')">Get Balance</button>
+        <button class="w-full border dark:border-neutral-700 rounded px-2 py-2 text-left text-green-600 dark:text-green-600" onclick="createNode('mtn.getAccountHolder','api','Account Holder')">Account Holder</button>
       </div>
 
       <div class="flex gap-1 items-center cursor-pointer" onclick="toggleFW()">
@@ -186,8 +186,8 @@
         </svg>
       </div>
       <div id="fWBtn" class="grid grid-cols-2 gap-2">
-        <button class="w-full border dark:border-neutral-700 rounded px-2 py-2 text-left text-green-600 dark:text-green-700" onclick="createNode('fW.fWPayment', 'api', 'Payment')">Payment</button>
-        <button class="w-full border dark:border-neutral-700 rounded px-2 py-2 text-left text-green-600 dark:text-green-700" onclick="createNode('fW.fWVerifyPayment', 'api', 'Verify Payment')">Verify Payment</button>
+        <button class="w-full border dark:border-neutral-700 rounded px-2 py-2 text-left text-green-600 dark:text-green-600" onclick="createNode('fW.fWPayment', 'api', 'Payment')">Payment</button>
+        <button class="w-full border dark:border-neutral-700 rounded px-2 py-2 text-left text-green-600 dark:text-green-600" onclick="createNode('fW.fWVerifyPayment', 'api', 'Verify Payment')">Verify Payment</button>
       </div>
       
       <div class="mt-6">
@@ -274,6 +274,7 @@ function openProps(id, name) {
     <label class="block text-sm font-medium mb-1">Node Label</label>
     <input id="prop_name" class="w-full dark:bg-neutral-600 border dark:border-neutral-700 rounded px-2 py-1 mb-3" value="${name}">
     <button class="px-3 py-2 bg-blue-500 border border-blue-600 hover:bg-blue-600 text-white rounded" onclick="saveNodeLabel('${id}')">Save</button>
+    <button class="px-3 py-2 bg-red-500 border border-red-600 hover:bg-red-600 text-white rounded" onclick=removeNode('${id}')>Remove</button>
   `;
 
   window.scrollTo({
@@ -285,6 +286,23 @@ function saveNodeLabel(id) {
   const newName = document.getElementById('prop_name').value;
   const el = document.getElementById(id);
   if (el) el.querySelector('span').textContent = newName;
+}
+
+function removeNode(id) {
+  const el = document.getElementById(id)
+  if(!el) return;
+
+  if(jsPlumbInstance &&jsPlumbInstance.remove){
+    jsPlumbInstance.remove(el);
+  }
+  else{
+    jsPlumbInstance.deleteConnectionsForElement(id);
+    jsPlumbInstance.removeAllEndpoints(id);
+    el.remove();
+  }
+
+  const panel = document.getElementById('propertiesPanel');
+  if(panel) panel.classList.add('hidden');
 }
 
 function exportFlow() {
