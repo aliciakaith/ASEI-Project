@@ -15,6 +15,22 @@ const emitToOrg = (req, event, payload) => {
   io?.to(`org:${req.user.org}`).emit(event, payload ?? {});
 };
 
+// Helper: create a notification row and notify the org via socket
+async function createNotification(req, { type = 'info', title = '', message = '', related_id = null }) {
+  try {
+    const orgId = req.user?.org;
+    if (!orgId) return;
+    await query(
+      `INSERT INTO notifications (org_id, type, title, message, related_id) VALUES ($1,$2,$3,$4,$5)`,
+      [orgId, type, title, message, related_id]
+    );
+    emitToOrg(req, 'notifications:update');
+  } catch (err) {
+    // don't crash the caller flow for non-critical notif write failures
+    console.warn('createNotification failed', err);
+  }
+}
+
 // ---------- DEV SEED (remove before prod) ----------
 router.post("/dev/seed-demo", async (req, res) => {
   const orgId = req.user.org;
@@ -47,12 +63,26 @@ await query(
 
 
   // notifications
+  // Insert demo notifications only if an identical notification doesn't already exist
   await query(
     `
-    INSERT INTO notifications (org_id, type, title, message) VALUES
-      ($1,'info' , 'Welcome',        'Your workspace is ready.'),
-      ($1,'warn' , 'High latency',    'Average latency exceeded 200ms in the last hour.'),
-      ($1,'error', 'Sandbox failure', 'Payment to sandbox gateway failed (HTTP 500).');
+    INSERT INTO notifications (org_id, type, title, message)
+    SELECT $1, 'info', 'Welcome', 'Your workspace is ready.'
+    WHERE NOT EXISTS (
+      SELECT 1 FROM notifications WHERE org_id=$1 AND title='Welcome' AND message='Your workspace is ready.'
+    );
+
+    INSERT INTO notifications (org_id, type, title, message)
+    SELECT $1, 'warn', 'High latency', 'Average latency exceeded 200ms in the last hour.'
+    WHERE NOT EXISTS (
+      SELECT 1 FROM notifications WHERE org_id=$1 AND title='High latency' AND message='Average latency exceeded 200ms in the last hour.'
+    );
+
+    INSERT INTO notifications (org_id, type, title, message)
+    SELECT $1, 'error', 'Sandbox failure', 'Payment to sandbox gateway failed (HTTP 500).'
+    WHERE NOT EXISTS (
+      SELECT 1 FROM notifications WHERE org_id=$1 AND title='Sandbox failure' AND message='Payment to sandbox gateway failed (HTTP 500).'
+    );
   `,
     [orgId]
   );
@@ -187,13 +217,29 @@ router.post("/integrations", express.json(), async (req, res) => {
       // treat 2xx as success
       if (r.ok) {
         await query("UPDATE integrations SET status='active', last_checked=now() WHERE id=$1 AND org_id=$2", [integrationId, orgId]);
+        // notify org that integration became active
+        await createNotification(req, {
+          type: 'info',
+          title: `Integration active: ${name}`,
+          message: `${name} verified successfully and is now active.`
+        });
       } else {
         // non-2xx -> error
         await query("UPDATE integrations SET status='error', last_checked=now() WHERE id=$1 AND org_id=$2", [integrationId, orgId]);
+        await createNotification(req, {
+          type: 'error',
+          title: `Integration error: ${name}`,
+          message: `Verification failed for ${name} (status ${r.status}).`
+        });
       }
     } catch (err) {
       // network, timeout, DNS -> error
       await query("UPDATE integrations SET status='error', last_checked=now() WHERE id=$1 AND org_id=$2", [integrationId, orgId]);
+      await createNotification(req, {
+        type: 'error',
+        title: `Integration error: ${name}`,
+        message: `Verification failed for ${name}: ${String(err.message || err)}`
+      });
     } finally {
       emitToOrg(req, "integrations:update");
     }
@@ -238,8 +284,15 @@ router.post("/integrations/:id/verify", express.json(), async (req, res) => {
       clearTimeout(timeout);
       if (r.ok) await query("UPDATE integrations SET status='active', last_checked=now() WHERE id=$1 AND org_id=$2", [id, orgId]);
       else       await query("UPDATE integrations SET status='error', last_checked=now() WHERE id=$1 AND org_id=$2", [id, orgId]);
+      // create notifications for manual verify path as well
+      if (r.ok) {
+        await createNotification(req, { type: 'info', title: `Integration active: ${rows[0].name}`, message: `${rows[0].name} verified successfully.` });
+      } else {
+        await createNotification(req, { type: 'error', title: `Integration error: ${rows[0].name}`, message: `Verification failed for ${rows[0].name} (status ${r.status}).` });
+      }
     } catch {
       await query("UPDATE integrations SET status='error', last_checked=now() WHERE id=$1 AND org_id=$2", [id, orgId]);
+      await createNotification(req, { type: 'error', title: `Integration error: ${rows[0].name}`, message: `Verification failed for ${rows[0].name}: network/timeout.` });
     } finally {
       emitToOrg(req, "integrations:update");
     }

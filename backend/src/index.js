@@ -7,6 +7,7 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import { createServer } from "http";
 import { Server } from "socket.io";
+import { pool } from "./db/postgres.js";
 
 import flowsRouter from "./routes/flows.js";
 import rolesRouter from "./routes/roles.js";
@@ -81,6 +82,13 @@ app.use("/api/mtn", requireAuth, mtnRouter);
 // ------------------------------------------------------
 // Serve static frontend (optional in CI)
 // ------------------------------------------------------
+// Also serve backend-local static assets (e.g. admin scripts) from ./src/public
+const BACKEND_STATIC = path.resolve(__dirname, 'public');
+if (fs.existsSync(BACKEND_STATIC)) {
+  app.use(express.static(BACKEND_STATIC));
+  console.log('Serving backend static from:', BACKEND_STATIC);
+}
+
 const candidates = [
   process.env.STATIC_ROOT,
   path.resolve(__dirname, "../../../ASEI_frontend"),
@@ -147,6 +155,32 @@ io.on("connection", (socket) => {
     if (orgId) socket.join(`org:${orgId}`);
   });
 });
+
+// Postgres LISTEN -> forward to Socket.IO for real-time notifications
+(async function setupDbListener() {
+  if (!pool) return;
+  try {
+    const client = await pool.connect();
+    // Listen on the channel created by the trigger
+    await client.query('LISTEN notifications_channel');
+    client.on('notification', (msg) => {
+      try {
+        const payload = msg.payload ? JSON.parse(msg.payload) : {};
+        const orgId = payload.org_id || payload.org || null;
+        if (orgId) {
+          // emit to the org room so frontend clients receive updates
+          io.to(`org:${orgId}`).emit('notifications:update');
+        }
+      } catch (err) {
+        console.warn('Failed to handle pg notification', err);
+      }
+    });
+    client.on('error', (err) => console.error('PG listener error', err));
+    console.log('Listening to notifications_channel for real-time updates');
+  } catch (err) {
+    console.error('Failed to set up DB listener for notifications:', err.message || err);
+  }
+})();
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`App running at http://localhost:${PORT}`);

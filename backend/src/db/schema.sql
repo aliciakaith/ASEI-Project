@@ -53,4 +53,28 @@ CREATE TABLE IF NOT EXISTS notifications (
 CREATE INDEX IF NOT EXISTS idx_notifications_org_created
   ON notifications (org_id, created_at DESC);
 
+-- Trigger: when a transaction event is inserted and it's a failure, create a notification
+CREATE OR REPLACE FUNCTION notify_on_tx_failure() RETURNS trigger AS $$
+BEGIN
+  IF NEW.success = FALSE THEN
+    INSERT INTO notifications (org_id, type, title, message, related_id)
+    VALUES (
+      NEW.org_id,
+      'error',
+      'Transaction failed',
+      CONCAT('A transaction failed (id=', COALESCE(NEW.id::text, ''), ').'),
+      NEW.id
+    );
+    -- notify listeners with minimal payload
+    PERFORM pg_notify('notifications_channel', json_build_object('org_id', NEW.org_id)::text);
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trig_notify_on_tx_failure ON tx_events;
+CREATE TRIGGER trig_notify_on_tx_failure
+AFTER INSERT ON tx_events
+FOR EACH ROW EXECUTE PROCEDURE notify_on_tx_failure();
+
 

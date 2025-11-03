@@ -81,7 +81,7 @@
 
           <img id="initialSidebarPfp" src="images/default_avatar.png" class="js-initial-pfp h-8 w-8 rounded-full object-cover" alt="O Pfp"/>
           <img id="mainPfp" class="js-main-pfp h-8 w-8 rounded-full object-cover hidden" alt="N Pfp"/>
-          <span class="text-sm font-medium">Insert User Name</span>
+          <span class="text-sm font-medium js-profile-name">Loading...</span>
       </div>
     </div>
   </aside>
@@ -348,7 +348,8 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/date-fns@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
+  <script src="js/profile.js"></script>
 <script>
 (() => {
 const api = {
@@ -387,15 +388,30 @@ const api = {
   // ---------- Profile (name + avatar) ----------
   async function initProfile() {
     try {
+      // backend /api/dashboard/me returns a plain user object: { id, email, org, firstName, lastName }
       const me = await fetchJson(api.me);
-      const name = me?.fullName || 'User';
-      // Sidebar + top avatar/name
-      qsa('#profileBtn span').forEach(el => el.textContent = name);
-      // Prefer real avatar if provided
+
+      // Build a friendly display name: prefer first+last, fall back to email localpart, then generic 'User'
+      const fullName = [me?.firstName, me?.lastName].filter(Boolean).join(' ').trim();
+      const emailLocal = (me?.email || '').split('@')[0];
+      const displayName = fullName || emailLocal || 'User';
+
+      // Update sidebar + top profile name elements
+      qsa('.js-profile-name').forEach(el => el.textContent = displayName);
+
+      // Prefer real avatar if provided, otherwise show the initial-avatar image
       if (me?.avatarUrl) {
         qsa('.js-main-pfp').forEach(img => { img.src = me.avatarUrl; img.classList.remove('hidden'); });
         qsa('.js-initial-pfp').forEach(img => img.classList.add('hidden'));
+      } else {
+        qsa('.js-initial-pfp').forEach(img => img.classList.remove('hidden'));
+        qsa('.js-main-pfp').forEach(img => img.classList.add('hidden'));
       }
+
+      // expose current user for other scripts (socket join)
+      window.__me = me;
+      // if socket already exists and is connected, join the org room
+      try { if (window.__socket && window.__socket.connected && me?.org) window.__socket.emit('join-org', me.org); } catch(_){ }
     } catch (e) { console.warn('Profile load failed', e); }
   }
 
@@ -457,7 +473,7 @@ async function loadNotifs() {
     console.warn('Notifications failed', e);
   }
 }
-
+window.loadNotifs = loadNotifs;
 document.addEventListener('DOMContentLoaded', () => {
   const mark = $('notifMarkAll');
   if (mark) {
@@ -741,9 +757,13 @@ async function initAll() {
 <script>
   (function initSocket(){
     const socket = io({ withCredentials: true });
+    // expose socket to other scripts
+    window.__socket = socket;
 
     socket.on('connect', () => {
       console.log('✅ Connected to Socket.IO');
+      // if we already have the current user, join the org room
+      try { if (window.__me && window.__me.org) socket.emit('join-org', window.__me.org); } catch(_){}
     });
 
     // When backend emits updates
