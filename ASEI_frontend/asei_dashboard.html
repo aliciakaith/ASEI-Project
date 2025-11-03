@@ -93,7 +93,7 @@
         <div class="flex items-center gap-3">
           <!-- Notification Bell -->
           <div class="relative">
-            <button id="notifBtn" class="relative p-2 rounded-lg bg-white border border-neutral-200 dark:border-gray-700 dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700" aria-label="Notifications">
+            <button id="notifBtn" class="relative p-2 rounded-lg bg-white border border-neutral-200 dark:border-neutral-700 dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700" aria-label="Notifications">
               <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5"/>
                 <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
@@ -103,16 +103,15 @@
                           rounded-full bg-red-500 text-white"></span>
             </button>
   <!-- ADD this wrapper back -->
-  <div id="notifMenu" class="absolute hidden right-0 mt-2 w-80 max-h-96 overflow-y-auto
-                              bg-white border border-neutral-200 rounded-xl shadow-xl z-50">
+  <div id="notifMenu" class="absolute hidden right-0 mt-2 w-80 max-h-96 overflow-y-auto bg-white border border-neutral-200 dark:bg-neutral-700 dark:border-neutral-600 rounded-xl shadow-xl z-50">
     <div class="flex items-center justify-between px-3 py-2 border-b border-neutral-100">
       <div class="text-sm font-medium">Notifications</div>
-      <button id="notifMarkAll" class="text-xs px-2 py-1 rounded bg-neutral-100 hover:bg-neutral-200">
-        Mark all read
+      <button id="notifMarkAll" class="text-xs px-2 py-1 rounded bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-600 dark:hover:bg-neutral-800">
+        Clear
       </button>
     </div>
 
-    <div id="notifList" class="divide-y divide-neutral-100"></div>
+    <div id="notifList" class="divide-y divide-neutral-100 dark:divide-neutral-600"></div>
   </div>
 </div>
 
@@ -436,12 +435,21 @@ function timeAgo(tsMs){
   const d = Math.floor(h/24); return `${d}d ago`;
 }
 
+const remove_key = 'connectify.removeNotifs';
+const removeNotifs = new Set(JSON.parse(localStorage.getItem(remove_key)) || '[]');
+const rmberRemove = (id) =>{
+  removeNotifs.add(String(id));
+  localStorage.setItem(remove_key, JSON.stringify([...removeNotifs]));
+};
+
 async function loadNotifs() {
   try {
     const items = await fetchJson(api.notifs(20)); // uses your existing helper
-    const list = $('notifList');
-    const badge = $('notifBadge');
+    const list = document.getElementById('notifList');
+    const badge = document.getElementById('notifBadge');
     if (!list) return;
+
+    const visible = items.filter(n => !removeNotifs.has(String(n.id)));
 
     const typeChip = (t) => {
       const T = String(t || 'info').toLowerCase();
@@ -455,11 +463,11 @@ async function loadNotifs() {
       return `<span class="text-[10px] px-1.5 py-0.5 rounded ${cls}">${label}</span>`;
     };
 
-    if (!items.length) {
+    if (!visible.length) {
       list.innerHTML = `<div class="p-3 text-xs text-neutral-500">No notifications</div>`;
     } else {
-      list.innerHTML = items.map(n => `
-        <div class="p-3 hover:bg-neutral-50">
+        list.innerHTML = visible.map(n => `
+        <div class="relative p-3 hover:bg-neutral-50">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
               ${typeChip(n.type)}
@@ -467,15 +475,35 @@ async function loadNotifs() {
             </div>
             <div class="text-[10px] text-neutral-500">${n.ts ? timeAgo(n.ts) : ''}</div>
           </div>
-          <div class="mt-1 text-xs text-neutral-600">${n.message || ''}</div>
+          <div class="mt-1 pr-8 text-xs text-neutral-600">${n.message || ''}</div>
           ${!n.isRead ? `<span class="mt-2 inline-block h-1.5 w-1.5 rounded-full bg-red-500"></span>` : ''}
+
+          <button class="js-notif-bin absolute bottom-2 right-2 p-1 rounded hover:bg-neutral-100" data-id="${n.id}" aria-label="Remove">
+            <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" width="24" height="24" fill="none" viewBox="0 0 24 24">
+              <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 7h14m-9 3v8m4-8v8M10 3h4a1 1 0 0 1 1 1v3H9V4a1 1 0 0 1 1-1ZM6 7h12v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7Z"/>
+            </svg>
+          </button>
         </div>
       `).join('');
     }
 
-    const unread = items.filter(n => !n.isRead).length;
+    const unread = visible.filter(n => !n.isRead).length;
     badge.textContent = unread ? String(unread) : '';
     badge.classList.toggle('hidden', unread === 0);
+
+    if(!list._wired){
+      list.wired = true;
+      list.addEventListener('click', async(e) =>{
+        const bin = e.target.closest('.js-notif-bin');
+        if(!bin) return;
+
+        const id = bin.dataset.id;
+        remberRemove(id);
+
+        const row = bin.closest('[data-id]');
+        row?.remove();
+      })
+    }
 
     // Optional auto mark-all (keep or remove)
     // if (items.some(n => !n.isRead)) {
@@ -853,5 +881,7 @@ async function initAll() {
     socket.on('integrations:update', () => initServices?.());
   })();
 </script>
+
+
 </body>
 </html>

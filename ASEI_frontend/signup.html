@@ -100,7 +100,7 @@
                 <input type="password" id="confirmedPassword" name="confirmedPassword"
                         class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg block w-full p-2.5 pr-10"
                         required aria-describedby="pw-hints" autocomplete="add-password">
-                <p id="pw-match-msg" class="text-xs mt-1 text-gray-400" aria-live="polite"></p>
+              
                 <button type="button" id="toggle-confirmed-password" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-white focus:outline-none" aria-label="Show password" aria-pressed="false">
                     <!-- closed eye -->
                     <svg id="confirmedClosedEye" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -117,6 +117,7 @@
                     </svg>
                 </button>
                 </div>
+                <p id="pw-match-msg" class="text-xs mt-1 text-gray-400" aria-live="polite"></p>
               </div>
 
 
@@ -136,7 +137,7 @@
 
             </div>
           
-            <button type="submit" class="w-full text-white bg-[#3f9fff] hover:bg-[#1188ff] font-medium rounded-lg text-sm px-5 py-2.5 text-center">
+            <button type="submit" disabled class="w-full text-white bg-[#3f9fff] hover:bg-[#1188ff] font-medium rounded-lg text-sm px-5 py-2.5 text-center">
               Create an account
             </button>
           </form>
@@ -212,17 +213,18 @@
 
     return passed === 5;
   }
-
+  const termsEl= document.getElementById('terms');
   function updateMatch() {
     const pw = passwordEl.value;
     const okAllRules = updateChecklist(pw);
     const match = pw.length > 0 && pw === confirmEl.value;
+    const okTerms = !!termsEl?.checked;
 
     matchMsg.textContent = match ? "Passwords match." : (confirmEl.value ? "Passwords do not match." : "");
     matchMsg.className = "text-xs mt-1 " + (match ? "text-green-400" : "text-red-400");
 
     // Enable submit only if rules pass + match
-    submitBtn.disabled = !(okAllRules && match);
+    submitBtn.disabled = !(okAllRules && match && okTerms);
     submitBtn.classList.toggle("opacity-50", submitBtn.disabled);
     submitBtn.classList.toggle("cursor-not-allowed", submitBtn.disabled);
   }
@@ -230,6 +232,7 @@
   // live checks
   passwordEl.addEventListener("input", updateMatch);
   confirmEl.addEventListener("input", updateMatch);
+  termsEl.addEventListener("change", updateMatch);
 
   // initial state
   updateMatch();
