@@ -737,12 +737,33 @@ form?.addEventListener('submit', async (e) => {
       parsedBody = undefined;
     }
 
-    const resp = await fetch(api.sandboxTest, {
+    // Perform proxy POST and handle both success and proxy-error shapes
+    const fetchResp = await fetch(api.sandboxTest, {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url, method: picked, body: parsedBody })
-    }).then(r => r.json());
+    });
+
+    // try to parse JSON; fall back to raw text
+    let resp;
+    try {
+      resp = await fetchResp.json();
+    } catch (err) {
+      const raw = await fetchResp.text().catch(() => '');
+      resp = { error: 'invalid_json_response', raw };
+    }
+
+    // If the proxy returned a non-2xx, show an error view with any provided error/duration
+    if (!fetchResp.ok) {
+      resultEl.innerHTML = `
+        <div class="font-medium">Proxy Error${fetchResp.status ? `: ${fetchResp.status}` : ''}</div>
+        <div class="text-[11px] text-neutral-500 mt-1">Duration: ${resp.durationMs ?? 'n/a'} ms • Content-Type: ${resp.contentType || 'n/a'}</div>
+        <pre class="text-xs whitespace-pre-wrap mt-2">${resp.error ? String(resp.error) : (resp.raw || JSON.stringify(resp, null, 2))}</pre>
+        <div class="mt-2 text-[11px] text-neutral-500">Headers:</div>
+        <pre class="text-[11px] whitespace-pre-wrap">${JSON.stringify(resp.headers || {}, null, 2)}</pre>`;
+      return;
+    }
 
     const prettyBody = (() => {
       if (typeof resp.body === 'string') {
@@ -790,8 +811,8 @@ form?.addEventListener('submit', async (e) => {
     hide();
   });
 })();
-
-  // ---------- Live updates via SSE (fallback to 30s polling) ----------
+  
+// ---------- Live updates via SSE (fallback to 30s polling) ----------
 function startSSE() {
   return false; // disable SSE; Socket.IO handles real-time
 }
@@ -800,16 +821,14 @@ async function initAll() {
   setText('txDate', new Date().toLocaleDateString());
   await initProfile();
   await Promise.all([loadKpis(), initChart(), initServices(), loadNotifs()]);
-  // Refresh dashboard stats every 30s
   setInterval(() => window.__refreshDashboard(), 30000);
-  // Refresh integrations list every 10s to update last sync times
   setInterval(() => initServices(), 10000);
   startSSE();
 }
 
-
-  document.addEventListener('DOMContentLoaded', initAll);
+document.addEventListener('DOMContentLoaded', initAll);
 })();
+
 </script>
 <script>
   // Graceful JSON fetch that auto-redirects on 401 (optional but recommended)
