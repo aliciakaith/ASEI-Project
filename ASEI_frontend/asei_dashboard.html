@@ -806,10 +806,67 @@ form?.addEventListener('submit', async (e) => {
 
   // Placeholder submit (no backend call yet)
   const form = $('compliance-form');
-  form?.addEventListener('submit', (e) => {
+  form?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    alert('Compliance report generation coming soon.');
-    hide();
+    const type = form.querySelector('select')?.value || 'Integration Summary';
+    const recipient = form.querySelector('input[type="email"]')?.value?.trim();
+    if (!recipient) { alert('Please provide a recipient email'); return; }
+
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const origText = submitBtn?.textContent;
+    if (submitBtn) { submitBtn.textContent = 'Generating…'; submitBtn.disabled = true; }
+
+    try {
+      const resp = await fetch(api.complianceGenerate, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ reportType: type, recipientEmail: recipient })
+      });
+
+      const payload = await (async () => {
+        try { return await resp.json(); } catch { return { error: 'invalid_json' }; }
+      })();
+
+      if (!resp.ok) {
+        alert('Failed to generate report: ' + (payload.message || payload.error || resp.status));
+        if (typeof hide === 'function') hide();
+        return;
+      }
+
+      // Show success + download link
+      const resultBox = document.createElement('div');
+      resultBox.className = 'p-3';
+      resultBox.innerHTML = `<div class="font-medium">Report generated and emailed to ${payload.emailedTo}</div>`;
+
+      // Offer download of the returned report object
+      if (payload.report) {
+        const blob = new Blob([JSON.stringify(payload.report, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `compliance-${(new Date()).toISOString()}.json`;
+        a.textContent = 'Download report (JSON)';
+        a.className = 'inline-block mt-2 text-sm text-blue-600 hover:underline';
+        resultBox.appendChild(a);
+      }
+
+      // insert result under the modal
+      const modalBody = form.parentElement;
+      // remove any previous small info area
+      const prev = modalBody.querySelector('.__compliance_result');
+      if (prev) prev.remove();
+      const wrapper = document.createElement('div'); wrapper.className = '__compliance_result mt-3';
+      wrapper.appendChild(resultBox);
+      modalBody.appendChild(wrapper);
+
+      // keep modal open so user can download; optionally hide after a bit
+      // hide();
+    } catch (err) {
+      alert('Error generating report: ' + (err.message || err));
+    } finally {
+      if (submitBtn) { submitBtn.textContent = origText; submitBtn.disabled = false; }
+    }
   });
 })();
   
