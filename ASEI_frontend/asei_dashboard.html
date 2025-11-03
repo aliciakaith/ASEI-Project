@@ -837,7 +837,7 @@ form?.addEventListener('submit', async (e) => {
       // Show success + download link
       const resultBox = document.createElement('div');
       resultBox.className = 'p-3';
-      resultBox.innerHTML = `<div class="font-medium">Report generated and emailed to ${payload.emailedTo}</div>`;
+  resultBox.innerHTML = `<div class="font-medium">Report generated and emailed to ${payload.emailedTo}</div>`;
 
       // Offer download of the returned report object
       if (payload.report) {
@@ -850,6 +850,32 @@ form?.addEventListener('submit', async (e) => {
         a.className = 'inline-block mt-2 text-sm text-blue-600 hover:underline';
         resultBox.appendChild(a);
       }
+
+      // small retry button
+      const retry = document.createElement('button');
+      retry.type = 'button';
+      retry.textContent = 'Generate again';
+      retry.className = 'ml-3 inline-block px-3 py-1 text-xs bg-neutral-200 rounded hover:bg-neutral-300';
+      retry.addEventListener('click', () => {
+        // trigger the form submit again
+        submitBtn?.click();
+      });
+      resultBox.appendChild(retry);
+
+      // brief snackbar helper
+      const showSnack = (msg) => {
+        let s = document.getElementById('__snack');
+        if (!s) {
+          s = document.createElement('div');
+          s.id = '__snack';
+          s.className = 'fixed bottom-6 left-1/2 -translate-x-1/2 bg-black text-white px-4 py-2 rounded shadow';
+          document.body.appendChild(s);
+        }
+        s.textContent = msg;
+        s.style.opacity = '1';
+        setTimeout(() => { s.style.opacity = '0'; }, 3000);
+      };
+      showSnack('Compliance report generated');
 
       // insert result under the modal
       const modalBody = form.parentElement;

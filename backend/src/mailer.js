@@ -20,14 +20,16 @@ transporter.verify()
     console.error("❌ SMTP transporter verify failed:", err && err.message ? err.message : err);
   });
 
-export async function sendMail({ to, subject, text, html }) {
-  return transporter.sendMail({
+export async function sendMail({ to, subject, text, html, attachments } = {}) {
+  const mailOptions = {
     from: process.env.MAIL_FROM || process.env.SMTP_USER,
     to,
     subject,
     text,
     html,
-  });
+  };
+  if (attachments) mailOptions.attachments = attachments;
+  return transporter.sendMail(mailOptions);
 }
 
 export function verificationEmail(code) {
