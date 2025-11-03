@@ -152,8 +152,8 @@
       <div class="text-sm font-semibold mb-3">Node Library</div>
       <div class="text-xs uppercase text-neutral-500 dark:text-neutral-400 mb-2">General</div>
       <div class="flex gap-2 mb-4">
-        <button class="w-full border dark:border-neutral-700 rounded px-2 py-2 text-left" onclick="createNode('start')">Start</button>
-        <button class="w-full border dark:border-neutral-700 rounded px-2 py-2 text-left" onclick="createNode('end')">End</button>
+        <button class="w-full border dark:border-neutral-700 rounded px-2 py-2 text-left text-blue-400 dark:text-blue-500" onclick="createNode('start')">Start</button>
+        <button class="w-full border border-blue-500 dark:border-blue-700 rounded px-2 py-2 text-left text-blue-400" onclick="createNode('end')">End</button>
       </div>
 
       <div class="flex gap-1 items-center cursor-pointer" onclick="toggleMTN()">
@@ -168,14 +168,30 @@
         </svg>
       </div>
       <div id="mtnBtn" class="grid grid-cols-2 gap-2">
-        <button class="w-full border dark:border-neutral-700 rounded px-2 py-2 text-left" onclick="createNode('mtn.requestToPay','api','Request to Pay')">Request to Pay</button>
-        <button class="w-full border dark:border-neutral-700 rounded px-2 py-2 text-left" onclick="createNode('mtn.checkStatus','api','Check Status')">Check Status</button>
-        <button class="w-full border dark:border-neutral-700 rounded px-2 py-2 text-left" onclick="createNode('mtn.getBalance','api','Get Balance')">Get Balance</button>
-        <button class="w-full border dark:border-neutral-700 rounded px-2 py-2 text-left" onclick="createNode('mtn.getAccountHolder','api','Account Holder')">Account Holder</button>
+        <button class="w-full border dark:border-neutral-700 rounded px-2 py-2 text-left text-green-600 dark:text-green-700" onclick="createNode('mtn.requestToPay','api','Request to Pay')">Request to Pay</button>
+        <button class="w-full border dark:border-neutral-700 rounded px-2 py-2 text-left text-green-600 dark:text-green-700" onclick="createNode('mtn.checkStatus','api','Check Status')">Check Status</button>
+        <button class="w-full border dark:border-neutral-700 rounded px-2 py-2 text-left text-green-600 dark:text-green-700" onclick="createNode('mtn.getBalance','api','Get Balance')">Get Balance</button>
+        <button class="w-full border dark:border-neutral-700 rounded px-2 py-2 text-left text-green-600 dark:text-green-700" onclick="createNode('mtn.getAccountHolder','api','Account Holder')">Account Holder</button>
+      </div>
+
+      <div class="flex gap-1 items-center cursor-pointer" onclick="toggleFW()">
+        <span class="text-xs uppercase text-neutral-500 dark:text-neutral-400 mb-2 mt-5">Flutterwave</span>
+        <!-- open arrow -->
+        <svg id="openArrowFW" class="w-3.5 h-3.5 text-neutral-500 dark:text-neutral-400 transition-transform duration-200 translate-y-1" fill="none" viewbox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 19l6-6 6 6" />
+        </svg>
+        <!-- close arrow -->
+        <svg id="closeArrowFW" class="hidden w-3.5 h-3.5 text-neutral-500 dark:text-neutral-400 transition-transform duration-200 translate-y-1" fill="none" viewbox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 12l6 6 6-6" />
+        </svg>
+      </div>
+      <div id="fWBtn" class="grid grid-cols-2 gap-2">
+        <button class="w-full border dark:border-neutral-700 rounded px-2 py-2 text-left text-green-600 dark:text-green-700" onclick="createNode('fW.fWPayment', 'api', 'Payment')">Payment</button>
+        <button class="w-full border dark:border-neutral-700 rounded px-2 py-2 text-left text-green-600 dark:text-green-700" onclick="createNode('fW.fWVerifyPayment', 'api', 'Verify Payment')">Verify Payment</button>
       </div>
       
       <div class="mt-6">
-        <button class="w-full px-3 py-2 border border-red-700/40 rounded" onclick="clearCanvas()">Clear Canvas</button>
+        <button class="w-full px-3 py-2 border border-red-600 dark:border-red-700 rounded" onclick="clearCanvas()">Clear Canvas</button>
       </div>
     </aside>
 
@@ -398,6 +414,18 @@ function clearCanvas() {
       openArrow.classList.toggle('hidden', isHidden);
       closeArrow.classList.toggle('hidden', !isHidden);
 
+    }
+
+    function toggleFW(){
+      const fWBtn = document.getElementById('fWBtn');
+
+      const openArrowFW = document.getElementById('openArrowFW');
+      const closeArrowFW = document.getElementById('closeArrowFW');
+      fWBtn.classList.toggle('hidden');
+
+      const isHidden = fWBtn.classList.contains('hidden');
+      openArrowFW.classList.toggle('hidden', isHidden);
+      closeArrowFW.classList.toggle('hidden', !isHidden);
     }
   </script>
 
