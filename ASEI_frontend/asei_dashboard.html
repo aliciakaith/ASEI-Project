@@ -81,7 +81,6 @@
 
           <img id="initialSidebarPfp" src="images/default_avatar.png" class="js-initial-pfp h-8 w-8 rounded-full object-cover" alt="O Pfp"/>
           <img id="mainPfp" class="js-main-pfp h-8 w-8 rounded-full object-cover hidden" alt="N Pfp"/>
-          <span class="text-sm font-medium js-profile-name">Loading...</span>
       </div>
     </div>
   </aside>
@@ -349,7 +348,6 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/date-fns@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
-  <script src="js/profile.js"></script>
 <script>
 (() => {
 const api = {
@@ -494,7 +492,14 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.addEventListener('click', async (e) => {
       e.stopPropagation();
       menu.classList.toggle('hidden');
-      if (!menu.classList.contains('hidden')) await loadNotifs();
+      if (!menu.classList.contains('hidden')) {
+        await loadNotifs();
+        // Mark all notifications as read when menu is opened
+        try {
+          await fetchJson(api.notifReadAll, { method: 'POST' });
+          await loadNotifs(); // Refresh to update badges
+        } catch {}
+      }
     });
     document.addEventListener('click', (e) => {
       if (!menu.contains(e.target) && e.target !== btn) menu.classList.add('hidden');
@@ -568,7 +573,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const S = String(s).toLowerCase();
         const map = {
           active:  ['bg-green-100','text-green-700'],
-          pending: ['bg-yellow-100','text-yellow-700'],
+          pending: ['bg-yellow-100','text-yellow-700', 'animate-pulse'],
           error:   ['bg-red-100','text-red-700']
         };
         const cls = (map[S] || ['bg-neutral-100','text-neutral-700']).join(' ');
@@ -611,13 +616,33 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!name || !apiKey) return;
 
       try {
+        // First add the integration - it will be in pending state
         await fetchJson(api.addIntegration, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name, apiKey })
         });
         hide();
-        await initServices();
+        await initServices(); // Show initial pending state
+        
+        // Setup polling to check for status changes
+        let attempts = 0;
+        const maxAttempts = 10; // Try for about 30 seconds (10 * 3s)
+        const pollInterval = setInterval(async () => {
+          attempts++;
+          const rows = await fetchJson(api.integrationsStatus);
+          const integration = rows.find(r => r.name === name);
+          
+          if (integration && integration.status !== 'pending') {
+            // Status changed from pending - stop polling
+            clearInterval(pollInterval);
+            await initServices(); // Update the UI one final time
+          } else if (attempts >= maxAttempts) {
+            // Give up after max attempts
+            clearInterval(pollInterval);
+          }
+        }, 3000); // Poll every 3 seconds
+
       } catch (err) {
         alert('Failed to add integration. Check API key.');
       }
@@ -674,25 +699,20 @@ document.addEventListener('DOMContentLoaded', () => {
   })();
 
   // ---------- Live updates via SSE (fallback to 30s polling) ----------
-  function startSSE() {
-    try {
-      const es = new EventSource(api.sse, { withCredentials: true });
-      es.addEventListener('message', (ev) => {
-        // generic channel
-        try {
-          const msg = JSON.parse(ev.data);
-          if (msg.topic === 'kpis') loadKpis();
-          if (msg.topic === 'series' && chart) {
-            chart.data.datasets[0].data = msg.payload.map(p => ({ x: new Date(Number(p.t)), y: p.count }));
-            chart.update();
-          }
-          if (msg.topic === 'notif') loadNotifs();
-        } catch {}
-      });
-      es.onerror = () => { /* keep it open; browser will retry */ };
-      return true;
-    } catch { return false; }
-  }
+function startSSE() {
+  return false; // disable SSE; Socket.IO handles real-time
+}
+
+// or guard it:
+function startSSE() {
+  if (!api.sse) return false;
+  try {
+    const es = new EventSource(api.sse, { withCredentials: true });
+    es.addEventListener('message', (ev) => { /* ... */ });
+    es.onerror = () => {};
+    return true;
+  } catch { return false; }
+}
 
 async function initAll() {
   setText('txDate', new Date().toLocaleDateString());
@@ -773,6 +793,7 @@ async function initAll() {
 
     socket.on('kpis:update', () => window.__refreshDashboard?.());
     socket.on('series:update', () => window.__refreshDashboard?.());
+    socket.on('integrations:update', () => initServices?.());
   })();
 </script>
 </body>

@@ -155,152 +155,153 @@ router.get("/transactions/series", async (req, res) => {
 router.get("/integrations", async (req, res) => {
   const orgId = req.user.org;
   const { rows } = await query(
-    "SELECT id, name, status FROM integrations WHERE org_id=$1 ORDER BY created_at DESC",
+    `SELECT id, name, status, last_checked AS "lastChecked"
+     FROM integrations
+     WHERE org_id=$1
+     ORDER BY created_at DESC`,
     [orgId]
   );
   noStore(res);
   res.json(rows);
 });
 
-// Replace your current POST /integrations with this
+
 router.post("/integrations", express.json(), async (req, res) => {
   const orgId = req.user.org;
-  const { name, apiKey, testUrl } = req.body || {}; // testUrl optional
+  const { name, apiKey, testUrl } = req.body || {};
   if (!name || !apiKey) return res.status(400).json({ error: "name and apiKey required" });
 
-  // store initial row as 'pending' while we verify
+  // Insert as PENDING and return immediately
   const { rows: insertRows } = await query(
-    "INSERT INTO integrations (org_id, name, status, test_url, created_at) VALUES ($1,$2,'pending',$3, now()) RETURNING id, name, status, test_url",
+    `INSERT INTO integrations (org_id, name, status, test_url, created_at)
+     VALUES ($1, $2, 'pending', $3, now())
+     RETURNING id, name, status, test_url`,
     [orgId, name, testUrl || null]
   );
   const created = insertRows[0];
 
-  // Do an immediate verification attempt (best-effort)
-  (async function verifyIntegration(integrationId, name, apiKey, testUrl) {
-    // choose a test endpoint:
-    // if client supplied testUrl use it, otherwise try some sensible defaults per known providers.
-    let url = testUrl || null;
-    const lower = (name || "").toLowerCase();
+  noStore(res);
+  res.status(201).json(created);
 
-    if (!url) {
-      if (/stripe/.test(lower)) url = "https://api.stripe.com/v1/charges?limit=1";
-      if (/kora|paylink|finremit|paylink/.test(lower)) url = "https://httpbin.org/get"; // replace with actual provider docs
-      if (!url) url = null; // fallback to error/pending handling below
+  // Kick off delayed verification (no await)
+  verifyAfterDelay({
+    req, orgId,
+    integrationId: created.id,
+    name,
+    apiKey,
+    testUrl: created.test_url
+  });
+});
+
+
+
+
+ const VERIFY_DELAY_MS = 3000; // 3 seconds
+
+async function verifyAfterDelay({ req, orgId, integrationId, name, apiKey, testUrl }) {
+  // wait a bit so UI shows "Pending"
+  await new Promise(r => setTimeout(r, VERIFY_DELAY_MS));
+
+  // Pick a URL: user-supplied first, else some sensible defaults
+  let url = testUrl || null;
+  const lower = (name || "").toLowerCase();
+  if (!url) {
+    if (/stripe/.test(lower)) url = "https://api.stripe.com/v1/charges?limit=1";
+    // add more provider heuristics here if you like
+  }
+
+  // If we still don't have a URL or it's not a valid URL → error
+  try { if (!url) throw new Error("no url"); new URL(url); } catch {
+    await query(
+      "UPDATE integrations SET status='error', last_checked=now() WHERE id=$1 AND org_id=$2",
+      [integrationId, orgId]
+    );
+    await createNotification(req, {
+      type: 'error',
+      title: `Integration error: ${name}`,
+      message: `No valid Test URL for "${name}". Add one and click Verify.`
+    });
+    emitToOrg(req, "integrations:update");
+    return;
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6000); // 6s network timeout
+    const headers = {};
+
+    // Guess common auth styles
+    if (/^sk_|^pk_/.test(apiKey)) {
+      headers['Authorization'] = `Bearer ${apiKey}`; // Stripe (& many others)
+    } else {
+      headers['Authorization'] = `Bearer ${apiKey}`;
+      headers['x-api-key'] = apiKey;
     }
 
-    // If we have no url to call, mark as pending and return
-    if (!url) {
-      // keep as pending, let manual verify occur later
-      emitToOrg(req, "integrations:update");
-      return;
-    }
+    const r = await fetch(url, { method: 'GET', headers, signal: controller.signal });
+    clearTimeout(timeout);
 
-    // Attempt a call with short timeout
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 6000); // 6s
-      // choose header scheme: try common patterns
-      const headers = {};
-      // If looks like Stripe key, stripe uses Basic auth with key:
-      if (/^sk_|^pk_/.test(apiKey)) {
-        // Stripe: Basic auth with key as username, password empty
-        headers['Authorization'] = `Bearer ${apiKey}`;
-      } else {
-        // generic: try Authorization: Bearer, and also x-api-key
-        headers['Authorization'] = `Bearer ${apiKey}`;
-        headers['x-api-key'] = apiKey;
-      }
-
-      const r = await fetch(url, { method: 'GET', headers, signal: controller.signal });
-      clearTimeout(timeout);
-
-      // treat 2xx as success
-      if (r.ok) {
-        await query("UPDATE integrations SET status='active', last_checked=now() WHERE id=$1 AND org_id=$2", [integrationId, orgId]);
-        // notify org that integration became active
-        await createNotification(req, {
-          type: 'info',
-          title: `Integration active: ${name}`,
-          message: `${name} verified successfully and is now active.`
-        });
-      } else {
-        // non-2xx -> error
-        await query("UPDATE integrations SET status='error', last_checked=now() WHERE id=$1 AND org_id=$2", [integrationId, orgId]);
-        await createNotification(req, {
-          type: 'error',
-          title: `Integration error: ${name}`,
-          message: `Verification failed for ${name} (status ${r.status}).`
-        });
-      }
-    } catch (err) {
-      // network, timeout, DNS -> error
-      await query("UPDATE integrations SET status='error', last_checked=now() WHERE id=$1 AND org_id=$2", [integrationId, orgId]);
+    if (r.ok) {
+      await query("UPDATE integrations SET status='active', last_checked=now() WHERE id=$1 AND org_id=$2",
+        [integrationId, orgId]);
+      await createNotification(req, {
+        type: 'info',
+        title: `Integration active: ${name}`,
+        message: `${name} verified successfully.`
+      });
+    } else {
+      await query("UPDATE integrations SET status='error', last_checked=now() WHERE id=$1 AND org_id=$2",
+        [integrationId, orgId]);
       await createNotification(req, {
         type: 'error',
         title: `Integration error: ${name}`,
-        message: `Verification failed for ${name}: ${String(err.message || err)}`
+        message: `Verification failed (HTTP ${r.status}).`
       });
-    } finally {
-      emitToOrg(req, "integrations:update");
     }
-  })(created.id, name, apiKey, created.test_url);
+  } catch (err) {
+    await query("UPDATE integrations SET status='error', last_checked=now() WHERE id=$1 AND org_id=$2",
+      [integrationId, orgId]);
+    await createNotification(req, {
+      type: 'error',
+      title: `Integration error: ${name}`,
+      message: `Verification failed: ${String(err.message || err)}`
+    });
+  } finally {
+    emitToOrg(req, "integrations:update");
+  }
+}
 
-  noStore(res);
-  // return pending immediately; client will get update via socket when finished
-  return res.status(201).json(created);
-});
-
-// Optional manual verify endpoint (retry verification)
 router.post("/integrations/:id/verify", express.json(), async (req, res) => {
   const orgId = req.user.org;
   const id = Number(req.params.id);
-  // fetch stored integration (including test_url)
-  const { rows } = await query("SELECT id, name, test_url FROM integrations WHERE id=$1 AND org_id=$2", [id, orgId]);
+
+  const { rows } = await query(
+    "SELECT id, name, test_url FROM integrations WHERE id=$1 AND org_id=$2",
+    [id, orgId]
+  );
   if (!rows.length) return res.status(404).json({ error: "not found" });
 
-  // you should securely retrieve apiKey from your secret store — for demo we assume it's stored (not recommended)
-  // For demo: client supplies apiKey in body to retry (safer than storing plaintext): { apiKey: '...' }
   const apiKey = req.body?.apiKey;
   if (!apiKey) return res.status(400).json({ error: "apiKey required to verify" });
 
-  // mark pending then call the same verification flow as above
+  // show Pending first
   await query("UPDATE integrations SET status='pending' WHERE id=$1 AND org_id=$2", [id, orgId]);
   emitToOrg(req, "integrations:update");
 
-  (async function verify() {
-    let testUrl = rows[0].test_url;
-    const lower = (rows[0].name || "").toLowerCase();
-
-    if (!testUrl) {
-      if (/stripe/.test(lower)) testUrl = "https://api.stripe.com/v1/charges?limit=1";
-      if (!testUrl) testUrl = "https://httpbin.org/get";
-    }
-
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 6000);
-      const headers = { 'Authorization': `Bearer ${apiKey}`, 'x-api-key': apiKey };
-      const r = await fetch(testUrl, { method: 'GET', headers, signal: controller.signal });
-      clearTimeout(timeout);
-      if (r.ok) await query("UPDATE integrations SET status='active', last_checked=now() WHERE id=$1 AND org_id=$2", [id, orgId]);
-      else       await query("UPDATE integrations SET status='error', last_checked=now() WHERE id=$1 AND org_id=$2", [id, orgId]);
-      // create notifications for manual verify path as well
-      if (r.ok) {
-        await createNotification(req, { type: 'info', title: `Integration active: ${rows[0].name}`, message: `${rows[0].name} verified successfully.` });
-      } else {
-        await createNotification(req, { type: 'error', title: `Integration error: ${rows[0].name}`, message: `Verification failed for ${rows[0].name} (status ${r.status}).` });
-      }
-    } catch {
-      await query("UPDATE integrations SET status='error', last_checked=now() WHERE id=$1 AND org_id=$2", [id, orgId]);
-      await createNotification(req, { type: 'error', title: `Integration error: ${rows[0].name}`, message: `Verification failed for ${rows[0].name}: network/timeout.` });
-    } finally {
-      emitToOrg(req, "integrations:update");
-    }
-  })();
-
   noStore(res);
-  res.sendStatus(202); // accepted - verifying async
+  res.sendStatus(202); // accepted – verifier runs “in background” (in this request cycle)
+
+  // reuse the same delayed verifier
+  verifyAfterDelay({
+    req,
+    orgId,
+    integrationId: id,
+    name: rows[0].name,
+    apiKey,
+    testUrl: rows[0].test_url
+  });
 });
+
 
 
 
