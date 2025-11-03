@@ -549,14 +549,18 @@ async function loadNotifs() {
 window.loadNotifs = loadNotifs;
 document.addEventListener('DOMContentLoaded', () => {
   const mark = $('notifMarkAll');
-  if (mark) {
-    mark.addEventListener('click', async () => {
-      try {
-        await fetchJson(api.notifReadAll, { method: 'POST' });
-        await loadNotifs();
-      } catch {}
-    });
+  if (!mark) return;
+  mark.addEventListener('click', async() =>{
+    try{
+      await fetchJson(api.notifReadAll, {method: 'POST'});
+    }
+    catch{}
+  if(window._lastNotifs?.length){
+    window.__lastNotifs.forEach(n => removeNotifs.add(String(n.id)));
+    localStorage.setItem(remove_key, JSON.stringify([...removeNotifs]));
   }
+  awaitloadNotifs();
+  });
 });
 
 
