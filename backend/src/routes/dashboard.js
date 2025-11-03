@@ -98,6 +98,14 @@ await query(
 
 // ---------- Compliance report generation ----------
 router.post("/compliance/generate", express.json(), async (req, res) => {
+    // ---- timeout safety guard (frontend "fix #3") ----
+  const routeStart = Date.now();
+  const noStore = (r) => r.set("Cache-Control", "no-store");
+  const endEarly = (payload, status = 200) => {
+    noStore(res);
+    if (!res.headersSent) res.status(status).json(payload);
+  };
+
   const orgId = req.user.org;
   const { reportType = 'Integration Summary', recipientEmail } = req.body || {};
   if (!recipientEmail) return res.status(400).json({ error: 'recipientEmail required' });
@@ -150,34 +158,49 @@ router.post("/compliance/generate", express.json(), async (req, res) => {
     const filepath = path.join(dataDir, filename);
     fs.writeFileSync(filepath, JSON.stringify(report, null, 2), 'utf8');
 
-// inside POST /compliance/generate
-try {
-  await sendMail({
-    to: recipientEmail,
-    subject: `Compliance report (${reportType}) - ${new Date().toLocaleString()}`,
-    text: `Attached is the compliance report (${reportType}).`,
-    html: `<p>Attached is the compliance report (<b>${reportType}</b>).</p>`,
-    attachments: [
-      { filename: `compliance-${Date.now()}.json`, content: JSON.stringify(report, null, 2) }
-    ]
-  });
-} catch (mailErr) {
-  await query(
-    `INSERT INTO notifications (org_id, type, title, message) VALUES ($1, 'warn', 'Compliance: email failed', $2)`,
-    [orgId, `Failed to send compliance report to ${recipientEmail}: ${String(mailErr?.message || mailErr)}`]
-  ).catch(()=>{});
+// --- Email with total route time cap (~25s) ---
+const elapsed = Date.now() - routeStart;
+const budgetMs = 25000; // ~25 seconds total budget for this route
+const remaining = Math.max(0, budgetMs - elapsed);
 
-  // Still return success with a flag so the UI can show “sent locally, email failed”
-  return res.status(502).json({ error: 'email_failed', message: String(mailErr?.message || mailErr), report });
+let emailOK = true, emailErr = null;
+try {
+  await Promise.race([
+    sendMail({
+      to: recipientEmail,
+      subject: `Compliance report (${reportType}) - ${new Date().toLocaleString()}`,
+      text: `Attached is the compliance report (${reportType}).`,
+      html: `<p>Attached is the compliance report (<b>${reportType}</b>).</p>`,
+      attachments: [
+        { filename: `compliance-${Date.now()}.json`, content: JSON.stringify(report, null, 2) }
+      ]
+    }),
+    new Promise((_, rej) => setTimeout(() => rej(new Error('email_route_budget_timeout')), remaining))
+  ]);
+} catch (e) {
+  emailOK = false;
+  emailErr = e;
 }
 
+if (!emailOK) {
+  await query(
+    `INSERT INTO notifications (org_id, type, title, message)
+     VALUES ($1, 'warn', 'Compliance: email failed', $2)`,
+    [orgId, `Failed to send compliance report to ${recipientEmail}: ${String(emailErr?.message || emailErr)}`]
+  ).catch(()=>{});
+  return endEarly({ error: 'email_failed', message: String(emailErr?.message || emailErr), report }, 502);
+}
 
-    // Notification for org
-    await query(`INSERT INTO notifications (org_id, type, title, message) VALUES ($1, 'info', 'Compliance generated', $2)`, [orgId, `Compliance report (${reportType}) generated and emailed to ${recipientEmail}`]).catch(()=>{});
-    emitToOrg(req, 'notifications:update');
+// success notification
+await query(
+  `INSERT INTO notifications (org_id, type, title, message)
+   VALUES ($1, 'info', 'Compliance generated', $2)`,
+  [orgId, `Compliance report (${reportType}) generated and emailed to ${recipientEmail}`]
+).catch(()=>{});
+emitToOrg(req, 'notifications:update');
 
-    noStore(res);
-    res.json({ ok: true, emailedTo: recipientEmail, report });
+return endEarly({ ok: true, emailedTo: recipientEmail, report });
+
   } catch (err) {
     console.error('Compliance generate failed', err && err.stack ? err.stack : err);
     res.status(500).json({ error: String(err.message || err) });

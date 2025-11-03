@@ -851,7 +851,7 @@ form?.addEventListener('submit', async (e) => {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ reportType: type, recipientEmail: recipient })
-      }, 15000);
+      }, 30000);
 
 
       const payload = await (async () => {
@@ -918,8 +918,12 @@ form?.addEventListener('submit', async (e) => {
 
       // keep modal open so user can download; optionally hide after a bit
       // hide();
-    } catch (err) {
-      alert('Error generating report: ' + (err.message || err));
+} catch (err) {
+   const isAbort = err && (err.name === 'AbortError' || /timeout|aborted/i.test(String(err)));
+   alert(isAbort
+     ? 'Error generating report: request timed out (try again or check SMTP).'
+     : 'Error generating report: ' + (err.message || err)
+   );
     } finally {
       if (submitBtn) { submitBtn.textContent = origText; submitBtn.disabled = false; }
     }
