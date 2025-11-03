@@ -307,6 +307,17 @@
           <input type="url" class="w-full border border-neutral-300 dark:bg-neutral-600 dark:border-neutral-700 rounded px-3 py-2" placeholder="https://api.example.com/test" required>
         </div>
         <div class="mb-4">
+  <label class="block text-sm font-medium mb-1">Method</label>
+  <select id="sandbox-method"
+          class="w-full border border-neutral-300 dark:bg-neutral-600 dark:border-neutral-700 rounded px-3 py-2">
+    <option>GET</option>
+    <option>POST</option>
+    <option>PUT</option>
+    <option>DELETE</option>
+    <option>PATCH</option>
+  </select>
+</div>
+        <div class="mb-4">
           <label class="block text-sm font-medium mb-1">Request Body</label>
           <textarea rows="4" class="w-full border border-neutral-300 dark:bg-neutral-600 dark:border-neutral-700 rounded px-3 py-2" placeholder='{"key": "value"}'></textarea>
         </div>
@@ -315,6 +326,7 @@
           <button type="submit" class="px-4 py-2 rounded-lg bg-neutral-900 text-white hover:bg-black dark:bg-blue-600 dark:hover:bg-blue-700 border dark:border-blue-700">Send Request</button>
         </div>
       </form>
+      <div id="sandboxResult" class="mt-3 p-3 bg-neutral-100 dark:bg-neutral-700 rounded text-xs max-h-48 overflow-auto hidden"></div>
     </div>
   </div>
 
@@ -359,6 +371,8 @@ const api = {
   notifReadAll: '/api/dashboard/notifications/read-all',
   integrationsStatus: '/api/dashboard/integrations',
   addIntegration: '/api/dashboard/integrations',
+  // Sandbox test proxy
+  sandboxTest: '/api/dashboard/dev/sandbox/fetch',
   complianceGenerate: '/api/dashboard/compliance/generate', // if you add it later; otherwise leave unused
   seedDemo: '/api/dashboard/dev/seed-demo',
   // you’re using Socket.IO for pushes, not SSE:
@@ -650,69 +664,108 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   })();
 
-  // Sandbox (seed demo)
+  // Sandbox modal + request proxy
   (function(){
-    const btn = $('openSandboxBtn');
-    if (!btn) return;
-    btn.addEventListener('click', async () => {
-      try {
-        await fetchJson(api.seedDemo, { method: 'POST' });
-        await window.__refreshDashboard();
-        toast(btn, 'Seeded ✅', 'Test Sandbox API');
-      } catch (e) {
-        console.error(e);
-        toast(btn, 'Error ❌', 'Test Sandbox API');
-      }
-    });
-  })();
+    const modal = $('sandboxModal');
+    const openBtn = $('openSandboxBtn');
+    const close = $('closeSandbox');
+    const cancel = $('cancelSandbox');
+    if (!modal || !openBtn) return;
 
-  // Compliance
-  (function(){
-    const modal = $('complianceModal');
-    const openBtn = $('openComplianceBtn');
-    const close = $('closeCompliance');
-    const cancel = $('cancelCompliance');
-    const hide = () => modal.classList.add('hidden');
+    const hide = () => { modal.classList.add('hidden'); const r = $('sandboxResult'); if(r) r.classList.add('hidden'); };
     const show = () => modal.classList.remove('hidden');
-    openBtn?.addEventListener('click', show);
+
+    openBtn.addEventListener('click', show);
     close?.addEventListener('click', hide);
     cancel?.addEventListener('click', hide);
     window.addEventListener('click', e => { if (e.target === modal) hide(); });
 
-    const form = $('compliance-form');
-    form?.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const type = form.querySelector('select')?.value || 'Security Audit';
-      const email = form.querySelector('input[type="email"]')?.value?.trim();
-      if (!email) return;
-      try {
-        await fetchJson(api.complianceGenerate, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type, email })
-        });
-        hide();
-        alert('Report generation started. Check your email.');
-      } catch (err) {
-        alert('Failed to generate report.');
+    const form = $('sandbox-form');
+    const resultEl = $('sandboxResult');
+form?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const url = form.querySelector('input[type="url"]')?.value?.trim();
+  const methodSel = $('sandbox-method');
+  const picked = methodSel ? methodSel.value : 'GET';
+
+  let bodyText = form.querySelector('textarea')?.value ?? '';
+  bodyText = bodyText.trim();
+
+  if (!url) { alert('Enter endpoint URL'); return; }
+  if (!resultEl) return;
+
+  resultEl.classList.remove('hidden');
+  resultEl.textContent = 'Testing…';
+
+  try {
+    // If GET/HEAD, force no body. Otherwise parse/forward body if provided.
+    let parsedBody;
+    if (picked === 'GET' || picked === 'HEAD') {
+      parsedBody = undefined;
+    } else if (bodyText !== '') {
+      try { parsedBody = JSON.parse(bodyText); }
+      catch { parsedBody = bodyText; } // allow raw text
+    } else {
+      parsedBody = undefined;
+    }
+
+    const resp = await fetch(api.sandboxTest, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, method: picked, body: parsedBody })
+    }).then(r => r.json());
+
+    const prettyBody = (() => {
+      if (typeof resp.body === 'string') {
+        try { return JSON.stringify(JSON.parse(resp.body), null, 2); }
+        catch { return resp.body; }
       }
-    });
+      return JSON.stringify(resp.body, null, 2);
+    })();
+
+    resultEl.innerHTML =
+      `<div class="font-medium">Status: ${resp.status} ${resp.statusText ?? ''}</div>` +
+      `<div class="text-[11px] text-neutral-500 mt-1">Duration: ${resp.durationMs} ms • Content-Type: ${resp.contentType || 'n/a'}</div>` +
+      `<pre class="text-xs whitespace-pre-wrap mt-2">${prettyBody}</pre>` +
+      `<div class="mt-2 text-[11px] text-neutral-500">Headers:</div>` +
+      `<pre class="text-[11px] whitespace-pre-wrap">${JSON.stringify(resp.headers, null, 2)}</pre>` +
+      (resp.truncated ? `<div class="mt-2 text-[11px] text-yellow-700">Body truncated at 512 KB.</div>` : '');
+  } catch (err) {
+    resultEl.textContent = 'Error: ' + (err.message || err);
+  }
+});
+
+
   })();
+
+// Compliance
+(function(){
+  const modal = $('complianceModal');
+  const openBtn = $('openComplianceBtn');
+  const close = $('closeCompliance');
+  const cancel = $('cancelCompliance');
+
+  const hide = () => modal.classList.add('hidden');
+  const show = () => modal.classList.remove('hidden');
+
+  openBtn?.addEventListener('click', show);
+  close?.addEventListener('click', hide);
+  cancel?.addEventListener('click', hide);
+  window.addEventListener('click', e => { if (e.target === modal) hide(); });
+
+  // Placeholder submit (no backend call yet)
+  const form = $('compliance-form');
+  form?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    alert('Compliance report generation coming soon.');
+    hide();
+  });
+})();
 
   // ---------- Live updates via SSE (fallback to 30s polling) ----------
 function startSSE() {
   return false; // disable SSE; Socket.IO handles real-time
-}
-
-// or guard it:
-function startSSE() {
-  if (!api.sse) return false;
-  try {
-    const es = new EventSource(api.sse, { withCredentials: true });
-    es.addEventListener('message', (ev) => { /* ... */ });
-    es.onerror = () => {};
-    return true;
-  } catch { return false; }
 }
 
 async function initAll() {

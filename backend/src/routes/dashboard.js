@@ -303,6 +303,92 @@ router.post("/integrations/:id/verify", express.json(), async (req, res) => {
 });
 
 
+// ---------- Sandbox fetch proxy (for API tester) ----------
+router.post("/dev/sandbox/fetch", express.json({ limit: "256kb" }), async (req, res) => {
+  const { url, method = "GET", headers = {}, body } = req.body || {};
+  if (!url) return res.status(400).json({ error: "url required" });
+
+  let u;
+  try { u = new URL(url); } catch { return res.status(400).json({ error: "invalid url" }); }
+  if (!/^https?:$/.test(u.protocol)) return res.status(400).json({ error: "only http/https allowed" });
+
+  // Basic SSRF guard (block obvious internal nets). For production, consider DNS re-resolving + CIDR checks.
+  const host = u.hostname;
+  const blocked = [
+    "localhost", "127.0.0.1", "::1",
+  ];
+  const isPrivate =
+    blocked.includes(host) ||
+    /^10\./.test(host) ||
+    /^192\.168\./.test(host) ||
+    /^172\.(1[6-9]|2\d|3[0-1])\./.test(host) ||
+    /^169\.254\./.test(host);
+
+  if (isPrivate) return res.status(403).json({ error: "private IPs/hosts are blocked" });
+
+  // Build fetch options
+  const opts = { method: String(method || "GET").toUpperCase(), headers: {} };
+  // Copy headers but strip hop-by-hop / dangerous ones
+  const banned = new Set(["host","connection","content-length","upgrade","accept-encoding","cookie","authorization"]);
+  for (const [k, v] of Object.entries(headers || {})) {
+    if (!banned.has(String(k).toLowerCase())) opts.headers[k] = v;
+  }
+  if (body != null && opts.method !== "GET" && opts.method !== "HEAD") {
+    if (typeof body === "string") {
+      opts.body = body;
+      if (!opts.headers["Content-Type"]) opts.headers["Content-Type"] = "application/json";
+    } else {
+      opts.body = JSON.stringify(body);
+      if (!opts.headers["Content-Type"]) opts.headers["Content-Type"] = "application/json";
+    }
+  }
+
+  // Timeout
+  const controller = new AbortController();
+  const timeoutMs = 10000;
+  const to = setTimeout(() => controller.abort(), timeoutMs);
+  opts.signal = controller.signal;
+
+  const t0 = Date.now();
+  try {
+    const r = await fetch(url, opts);
+    clearTimeout(to);
+
+    // Cap body size to avoid huge payloads
+    const limit = 512 * 1024; // 512 KB
+    const buf = Buffer.from(await r.arrayBuffer());
+    const truncated = buf.length > limit;
+    const bodyBuf = truncated ? buf.subarray(0, limit) : buf;
+
+    // Try to present text; fall back to base64 for binary-ish content
+    const ctype = r.headers.get("content-type") || "";
+    const isText = /^(text\/|application\/(json|xml|svg|javascript|x-www-form-urlencoded))/.test(ctype);
+    const bodyOut = isText ? bodyBuf.toString("utf8") : bodyBuf.toString("base64");
+    const encoding = isText ? "utf8" : "base64";
+
+    // Return a compact view of headers
+    const hdrs = {};
+    r.headers.forEach((v, k) => { hdrs[k] = v; });
+
+    res.json({
+      ok: r.ok,
+      status: r.status,
+      statusText: r.statusText,
+      durationMs: Date.now() - t0,
+      headers: hdrs,
+      contentType: ctype,
+      body: bodyOut,
+      encoding,
+      truncated
+    });
+  } catch (err) {
+    clearTimeout(to);
+    res.status(502).json({ error: String(err.message || err), durationMs: Date.now() - t0 });
+  }
+});
+
+
+
 
 
 // ---------- Notifications ----------
