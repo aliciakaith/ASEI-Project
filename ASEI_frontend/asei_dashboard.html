@@ -448,7 +448,14 @@ function timeAgo(tsMs){
 }
 
 const remove_key = 'connectify.removeNotifs';
-const removeNotifs = new Set(JSON.parse(localStorage.getItem(remove_key)) || '[]');
+let removeNotifs = new Set();
+try{
+  const saved = JSON.parse(localStorage.getItem(remove_key) ?? '[]');
+  removeNotifs = new Set((saved || []).map(String));
+}
+catch{
+  removeNotifs = new Set();
+}
 const rmberRemove = (id) =>{
   removeNotifs.add(String(id));
   localStorage.setItem(remove_key, JSON.stringify([...removeNotifs]));
@@ -511,7 +518,8 @@ async function loadNotifs() {
 
         e.stopPropagation();
 
-        const id = bin.dataset.id;
+        const id = bin.dataset.id || bin.closest('[data-id]')?.dataset.id;
+        if(!id) return;
         rmberRemove(id);
 
         bin.closest('[data-id]')?.remove();
