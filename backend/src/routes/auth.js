@@ -461,16 +461,20 @@ router.post("/login", async (req, res) => {
 
 // POST /api/auth/logout
 router.post("/logout", async (req, res) => {
+  const secure = process.env.NODE_ENV === "production";
+
   res.clearCookie("token", {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure,
+    path: "/",           // <-- important
   });
 
   res.clearCookie("pending_email", {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure,
+    path: "/",           // <-- important (matches how it was set)
   });
 
   await audit(req, {
@@ -478,11 +482,12 @@ router.post("/logout", async (req, res) => {
     action: "LOGOUT",
     targetType: "user",
     targetId: req.user?.id || null,
-    statusCode: 204
+    statusCode: 204,
   });
 
   return res.status(204).end();
 });
+
 
 // Start Google sign-in
 router.get("/google", async (req, res) => {
