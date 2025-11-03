@@ -111,9 +111,16 @@
     <p class="text-sm text-neutral-500 mb-4 dark:text-neutral-400">
       Below is a placeholder for upcoming live performance graphs. It will visualize CPU, memory, and API usage over time.
     </p>
-    <div class="h-48 bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-neutral-700 dark:to-neutral-600 rounded-lg flex items-center justify-center text-neutral-400">
-      📈 Chart Placeholder — Real-time Monitoring Coming Soon
-    </div>
+      <div class="px-4 pt-4 pb-0 flex">
+        <div class="text-sm font-medium">Monitoring</div>
+        <p id="deployDate" class="ml-auto text-xs text-neutral-500 dark:text-neutral-400"></p>
+      </div>
+
+      <div class="px-4 pb-4">
+        <div class="h-48">
+          <canvas id="deployChart" class="h-48 w-full"></canvas>
+        </div>
+      </div>
   </section>
 
   <!-- Health and Alerts -->
