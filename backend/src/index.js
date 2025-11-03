@@ -40,6 +40,33 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cookieParser());
 
+// ------------------------------------------------------
+// CORS (must come BEFORE any routes)
+// ------------------------------------------------------
+import cors from "cors";
+
+const allowlist = [
+  "http://localhost:3001", // same origin (backend)
+  "http://localhost:5173", // Vite dev
+  "http://127.0.0.1:5500", // Live Server
+  "http://localhost:8080"  // generic local test
+];
+
+app.use(
+  cors({
+    origin(origin, cb) {
+      if (!origin) return cb(null, true); // allow same-origin/curl
+      cb(null, allowlist.includes(origin));
+    },
+    credentials: true,
+  })
+);
+// ------------------------------------------------------
+
+// attach correlation IDs BEFORE any logging
+app.use(requestContext);
+
+
 // attach correlation IDs BEFORE any logging
 app.use(requestContext);
 

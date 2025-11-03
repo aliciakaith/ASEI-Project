@@ -389,6 +389,17 @@ const api = {
     if (!res.ok) throw new Error(`${options.method||'GET'} ${url} → ${res.status}`);
     return res.status === 204 ? null : res.json();
   }
+  
+  async function fetchWithTimeout(url, opts = {}, ms = 15000) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  try {
+    return await fetch(url, { ...opts, signal: ctrl.signal });
+  } finally {
+    clearTimeout(t);
+  }
+}
+
 
   function toast(btnEl, okText='Done ✓', revertText='Done', ms=1500) {
     if (!btnEl) return;
@@ -822,12 +833,13 @@ form?.addEventListener('submit', async (e) => {
     if (submitBtn) { submitBtn.textContent = 'Generating…'; submitBtn.disabled = true; }
 
     try {
-      const resp = await fetch(api.complianceGenerate, {
+      const resp = await fetchWithTimeout(api.complianceGenerate, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ reportType: type, recipientEmail: recipient })
-      });
+      }, 15000);
+
 
       const payload = await (async () => {
         try { return await resp.json(); } catch { return { error: 'invalid_json' }; }

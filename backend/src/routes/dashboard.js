@@ -150,26 +150,27 @@ router.post("/compliance/generate", express.json(), async (req, res) => {
     const filepath = path.join(dataDir, filename);
     fs.writeFileSync(filepath, JSON.stringify(report, null, 2), 'utf8');
 
-    // Send email with attachment
-    try {
-      await sendMail({
-        to: recipientEmail,
-        subject: `Compliance report (${reportType}) - ${new Date().toLocaleString()}`,
-        text: `Attached is the compliance report (${reportType}).`,
-        html: `<p>Attached is the compliance report (<b>${reportType}</b>).</p>`,
-        attachments: [
-          { filename: `compliance-${Date.now()}.json`, content: JSON.stringify(report, null, 2) }
-        ]
-      });
-    } catch (mailErr) {
-      // If email fails, still return the report but inform the caller
-      await query(
-        `INSERT INTO notifications (org_id, type, title, message) VALUES ($1, 'warn', 'Compliance: email failed', $2)`,
-        [orgId, `Failed to send compliance report to ${recipientEmail}: ${String(mailErr.message || mailErr)}`]
-      ).catch(()=>{});
+// inside POST /compliance/generate
+try {
+  await sendMail({
+    to: recipientEmail,
+    subject: `Compliance report (${reportType}) - ${new Date().toLocaleString()}`,
+    text: `Attached is the compliance report (${reportType}).`,
+    html: `<p>Attached is the compliance report (<b>${reportType}</b>).</p>`,
+    attachments: [
+      { filename: `compliance-${Date.now()}.json`, content: JSON.stringify(report, null, 2) }
+    ]
+  });
+} catch (mailErr) {
+  await query(
+    `INSERT INTO notifications (org_id, type, title, message) VALUES ($1, 'warn', 'Compliance: email failed', $2)`,
+    [orgId, `Failed to send compliance report to ${recipientEmail}: ${String(mailErr?.message || mailErr)}`]
+  ).catch(()=>{});
 
-      return res.status(502).json({ error: 'email_failed', message: String(mailErr.message || mailErr), report });
-    }
+  // Still return success with a flag so the UI can show “sent locally, email failed”
+  return res.status(502).json({ error: 'email_failed', message: String(mailErr?.message || mailErr), report });
+}
+
 
     // Notification for org
     await query(`INSERT INTO notifications (org_id, type, title, message) VALUES ($1, 'info', 'Compliance generated', $2)`, [orgId, `Compliance report (${reportType}) generated and emailed to ${recipientEmail}`]).catch(()=>{});

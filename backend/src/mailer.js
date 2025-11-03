@@ -1,23 +1,33 @@
 // src/mailer.js
 import nodemailer from "nodemailer";
 
+const isSecure = String(process.env.SMTP_PORT || "") === "465";
+
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
-  port: Number(process.env.SMTP_PORT || 587),
-  secure: false, // Gmail uses STARTTLS on 587
+  port: Number(process.env.SMTP_PORT || (isSecure ? 465 : 587)),
+  secure: isSecure,                  // true for 465, false for 587 (STARTTLS)
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
+  pool: true,                        // keep connections warm
+  maxConnections: 2,
+  maxMessages: 50,
+  connectionTimeout: 10000,          // 10s to connect
+  greetingTimeout: 10000,            // 10s to get greeting
+  socketTimeout: 15000,              // 15s during SMTP dialogue
+  // For dev: avoid cert issues. Remove or set to true in prod with real certs.
+  tls: { rejectUnauthorized: false },
 });
 
 // --- Verify SMTP connection at startup (helpful for debugging) ---
 transporter.verify()
   .then(() => {
-    console.log("✅ SMTP transporter ready — mail will be sent using", process.env.SMTP_HOST);
+    console.log("✅ SMTP ready —", process.env.SMTP_HOST, ":", process.env.SMTP_PORT);
   })
   .catch((err) => {
-    console.error("❌ SMTP transporter verify failed:", err && err.message ? err.message : err);
+    console.error("❌ SMTP verify failed:", err?.message || err);
   });
 
 export async function sendMail({ to, subject, text, html, attachments } = {}) {
@@ -27,9 +37,16 @@ export async function sendMail({ to, subject, text, html, attachments } = {}) {
     subject,
     text,
     html,
+    ...(attachments ? { attachments } : {}),
   };
-  if (attachments) mailOptions.attachments = attachments;
-  return transporter.sendMail(mailOptions);
+
+  // Hard-cap total email time so HTTP routes don’t hang forever if SMTP stalls.
+  const hardCapMs = 12000;
+  const hardTimeout = new Promise((_, rej) =>
+    setTimeout(() => rej(new Error("smtp_timeout")), hardCapMs)
+  );
+
+  return Promise.race([transporter.sendMail(mailOptions), hardTimeout]);
 }
 
 export function verificationEmail(code) {
@@ -45,4 +62,3 @@ export function verificationEmail(code) {
     </div>`;
   return { text, html };
 }
-
