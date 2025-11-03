@@ -15,6 +15,8 @@ import dashboardRouter from "./routes/dashboard.js";
 import { requireAuth } from "./middleware/authMiddleware.js";
 import connectionsRouter from "./routes/connections.js";
 import mtnRouter from "./routes/mtn.js";
+import flutterwaveRoutes from './routes/flutterwave.js';
+
 
 // logging
 import expressWinston from "express-winston";
@@ -39,6 +41,11 @@ app.use(cookieParser());
 
 // attach correlation IDs BEFORE any logging
 app.use(requestContext);
+
+// … after you create `app`
+app.use('/api', flutterwaveRoutes);  // /api/connectors, /api/flutterwave/*
+app.use('/', flutterwaveRoutes);     // /webhooks/flutterwave
+
 
 // request logs (skip noisy health checks)
 app.use(
@@ -151,3 +158,6 @@ io.on("connection", (socket) => {
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`App running at http://localhost:${PORT}`);
 });
+
+import connectorsRouter from "./routes/connectors.js";
+app.use("/api/connectors", connectorsRouter);
