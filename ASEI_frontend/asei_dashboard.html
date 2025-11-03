@@ -579,11 +579,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const cls = (map[S] || ['bg-neutral-100','text-neutral-700']).join(' ');
         return `<span class="px-2 py-1 text-xs font-medium rounded-full ${cls}">${s[0].toUpperCase()+s.slice(1)}</span>`;
       };
+      const syncTime = r.lastChecked ? timeAgo(new Date(r.lastChecked).getTime()) : '—';
       return `
         <div class="flex items-center justify-between p-3 border border-neutral-200 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-700 dark:border-neutral-700 transition">
           <div>
             <div class="font-medium">${r.name}</div>
-            <div class="text-xs text-neutral-500">Integration • Last sync: —</div>
+            <div class="text-xs text-neutral-500">Integration • Last sync: ${syncTime}</div>
           </div>
           ${badge(status)}
         </div>`;
@@ -717,8 +718,11 @@ function startSSE() {
 async function initAll() {
   setText('txDate', new Date().toLocaleDateString());
   await initProfile();
-  await Promise.all([loadKpis(), initChart(), initServices(), loadNotifs()]); // ← add loadNotifs()
+  await Promise.all([loadKpis(), initChart(), initServices(), loadNotifs()]);
+  // Refresh dashboard stats every 30s
   setInterval(() => window.__refreshDashboard(), 30000);
+  // Refresh integrations list every 10s to update last sync times
+  setInterval(() => initServices(), 10000);
   startSSE();
 }
 

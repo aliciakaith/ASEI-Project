@@ -171,11 +171,11 @@ router.post("/integrations", express.json(), async (req, res) => {
   const { name, apiKey, testUrl } = req.body || {};
   if (!name || !apiKey) return res.status(400).json({ error: "name and apiKey required" });
 
-  // Insert as PENDING and return immediately
+  // Insert as PENDING with current timestamp and return immediately
   const { rows: insertRows } = await query(
-    `INSERT INTO integrations (org_id, name, status, test_url, created_at)
-     VALUES ($1, $2, 'pending', $3, now())
-     RETURNING id, name, status, test_url`,
+    `INSERT INTO integrations (org_id, name, status, test_url, created_at, last_checked)
+     VALUES ($1, $2, 'pending', $3, now(), now())
+     RETURNING id, name, status, test_url, last_checked`,
     [orgId, name, testUrl || null]
   );
   const created = insertRows[0];
@@ -284,8 +284,8 @@ router.post("/integrations/:id/verify", express.json(), async (req, res) => {
   const apiKey = req.body?.apiKey;
   if (!apiKey) return res.status(400).json({ error: "apiKey required to verify" });
 
-  // show Pending first
-  await query("UPDATE integrations SET status='pending' WHERE id=$1 AND org_id=$2", [id, orgId]);
+  // show Pending first with current timestamp
+  await query("UPDATE integrations SET status='pending', last_checked=now() WHERE id=$1 AND org_id=$2", [id, orgId]);
   emitToOrg(req, "integrations:update");
 
   noStore(res);
