@@ -678,7 +678,46 @@ router.post("/integrations", express.json(), async (req, res) => {
 
 
 
+// Update integration (name and/or test_url)
+router.patch("/integrations/:id", express.json(), async (req, res) => {
+  const orgId = req.user.org;
+  const id = Number(req.params.id);
+  const { name, testUrl } = req.body || {};
+
+  const fields = [];
+  const values = [];
+  let idx = 1;
+
+  if (typeof name === 'string' && name.trim().length) { fields.push(`name=$${idx++}`); values.push(name.trim()); }
+  if (typeof testUrl === 'string') { fields.push(`test_url=$${idx++}`); values.push(testUrl || null); }
+
+  if (!fields.length) return res.status(400).json({ error: 'no_updates' });
+
+  // Always bump last_checked so UI reflects recent change
+  fields.push(`last_checked=now()`);
+
+  values.push(id, orgId);
+  const sql = `UPDATE integrations SET ${fields.join(', ')} WHERE id=$${idx++} AND org_id=$${idx} RETURNING id, name, status, test_url, last_checked AS "lastChecked"`;
+  const { rows } = await query(sql, values);
+  if (!rows.length) return res.status(404).json({ error: 'not_found' });
+  emitToOrg(req, "integrations:update");
+  noStore(res);
+  res.json(rows[0]);
+});
+
+// Delete integration
+router.delete("/integrations/:id", async (req, res) => {
+  const orgId = req.user.org;
+  const id = Number(req.params.id);
+  const { rowCount } = await query("DELETE FROM integrations WHERE id=$1 AND org_id=$2", [id, orgId]);
+  if (!rowCount) return res.status(404).json({ error: 'not_found' });
+  emitToOrg(req, "integrations:update");
+  noStore(res);
+  res.sendStatus(204);
+});
+
  const VERIFY_DELAY_MS = 3000; // 3 seconds
+
 
 async function verifyAfterDelay({ req, orgId, integrationId, name, apiKey, testUrl }) {
   // wait a bit so UI shows "Pending"

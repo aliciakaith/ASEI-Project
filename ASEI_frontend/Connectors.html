@@ -117,20 +117,19 @@
   <!-- Add Connector -->
   <div class="mb-4 flex flex-col sm:flex-row gap-2">
     <input id="searchBox" type="text" placeholder="Search connectors..." class="w-full sm:w-1/3 border rounded px-3 py-2 dark:bg-neutral-600 dark:border-neutral-700">
+    <button onclick="openAddIntegrationModal()" class="px-4 py-2 bg-green-600/90 hover:bg-green-700 text-white rounded w-full sm:w-auto">+ Add Integration</button>
     <button onclick="openMtnModal()" class="px-4 py-2 bg-blue-600/90 hover:bg-blue-700 text-white rounded w-full sm:w-auto">+ Add MTN Connector</button>
-    <!-- Added Flutterwave button -->
     <button onclick="openFlwModal()" class="px-4 py-2 bg-purple-600/90 hover:bg-purple-700 text-white rounded w-full sm:w-auto">+ Add Flutterwave Connector</button>
   </div>
 
-  <!-- Connectors Table -->
+  <!-- Integrations Table (aligned with Dashboard > Integrations) -->
   <div class="overflow-x-auto bg-white rounded shadow">
     <table class="w-full text-sm">
       <thead class="bg-neutral-200 dark:bg-neutral-800/90">
         <tr>
-          <th class="p-3 text-left">Connector</th>
-          <th class="p-3 text-left">Type</th>
+          <th class="p-3 text-left">Integration</th>
           <th class="p-3 text-left">Status</th>
-          <th class="p-3 text-left">Last Sync</th>
+          <th class="p-3 text-left">Last Checked</th>
           <th class="p-3 text-left">Actions</th>
         </tr>
       </thead>
@@ -186,6 +185,60 @@
     </div>
   </div>
 </div>
+
+<!-- Edit Integration Modal -->
+<div id="editIntegrationModal" class="hidden fixed inset-0 z-50 bg-black/40 flex items-center justify-center">
+  <div class="mx-auto bg-white dark:bg-neutral-800 rounded-lg shadow p-6 w-full max-w-lg">
+    <h2 class="text-lg font-semibold mb-4">Edit Integration</h2>
+    <div class="space-y-3">
+      <div>
+        <label class="block text-sm font-medium mb-1">Integration Name</label>
+        <input id="edit_integration_name" class="w-full border p-2 rounded dark:bg-neutral-600 dark:border-neutral-700" placeholder="e.g. Stripe">
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">API Key</label>
+        <input id="edit_integration_apiKey" type="password" class="w-full border p-2 rounded dark:bg-neutral-600 dark:border-neutral-700" placeholder="Enter API key">
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Test URL (optional)</label>
+        <input id="edit_integration_testUrl" class="w-full border p-2 rounded dark:bg-neutral-600 dark:border-neutral-700" placeholder="https://api.example.com/test">
+      </div>
+      <div id="edit_integration_result" class="text-sm pt-1"></div>
+      <div class="flex gap-2 justify-end pt-3">
+        <button onclick="closeEditIntegrationModal()" class="px-3 py-2 border dark:bg-neutral-700 dark:hover:bg-neutral-600/40 dark:border-neutral-600/40 rounded">Cancel</button>
+        <button onclick="saveEditedIntegration()" class="px-3 py-2 bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 text-white rounded">Save</button>
+        <button onclick="saveAndVerifyIntegration()" class="px-3 py-2 bg-green-600 text-white rounded">Save & Verify</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Integration Modal -->
+<div id="addIntegrationModal" class="hidden fixed inset-0 z-50 bg-black/40 flex items-center justify-center">
+  <div class="mx-auto bg-white dark:bg-neutral-800 rounded-lg shadow p-6 w-full max-w-lg">
+    <h2 class="text-lg font-semibold mb-4">Add New Integration</h2>
+    <div class="space-y-3">
+      <div>
+        <label class="block text-sm font-medium mb-1">Integration Name <span class="text-red-500">*</span></label>
+        <input id="add_integration_name" class="w-full border p-2 rounded dark:bg-neutral-600 dark:border-neutral-700" placeholder="e.g. Stripe, PayPal, Square">
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">API Key <span class="text-red-500">*</span></label>
+        <input id="add_integration_apiKey" type="password" class="w-full border p-2 rounded dark:bg-neutral-600 dark:border-neutral-700" placeholder="Enter API key">
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Test URL (optional)</label>
+        <input id="add_integration_testUrl" class="w-full border p-2 rounded dark:bg-neutral-600 dark:border-neutral-700" placeholder="https://api.example.com/test">
+        <p class="text-xs text-neutral-500 mt-1">URL to test connectivity. Auto-verification will run if provided.</p>
+      </div>
+      <div id="add_integration_result" class="text-sm pt-1"></div>
+      <div class="flex gap-2 justify-end pt-3">
+        <button onclick="closeAddIntegrationModal()" class="px-3 py-2 border dark:bg-neutral-700 dark:hover:bg-neutral-600/40 dark:border-neutral-600/40 rounded">Cancel</button>
+        <button onclick="saveNewIntegration()" class="px-3 py-2 bg-green-600 text-white rounded">Add Integration</button>
+      </div>
+    </div>
+  </div>
+</div>
 <script>
 /* ===============================
    CONFIG
@@ -193,16 +246,21 @@
 const BACKEND_URL = "http://localhost:3001";
 
 const ENDPOINTS = {
-  list:        (userId) => `${BACKEND_URL}/api/connectors?userId=${encodeURIComponent(userId)}`,
-  saveGeneric: (userId) => `${BACKEND_URL}/api/connectors?userId=${encodeURIComponent(userId)}`,
-  deleteOne:   (id, userId) => `${BACKEND_URL}/api/connectors/${encodeURIComponent(id)}?userId=${encodeURIComponent(userId)}`,
+  // Dashboard integrations (source of truth for display)
+  integrations: () => `${BACKEND_URL}/api/dashboard/integrations`,
+  integrationsAdd: () => `${BACKEND_URL}/api/dashboard/integrations`,
+  integrationsPatch: (id) => `${BACKEND_URL}/api/dashboard/integrations/${encodeURIComponent(id)}`,
+  integrationsDelete: (id) => `${BACKEND_URL}/api/dashboard/integrations/${encodeURIComponent(id)}`,
+  integrationsVerify: (id) => `${BACKEND_URL}/api/dashboard/integrations/${encodeURIComponent(id)}/verify`,
+
+  // Connections (MTN) – verify first, then save
+  mtnTest:     () => `${BACKEND_URL}/api/connections/test`,    // POST body { provider:'mtn', env, label, config:{} }
+  mtnSave:     () => `${BACKEND_URL}/api/connections`,         // POST same body to persist
+  mtnBalance:  (connectionId) => `${BACKEND_URL}/api/mtn/balance?connectionId=${encodeURIComponent(connectionId)}`,
 
   // Flutterwave-specific routes (mounted at /api in your backend)
   flwSave:     `${BACKEND_URL}/api/connectors/flutterwave`,         // POST {label, publicKey, secretKey, encryptionKey}
-  flwTest:     `${BACKEND_URL}/api/connectors/flutterwave/test`,    // POST {connectorId}
-
-  // MTN test = call balance with saved connection
-  mtnBalance:  (connectionId) => `${BACKEND_URL}/api/mtn/collections/balance?connectionId=${encodeURIComponent(connectionId)}`
+  flwTest:     `${BACKEND_URL}/api/connectors/flutterwave/test`     // POST {connectorId}
 };
 
 /* ===============================
@@ -236,8 +294,9 @@ function defaultHeaders() {
 /* ===============================
    STATE
 ================================= */
-let connectors = [];   // [{id, provider, label, status, type, lastSync, config}]
+let integrations = []; // [{ id, name, status, lastChecked }]
 let justSavedIds = { mtn: null, flutterwave: null };
+let pendingMtnPayload = null; // cache after successful test
 
 /* ===============================
    UI: open/close modals
@@ -256,15 +315,13 @@ function closeFlutterwaveModal(){ closeFlwModal(); }
 /* ===============================
    LIST + RENDER
 ================================= */
-async function loadConnectors() {
-  const userId = getUserId();
+async function loadIntegrations() {
   try {
-    const res = await fetch(ENDPOINTS.list(userId), { credentials: 'include', headers: { 'x-user-id': userId } });
-    const data = await res.json();
-    connectors = Array.isArray(data) ? data : (data.items || []);
+    const res = await fetch(ENDPOINTS.integrations(), { credentials: 'include' });
+    integrations = await res.json();
   } catch (err) {
-    console.warn('Failed to load connectors', err);
-    connectors = [];
+    console.warn('Failed to load integrations', err);
+    integrations = [];
   }
   renderTable();
   updateKPIs();
@@ -288,21 +345,19 @@ function renderTable() {
   const searchEl = document.getElementById('searchBox') || document.querySelector('input[placeholder="Search connectors..."]');
   const q = (searchEl?.value || '').toLowerCase();
 
-  const rows = connectors.filter(c =>
-    (c.label || '').toLowerCase().includes(q) ||
-    (c.provider || '').toLowerCase().includes(q) ||
-    (c.type || '').toLowerCase().includes(q)
+  const rows = integrations.filter(i =>
+    (i.name || '').toLowerCase().includes(q) ||
+    (i.status || '').toLowerCase().includes(q)
   );
 
-  tbody.innerHTML = rows.map(c => `
+  tbody.innerHTML = rows.map(i => `
     <tr class="border-t hover:bg-neutral-50 dark:bg-neutral-600 dark:border-neutral-400">
-      <td class="p-3">${c.label || (c.provider === 'mtn' ? 'MTN Mobile Money' : c.provider || '—')}</td>
-      <td class="p-3">${c.type || 'API'}</td>
-      <td class="p-3">${badge(c.status || 'Active')}</td>
-      <td class="p-3 text-neutral-500 text-xs dark:text-neutral-400">${c.lastSync || '—'}</td>
+      <td class="p-3">${i.name}</td>
+      <td class="p-3">${badge((i.status || '').charAt(0).toUpperCase() + (i.status || '').slice(1))}</td>
+      <td class="p-3 text-neutral-500 text-xs dark:text-neutral-400">${i.lastChecked ? new Date(i.lastChecked).toLocaleString() : '—'}</td>
       <td class="p-3 space-x-2">
-        <button class="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-500 rounded" onclick="editConnector('${c.id}')">Edit</button>
-        <button class="px-2 py-1 text-xs bg-red-500 text-white rounded" onclick="deleteConnector('${c.id}')">Delete</button>
+        <button class="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-500 rounded" onclick="editIntegration('${i.id}')">Edit</button>
+        <button class="px-2 py-1 text-xs bg-red-500 text-white rounded" onclick="deleteIntegration('${i.id}')">Delete</button>
       </td>
     </tr>
   `).join('');
@@ -312,10 +367,10 @@ function renderTable() {
 }
 
 function updateKPIs() {
-  const total   = connectors.length;
-  const active  = connectors.filter(c => (c.status || '').toLowerCase() === 'active').length;
-  const pending = connectors.filter(c => (c.status || '').toLowerCase() === 'pending').length;
-  const failed  = connectors.filter(c => (c.status || '').toLowerCase() === 'failed').length;
+  const total   = integrations.length;
+  const active  = integrations.filter(i => (i.status || '').toLowerCase() === 'active').length;
+  const pending = integrations.filter(i => (i.status || '').toLowerCase() === 'pending').length;
+  const failed  = integrations.filter(i => (i.status || '').toLowerCase() === 'error' || (i.status || '').toLowerCase() === 'failed').length;
 
   document.getElementById('totalConnectors').textContent  = total;
   document.getElementById('activeConnectors').textContent = active;
@@ -323,40 +378,185 @@ function updateKPIs() {
   document.getElementById('failedConnectors').textContent = failed;
 }
 
-/* ===============================
-   SAVE / DELETE (generic)
-================================= */
-async function saveGenericConnector(payload) {
-  const userId = getUserId();
-  const res = await fetch(ENDPOINTS.saveGeneric(userId), {
-    method: 'POST',
-    headers: defaultHeaders(),
-    credentials: 'include',
-    body: JSON.stringify(payload)
-  });
-  if (!res.ok) throw new Error('Save failed');
-  return res.json(); // expected { id, ... }
+/* Actions: Edit + Delete integrations (uses dashboard endpoints) */
+let editingIntegrationId = null;
+
+function openEditIntegrationModal() {
+  document.getElementById('editIntegrationModal')?.classList.remove('hidden');
 }
 
-async function deleteConnector(id) {
-  if (!confirm('Delete this connector?')) return;
-  const userId = getUserId();
+function closeEditIntegrationModal() {
+  document.getElementById('editIntegrationModal')?.classList.add('hidden');
+  document.getElementById('edit_integration_result').textContent = '';
+  editingIntegrationId = null;
+}
+
+function openAddIntegrationModal() {
+  document.getElementById('addIntegrationModal')?.classList.remove('hidden');
+  // Clear form
+  document.getElementById('add_integration_name').value = '';
+  document.getElementById('add_integration_apiKey').value = '';
+  document.getElementById('add_integration_testUrl').value = '';
+  document.getElementById('add_integration_result').textContent = '';
+}
+
+function closeAddIntegrationModal() {
+  document.getElementById('addIntegrationModal')?.classList.add('hidden');
+}
+
+async function saveNewIntegration() {
+  const resultEl = document.getElementById('add_integration_result');
+  resultEl.textContent = 'Creating integration...';
+  resultEl.className = 'text-sm text-blue-600 pt-1';
+
+  const name = document.getElementById('add_integration_name').value.trim();
+  const apiKey = document.getElementById('add_integration_apiKey').value.trim();
+  const testUrl = document.getElementById('add_integration_testUrl').value.trim();
+
+  if (!name) {
+    resultEl.textContent = '⚠️ Integration name is required.';
+    resultEl.className = 'text-sm text-red-600 pt-1';
+    return;
+  }
+
+  if (!apiKey) {
+    resultEl.textContent = '⚠️ API Key is required.';
+    resultEl.className = 'text-sm text-red-600 pt-1';
+    return;
+  }
+
   try {
-    await fetch(ENDPOINTS.deleteOne(id, userId), {
-      method: 'DELETE',
-      headers: { 'x-user-id': userId },
-      credentials: 'include'
+    const res = await fetch(ENDPOINTS.integrationsAdd(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ name, apiKey, testUrl: testUrl || null })
     });
-    connectors = connectors.filter(c => c.id !== id);
-    renderTable();
-    updateKPIs();
-  } catch (e) {
-    alert('Failed to delete connector.');
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to create integration');
+    }
+
+    resultEl.textContent = '✅ Integration created! Verification will run shortly.';
+    resultEl.className = 'text-sm text-green-600 pt-1';
+    
+    await loadIntegrations();
+    setTimeout(() => closeAddIntegrationModal(), 1500);
+  } catch (err) {
+    resultEl.textContent = '❌ Failed: ' + (err.message || 'Unknown error');
+    resultEl.className = 'text-sm text-red-600 pt-1';
   }
 }
 
-function editConnector(_id) {
-  alert('Edit coming soon');
+async function deleteIntegration(id) {
+  if (!confirm('Delete this integration?')) return;
+  try {
+    const res = await fetch(ENDPOINTS.integrationsDelete(id), {
+      method: 'DELETE',
+      credentials: 'include'
+    });
+    if (!res.ok && res.status !== 204) throw new Error('Delete failed');
+    await loadIntegrations();
+  } catch (err) {
+    alert('Failed to delete integration: ' + (err.message || 'Unknown error'));
+  }
+}
+
+async function editIntegration(id) {
+  const item = integrations.find(x => String(x.id) === String(id));
+  if (!item) return alert('Integration not found');
+
+  editingIntegrationId = id;
+  document.getElementById('edit_integration_name').value = item.name || '';
+  document.getElementById('edit_integration_apiKey').value = '';
+  document.getElementById('edit_integration_testUrl').value = item.testUrl || '';
+  openEditIntegrationModal();
+}
+
+async function saveEditedIntegration() {
+  const resultEl = document.getElementById('edit_integration_result');
+  resultEl.textContent = 'Saving...';
+  resultEl.className = 'text-sm text-blue-600 pt-1';
+
+  const name = document.getElementById('edit_integration_name').value.trim();
+  const testUrl = document.getElementById('edit_integration_testUrl').value.trim();
+
+  if (!name) {
+    resultEl.textContent = '⚠️ Name is required.';
+    resultEl.className = 'text-sm text-red-600 pt-1';
+    return;
+  }
+
+  try {
+    const res = await fetch(ENDPOINTS.integrationsPatch(editingIntegrationId), {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ name, testUrl })
+    });
+    if (!res.ok) throw new Error('Update failed');
+
+    resultEl.textContent = '✅ Saved successfully!';
+    resultEl.className = 'text-sm text-green-600 pt-1';
+    
+    await loadIntegrations();
+    setTimeout(() => closeEditIntegrationModal(), 1000);
+  } catch (err) {
+    resultEl.textContent = '❌ Failed: ' + (err.message || 'Unknown error');
+    resultEl.className = 'text-sm text-red-600 pt-1';
+  }
+}
+
+async function saveAndVerifyIntegration() {
+  const resultEl = document.getElementById('edit_integration_result');
+  resultEl.textContent = 'Saving and verifying...';
+  resultEl.className = 'text-sm text-blue-600 pt-1';
+
+  const name = document.getElementById('edit_integration_name').value.trim();
+  const apiKey = document.getElementById('edit_integration_apiKey').value.trim();
+  const testUrl = document.getElementById('edit_integration_testUrl').value.trim();
+
+  if (!name) {
+    resultEl.textContent = '⚠️ Name is required.';
+    resultEl.className = 'text-sm text-red-600 pt-1';
+    return;
+  }
+
+  if (!apiKey) {
+    resultEl.textContent = '⚠️ API Key is required for verification.';
+    resultEl.className = 'text-sm text-red-600 pt-1';
+    return;
+  }
+
+  try {
+    // 1) Update name and test URL
+    const pRes = await fetch(ENDPOINTS.integrationsPatch(editingIntegrationId), {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ name, testUrl })
+    });
+    if (!pRes.ok) throw new Error('Update failed');
+
+    // 2) Trigger verification
+    const vRes = await fetch(ENDPOINTS.integrationsVerify(editingIntegrationId), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ apiKey })
+    });
+    if (!vRes.ok && vRes.status !== 202) throw new Error('Verification request failed');
+
+    resultEl.textContent = '✅ Saved and verification started!';
+    resultEl.className = 'text-sm text-green-600 pt-1';
+    
+    await loadIntegrations();
+    setTimeout(() => closeEditIntegrationModal(), 1500);
+  } catch (err) {
+    resultEl.textContent = '❌ Failed: ' + (err.message || 'Unknown error');
+    resultEl.className = 'text-sm text-red-600 pt-1';
+  }
 }
 
 /* ===============================
@@ -372,9 +572,8 @@ async function testMtnConnection() {
   // Gather fields
   const payload = {
     provider: 'mtn',
+    env: 'sandbox',
     label: (document.getElementById('mtn_label').value || '').trim(),
-    status: 'Active',
-    type: 'API',
     config: {
       subscriptionKey: (document.getElementById('mtn_subscriptionKey').value || '').trim(),
       apiUserId:       (document.getElementById('mtn_apiUserId').value || '').trim(),
@@ -392,22 +591,21 @@ async function testMtnConnection() {
   }
 
   try {
-    // Save first (so we get a connectionId to test with)
-    const saved = await saveGenericConnector(payload);
-    justSavedIds.mtn = saved.id;
-
-    // Real test by calling balance endpoint (backend will fetch token under the hood)
-    const res = await fetch(ENDPOINTS.mtnBalance(saved.id), {
+    // 1) Verify credentials without persisting
+    const tRes = await fetch(ENDPOINTS.mtnTest(), {
+      method: 'POST',
       headers: defaultHeaders(),
-      credentials: 'include'
+      credentials: 'include',
+      body: JSON.stringify(payload)
     });
+    if (!tRes.ok) throw new Error(`Verification failed (${tRes.status})`);
+    const tData = await tRes.json();
+    // cache for Save
+    pendingMtnPayload = payload;
 
-    if (!res.ok) throw new Error(`Balance check failed (${res.status})`);
-    el.textContent = '✅ MTN Connected successfully (balance reachable).';
+    el.textContent = `✅ Verified (token ok, exp ${tData.expiresIn || '—'}s). Click Save to persist.`;
     el.className = 'text-sm text-green-600 font-medium';
     btn.disabled = false; btn.classList.remove('opacity-50');
-
-    await loadConnectors();
   } catch (err) {
     console.error('MTN Test Error:', err);
     el.textContent = '❌ MTN connection failed: ' + (err.message || 'Unknown error');
@@ -417,24 +615,15 @@ async function testMtnConnection() {
 }
 
 async function saveMtnConnection() {
-  // If we just saved during test, we’re done
-  if (justSavedIds.mtn) {
-    closeMtnModal();
-    alert('✅ MTN connection saved successfully!');
-    justSavedIds.mtn = null;
-    return;
-  }
-  // Otherwise do a normal save (no retest)
   const el = document.getElementById('mtn_test_result');
   el.textContent = 'Saving MTN connection...';
   el.className = 'text-sm text-blue-600';
 
   try {
-    const payload = {
+    const toSave = pendingMtnPayload || {
       provider: 'mtn',
+      env: 'sandbox',
       label: (document.getElementById('mtn_label').value || '').trim(),
-      status: 'Active',
-      type: 'API',
       config: {
         subscriptionKey: (document.getElementById('mtn_subscriptionKey').value || '').trim(),
         apiUserId:       (document.getElementById('mtn_apiUserId').value || '').trim(),
@@ -443,10 +632,26 @@ async function saveMtnConnection() {
         callbackUrl:     (document.getElementById('mtn_callbackUrl').value || '').trim()
       }
     };
-    await saveGenericConnector(payload);
+
+    const sRes = await fetch(ENDPOINTS.mtnSave(), {
+      method: 'POST',
+      headers: defaultHeaders(),
+      credentials: 'include',
+      body: JSON.stringify(toSave)
+    });
+    if (!sRes.ok) throw new Error(`Save failed (${sRes.status})`);
+    const saved = await sRes.json();
+
+    // Optional: quick balance check
+    try {
+      const bRes = await fetch(ENDPOINTS.mtnBalance(saved.id), { credentials: 'include' });
+      if (!bRes.ok) throw new Error('Balance failed');
+    } catch (_) {}
+
+    pendingMtnPayload = null;
     closeMtnModal();
     alert('✅ MTN connection saved successfully!');
-    await loadConnectors();
+    await loadIntegrations();
   } catch (err) {
     el.textContent = '❌ Save failed: ' + (err.message || 'Unknown error');
     el.className = 'text-sm text-red-600';
@@ -503,7 +708,7 @@ async function testFlwConnection() {
     el.className = 'text-sm text-green-600 font-medium';
     btn.disabled = false; btn.classList.remove('opacity-50');
 
-    await loadConnectors();
+  await loadIntegrations();
   } catch (err) {
     console.error('Flutterwave Test Error:', err);
     el.textContent = '❌ Flutterwave connection failed: ' + (err.message || 'Unknown error');
@@ -541,7 +746,7 @@ async function saveFlwConnection() {
 
     closeFlwModal();
     alert('✅ Flutterwave connection saved successfully!');
-    await loadConnectors();
+  await loadIntegrations();
   } catch (err) {
     el.textContent = '❌ Save failed: ' + (err.message || 'Unknown error');
     el.className = 'text-sm text-red-600';
@@ -551,12 +756,31 @@ async function saveFlwConnection() {
 /* ===============================
    BOOT
 ================================= */
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   // live search (works even if your input has no id)
   const searchEl = document.getElementById('searchBox') || document.querySelector('input[placeholder="Search connectors..."]');
   if (searchEl) searchEl.addEventListener('input', renderTable);
 
-  loadConnectors();
+  loadIntegrations();
+
+  // Load user profile to display name
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/dashboard/me`, { credentials: 'include' });
+    if (res.ok) {
+      const me = await res.json();
+      const fullName = [me?.firstName, me?.lastName].filter(Boolean).join(' ').trim();
+      const emailLocal = (me?.email || '').split('@')[0];
+      const displayName = fullName || emailLocal || 'User';
+      
+      // Update profile name in sidebar
+      const profileNameEl = document.querySelector('.text-sm.font-medium');
+      if (profileNameEl && profileNameEl.textContent === 'Insert User Name') {
+        profileNameEl.textContent = displayName;
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to load user profile', e);
+  }
 
   // keep your profile image behavior intact
   const imageStore = 'connectify.pfpUrl';
