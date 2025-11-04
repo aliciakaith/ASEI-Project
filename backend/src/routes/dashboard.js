@@ -39,18 +39,22 @@ async function createNotification(req, { type = 'info', title = '', message = ''
 router.post("/dev/seed-demo", async (req, res) => {
   const orgId = req.user.org;
 
-  // 4 active flows
-  await query(
-    `
-    INSERT INTO flows (id, org_id, name, status) VALUES
-      (gen_random_uuid(), $1, 'Payments',      'active'),
-      (gen_random_uuid(), $1, 'KYC Checks',    'active'),
-      (gen_random_uuid(), $1, 'Notifications', 'active'),
-      (gen_random_uuid(), $1, 'Reconciler',    'active')
-    ON CONFLICT DO NOTHING;
-  `,
-    [orgId]
-  );
+  // 4 active flows - only insert if they don't already exist
+  const flowNames = ['Payments', 'KYC Checks', 'Notifications', 'Reconciler'];
+  
+  for (const flowName of flowNames) {
+    await query(
+      `
+      INSERT INTO flows (id, org_id, name, status)
+      SELECT gen_random_uuid(), $1, $2, 'active'
+      WHERE NOT EXISTS (
+        SELECT 1 FROM flows 
+        WHERE org_id = $1 AND name = $2 AND is_deleted = FALSE
+      );
+      `,
+      [orgId, flowName]
+    );
+  }
 
   // recent tx events
 await query(
