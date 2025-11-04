@@ -143,11 +143,19 @@ router.post("/compliance/generate", express.json(), async (req, res) => {
       `SELECT id, email, first_name AS "firstName", last_name AS "lastName", created_at AS "createdAt" FROM users WHERE org_id=$1`,
       [orgId]
     );
-    const { rows: orgData } = await query(
-      `SELECT id, name, created_at AS "createdAt" FROM organizations WHERE id=$1`,
-      [orgId]
-    );
-    const org = orgData[0] || {};
+    
+    // Guard organizations query (table might not exist in some environments)
+    let org = {};
+    try {
+      const { rows: orgData } = await query(
+        `SELECT id, name, created_at AS "createdAt" FROM organizations WHERE id=$1`,
+        [orgId]
+      );
+      org = orgData[0] || {};
+    } catch (orgErr) {
+      console.warn('Organizations table query failed (table may not exist):', orgErr.message);
+      org = { id: orgId, name: 'Unknown', createdAt: null };
+    }
 
     // Security findings assessment
     const findings = [];
@@ -238,12 +246,14 @@ router.post("/compliance/generate", express.json(), async (req, res) => {
         });
       }
 
-      // Check 2: SMTP security
-      if (process.env.SMTP_HOST && process.env.SMTP_HOST.includes('gmail') && process.env.SMTP_PORT !== '465') {
+      // Check 2: SMTP security (hardened)
+      const smtpPort = process.env.SMTP_PORT;
+      const smtpPortNum = smtpPort ? parseInt(smtpPort, 10) : undefined;
+      if (process.env.SMTP_HOST && process.env.SMTP_HOST.includes('gmail') && smtpPortNum !== 465) {
         privacyChecks.push({
           severity: 'low',
           category: 'Email Security',
-          issue: 'Gmail SMTP not using SSL port 465',
+          issue: `Gmail SMTP not using SSL port 465 (current: ${smtpPort || 'undefined'})`,
           recommendation: 'Use port 465 with secure=true for Gmail to encrypt email transmission'
         });
       }
@@ -261,7 +271,46 @@ router.post("/compliance/generate", express.json(), async (req, res) => {
         });
       }
 
-      // Check 4: User consent tracking
+      // Check 4: HTTPS enforcement
+      const nonHttpsIntegrations = integrations.filter(i => 
+        i.test_url && i.test_url.startsWith('http://') && !i.test_url.includes('localhost')
+      );
+      if (nonHttpsIntegrations.length > 0) {
+        privacyChecks.push({
+          severity: 'high',
+          category: 'Transport Security',
+          issue: `${nonHttpsIntegrations.length} integration(s) using HTTP instead of HTTPS`,
+          recommendation: 'Enforce HTTPS for all external integrations: ' + nonHttpsIntegrations.map(i => i.name).join(', ')
+        });
+      }
+
+      // Check 5: PII in URLs (check tx_events metadata for potential PII in URLs)
+      const piiInUrls = txEvents.filter(e => 
+        e.metadata && typeof e.metadata === 'object' && 
+        (e.metadata.url || e.metadata.endpoint) &&
+        /email|phone|ssn|credit|password/i.test(e.metadata.url || e.metadata.endpoint || '')
+      );
+      if (piiInUrls.length > 0) {
+        privacyChecks.push({
+          severity: 'critical',
+          category: 'PII Exposure',
+          issue: `${piiInUrls.length} transaction(s) may have PII in URLs/query params`,
+          recommendation: 'Never pass sensitive data in URLs—use POST body or headers instead'
+        });
+      }
+
+      // Check 6: JWT secret strength (conditional severity)
+      const jwtSecret = process.env.JWT_SECRET || '';
+      if (jwtSecret.length < 32) {
+        privacyChecks.push({
+          severity: jwtSecret === 'please_change_me' || jwtSecret.length < 16 ? 'critical' : 'high',
+          category: 'Authentication Security',
+          issue: `JWT secret is weak (${jwtSecret.length} chars, default=${jwtSecret === 'please_change_me'})`,
+          recommendation: 'Use a strong random secret (32+ chars) for JWT_SECRET in production'
+        });
+      }
+
+      // Check 7: User consent tracking
       privacyChecks.push({
         severity: 'medium',
         category: 'Compliance',
@@ -269,7 +318,7 @@ router.post("/compliance/generate", express.json(), async (req, res) => {
         recommendation: 'Implement consent management for GDPR/CCPA (terms acceptance, data processing agreements)'
       });
 
-      // Check 5: Data export capability
+      // Check 8: Data export capability
       privacyChecks.push({
         severity: 'low',
         category: 'User Rights',
@@ -350,6 +399,11 @@ router.post("/compliance/generate", express.json(), async (req, res) => {
         doc.moveDown();
 
         if (isDataPrivacy && privacyChecks.length > 0) {
+          // Add page break if privacy section is long (more than 5 checks)
+          if (privacyChecks.length > 5) {
+            doc.addPage();
+          }
+          
           doc.fontSize(12).text('Data Privacy Assessment', { underline: true });
           doc.fontSize(10);
           doc.text(`Organization: ${org.name || orgId} (created ${org.createdAt ? new Date(org.createdAt).toLocaleDateString() : 'N/A'})`);
@@ -438,6 +492,9 @@ router.post("/compliance/generate", express.json(), async (req, res) => {
 
     const privacyChecksTable = isDataPrivacy && privacyChecks.length > 0 ? `
       <h3 style="margin-top:20px;font-size:16px;color:#111827">Data Privacy Assessment</h3>
+      <p style="margin:10px 0;padding:10px;background:#eff6ff;border-left:3px solid #3b82f6;color:#1e40af;font-size:14px">
+        <strong>Privacy Summary:</strong> ${privacyChecks.length} check(s) performed on ${users.length} user(s) across ${org.name || orgId}
+      </p>
       <div style="margin:10px 0;padding:10px;background:#ffffff;border-left:3px solid #6366f1">
         <p style="margin:0 0 8px;font-weight:600">Organization: ${org.name || orgId}</p>
         <p style="margin:0 0 8px;color:#6b7280">Created: ${org.createdAt ? new Date(org.createdAt).toLocaleDateString() : 'N/A'}</p>
