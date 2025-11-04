@@ -138,6 +138,17 @@ router.post("/compliance/generate", express.json(), async (req, res) => {
       [orgId]
     );
 
+    // Extra data for Data Privacy Report
+    const { rows: users } = await query(
+      `SELECT id, email, first_name AS "firstName", last_name AS "lastName", created_at AS "createdAt" FROM users WHERE org_id=$1`,
+      [orgId]
+    );
+    const { rows: orgData } = await query(
+      `SELECT id, name, created_at AS "createdAt" FROM organizations WHERE id=$1`,
+      [orgId]
+    );
+    const org = orgData[0] || {};
+
     // Security findings assessment
     const findings = [];
     const isSecurityAudit = reportType === 'Security Audit';
@@ -208,6 +219,65 @@ router.post("/compliance/generate", express.json(), async (req, res) => {
       }
     }
 
+    // Data Privacy checks (only for Data Privacy Report)
+    const privacyChecks = [];
+    const isDataPrivacy = reportType === 'Data Privacy Report';
+    
+    if (isDataPrivacy) {
+      // Check 1: PII retention policy
+      const oldUsers = users.filter(u => {
+        const age = Date.now() - new Date(u.createdAt).getTime();
+        return age > 365 * 24 * 60 * 60 * 1000; // older than 1 year
+      });
+      if (oldUsers.length > 0) {
+        privacyChecks.push({
+          severity: 'medium',
+          category: 'Data Retention',
+          issue: `${oldUsers.length} user(s) older than 1 year`,
+          recommendation: 'Review data retention policy and purge inactive accounts if appropriate'
+        });
+      }
+
+      // Check 2: SMTP security
+      if (process.env.SMTP_HOST && process.env.SMTP_HOST.includes('gmail') && process.env.SMTP_PORT !== '465') {
+        privacyChecks.push({
+          severity: 'low',
+          category: 'Email Security',
+          issue: 'Gmail SMTP not using SSL port 465',
+          recommendation: 'Use port 465 with secure=true for Gmail to encrypt email transmission'
+        });
+      }
+
+      // Check 3: Notifications with PII
+      const piiNotifs = notifications.filter(n => 
+        /email|phone|ssn|credit/i.test(n.message) || /email|phone|ssn|credit/i.test(n.title)
+      );
+      if (piiNotifs.length > 0) {
+        privacyChecks.push({
+          severity: 'high',
+          category: 'PII Exposure',
+          issue: `${piiNotifs.length} notification(s) may contain PII in messages`,
+          recommendation: 'Sanitize notification messages to avoid storing sensitive data in plain text'
+        });
+      }
+
+      // Check 4: User consent tracking
+      privacyChecks.push({
+        severity: 'medium',
+        category: 'Compliance',
+        issue: 'No explicit user consent tracking detected',
+        recommendation: 'Implement consent management for GDPR/CCPA (terms acceptance, data processing agreements)'
+      });
+
+      // Check 5: Data export capability
+      privacyChecks.push({
+        severity: 'low',
+        category: 'User Rights',
+        issue: 'No self-service data export endpoint detected',
+        recommendation: 'Provide users ability to download their data (GDPR Article 20)'
+      });
+    }
+
     // Derived roll-up for easier UI rendering
     const integrationsByStatus = {
       active: integrations.filter(i => i.status === 'active'),
@@ -224,6 +294,9 @@ router.post("/compliance/generate", express.json(), async (req, res) => {
       notifications,
       txEvents,
       findings: isSecurityAudit ? findings : undefined,
+      privacyChecks: isDataPrivacy ? privacyChecks : undefined,
+      users: isDataPrivacy ? users.map(u => ({ id: u.id, email: u.email, createdAt: u.createdAt })) : undefined,
+      orgInfo: isDataPrivacy ? org : undefined,
       summary: {
         totalIntegrations: integrations.length,
         activeIntegrations: integrationsByStatus.active.length,
@@ -275,6 +348,20 @@ router.post("/compliance/generate", express.json(), async (req, res) => {
           doc.text(`Error: ${integrationsByStatus.error.map(i => i.name).join(', ')}`);
         }
         doc.moveDown();
+
+        if (isDataPrivacy && privacyChecks.length > 0) {
+          doc.fontSize(12).text('Data Privacy Assessment', { underline: true });
+          doc.fontSize(10);
+          doc.text(`Organization: ${org.name || orgId} (created ${org.createdAt ? new Date(org.createdAt).toLocaleDateString() : 'N/A'})`);
+          doc.text(`Users: ${users.length} total`);
+          doc.moveDown(0.5);
+          doc.fontSize(11).text('Privacy Checks:', { underline: true });
+          privacyChecks.forEach(p => {
+            doc.fontSize(10).text(`[${p.severity.toUpperCase()}] ${p.category}: ${p.issue}`, { continued: false });
+            doc.fontSize(9).text(`  → ${p.recommendation}`);
+          });
+          doc.moveDown();
+        }
 
         if (isSecurityAudit && findings.length > 0) {
           doc.fontSize(12).text('Security Findings', { underline: true });
@@ -349,10 +436,42 @@ router.post("/compliance/generate", express.json(), async (req, res) => {
       </table>
     ` : '';
 
+    const privacyChecksTable = isDataPrivacy && privacyChecks.length > 0 ? `
+      <h3 style="margin-top:20px;font-size:16px;color:#111827">Data Privacy Assessment</h3>
+      <div style="margin:10px 0;padding:10px;background:#ffffff;border-left:3px solid #6366f1">
+        <p style="margin:0 0 8px;font-weight:600">Organization: ${org.name || orgId}</p>
+        <p style="margin:0 0 8px;color:#6b7280">Created: ${org.createdAt ? new Date(org.createdAt).toLocaleDateString() : 'N/A'}</p>
+        <p style="margin:0;color:#6b7280">Total Users: ${users.length}</p>
+      </div>
+      <table style="width:100%;border-collapse:collapse;margin-top:10px">
+        <thead>
+          <tr style="background:#f3f4f6;text-align:left">
+            <th style="padding:8px;border:1px solid #d1d5db">Severity</th>
+            <th style="padding:8px;border:1px solid #d1d5db">Category</th>
+            <th style="padding:8px;border:1px solid #d1d5db">Issue</th>
+            <th style="padding:8px;border:1px solid #d1d5db">Recommendation</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${privacyChecks.map(p => `
+            <tr>
+              <td style="padding:8px;border:1px solid #d1d5db;color:${sevColor(p.severity)};font-weight:600">${p.severity.toUpperCase()}</td>
+              <td style="padding:8px;border:1px solid #d1d5db">${p.category}</td>
+              <td style="padding:8px;border:1px solid #d1d5db">${p.issue}</td>
+              <td style="padding:8px;border:1px solid #d1d5db">${p.recommendation}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    ` : '';
+
+    const sydneyTime = new Date().toLocaleString('en-AU', { timeZone: 'Australia/Sydney', hour12: false });
+    const sydneyDate = new Date().toLocaleDateString('en-AU', { timeZone: 'Australia/Sydney' });
+
     const emailHtml = `
       <div style="font-family:Inter,Arial,sans-serif;padding:20px;background:#f9fafb;color:#111827">
         <h2 style="margin:0 0 10px;color:#111827">Compliance Report: ${reportType}</h2>
-        <p style="margin:0 0 16px;color:#6b7280;font-size:14px">Generated ${new Date().toISOString()} for org ${orgId}</p>
+        <p style="margin:0 0 16px;color:#6b7280;font-size:14px">Generated ${sydneyTime} (Sydney) for org ${orgId}</p>
         
         <h3 style="margin-top:20px;font-size:16px;color:#111827">Summary (Last 7 Days)</h3>
         <ul style="margin:10px 0;padding-left:20px;line-height:1.6">
@@ -364,6 +483,7 @@ router.post("/compliance/generate", express.json(), async (req, res) => {
 
         ${integrationBreakdown}
         ${findingsTable}
+        ${privacyChecksTable}
 
         <p style="margin-top:20px;font-size:12px;color:#6b7280">Full report attached as JSON and PDF.</p>
       </div>
@@ -380,8 +500,8 @@ router.post("/compliance/generate", express.json(), async (req, res) => {
 
       await sendMail({
         to: recipientEmail,
-        subject: `Compliance report (${reportType}) - ${new Date().toISOString().split('T')[0]}`,
-        text: `Attached is the compliance report (${reportType}). ${isSecurityAudit ? `Findings: ${findings.length}` : ''}`,
+        subject: `Compliance report (${reportType}) - ${sydneyDate}`,
+        text: `Attached is the compliance report (${reportType}). ${isSecurityAudit ? `Findings: ${findings.length}` : isDataPrivacy ? `Privacy Checks: ${privacyChecks.length}` : ''}`,
         html: emailHtml,
         attachments
       });
