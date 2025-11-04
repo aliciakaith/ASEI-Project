@@ -48,12 +48,16 @@ FROM org,
        (true,   80, now() - interval '10 minute')
      ) AS v(success, latency, ts);
 
--- 7) Demo Integration
+-- 7) Demo Integrations
 WITH org AS (SELECT id AS org_id FROM organizations WHERE name = 'Demo Org')
-INSERT INTO integrations (org_id, name, status)
-SELECT org.org_id, 'MTN Mobile Money', 'active'
-FROM org
-ON CONFLICT DO NOTHING;
+INSERT INTO integrations (org_id, name, status, test_url)
+SELECT org.org_id, v.name, v.status, v.test_url
+FROM org,
+     ( VALUES
+       ('MTN Mobile Money', 'active', 'https://sandbox.momodeveloper.mtn.com'),
+       ('Flutterwave', 'active', 'https://api.flutterwave.com/v3')
+     ) AS v(name, status, test_url)
+ON CONFLICT (org_id, LOWER(name)) DO NOTHING;
 
 -- 8) Demo Notifications
 WITH org AS (SELECT id AS org_id FROM organizations WHERE name = 'Demo Org')

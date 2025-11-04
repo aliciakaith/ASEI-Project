@@ -1,6 +1,7 @@
 import express from 'express';
 import flutterwaveClient from '../providers/flutterwave/index.js';
 import { listConnectors, saveConnector, getConnectorSecret } from '../db/connectorStore.js';
+import { query } from '../db/postgres.js';
 
 const router = express.Router();
 const FLW_BASE_URL = process.env.FLW_BASE_URL || 'https://api.flutterwave.com/v3';
@@ -56,6 +57,7 @@ router.post('/api/connectors/flutterwave/test', express.json(), async (req, res)
 /** Create a hosted checkout payment */
 router.post('/api/flutterwave/payments', express.json(), async (req, res) => {
   const userId = getUserId(req);
+  const orgId = req.user?.org;
   const {
     connectorId,
     amount,
@@ -73,6 +75,7 @@ router.post('/api/flutterwave/payments', express.json(), async (req, res) => {
   const creds = getConnectorSecret(userId, connectorId);
   if (!creds) return res.status(404).json({ error: 'Connector not found' });
 
+  const startTime = Date.now();
   try {
     const fw = flutterwaveClient({ secretKey: creds.secretKey, baseUrl: FLW_BASE_URL });
     const resp = await fw.createPayment({
@@ -83,8 +86,27 @@ router.post('/api/flutterwave/payments', express.json(), async (req, res) => {
       meta,
       redirect_url,
     });
+    
+    // Log successful transaction
+    const latency = Date.now() - startTime;
+    if (orgId) {
+      await query(
+        `INSERT INTO tx_events (org_id, success, latency_ms) VALUES ($1, $2, $3)`,
+        [orgId, true, latency]
+      ).catch(err => console.error('Failed to log Flutterwave tx_event:', err));
+    }
+    
     return res.json({ ok: true, data: resp });
   } catch (e) {
+    // Log failed transaction
+    const latency = Date.now() - startTime;
+    if (orgId) {
+      await query(
+        `INSERT INTO tx_events (org_id, success, latency_ms) VALUES ($1, $2, $3)`,
+        [orgId, false, latency]
+      ).catch(err => console.error('Failed to log Flutterwave tx_event:', err));
+    }
+    
     return res.status(400).json({ ok: false, error: e.message });
   }
 });
@@ -92,17 +114,38 @@ router.post('/api/flutterwave/payments', express.json(), async (req, res) => {
 /** Verify a payment by reference */
 router.get('/api/flutterwave/verify', async (req, res) => {
   const userId = getUserId(req);
+  const orgId = req.user?.org;
   const { connectorId, tx_ref } = req.query || {};
   if (!connectorId || !tx_ref) return res.status(400).json({ error: 'connectorId & tx_ref are required' });
 
   const creds = getConnectorSecret(userId, connectorId);
   if (!creds) return res.status(404).json({ error: 'Connector not found' });
 
+  const startTime = Date.now();
   try {
     const fw = flutterwaveClient({ secretKey: creds.secretKey, baseUrl: FLW_BASE_URL });
     const data = await fw.verifyByReference(tx_ref);
+    
+    // Log successful verification
+    const latency = Date.now() - startTime;
+    if (orgId) {
+      await query(
+        `INSERT INTO tx_events (org_id, success, latency_ms) VALUES ($1, $2, $3)`,
+        [orgId, true, latency]
+      ).catch(err => console.error('Failed to log Flutterwave verify tx_event:', err));
+    }
+    
     return res.json({ ok: true, data });
   } catch (e) {
+    // Log failed verification
+    const latency = Date.now() - startTime;
+    if (orgId) {
+      await query(
+        `INSERT INTO tx_events (org_id, success, latency_ms) VALUES ($1, $2, $3)`,
+        [orgId, false, latency]
+      ).catch(err => console.error('Failed to log Flutterwave verify tx_event:', err));
+    }
+    
     return res.status(400).json({ ok: false, error: e.message });
   }
 });
