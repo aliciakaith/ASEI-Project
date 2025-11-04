@@ -188,6 +188,41 @@ router.get('/:id/versions/:version', async (req, res) => {
   }
 });
 
+/** PATCH /api/flows/:id/status
+ * Update flow status (for deployment)
+ */
+router.patch('/:id/status', async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body || {};
+  
+  if (!status || !['inactive', 'active', 'draft'].includes(status)) {
+    return res.status(400).json({ error: 'Invalid status. Must be: inactive, active, or draft' });
+  }
+
+  try {
+    const upd = await query(
+      `UPDATE flows SET status = $1, updated_at = now() WHERE id = $2 AND is_deleted = FALSE RETURNING *`,
+      [status, id]
+    );
+    if (upd.rowCount === 0) return res.status(404).json({ error: 'Flow not found' });
+
+    // flow status updated
+    await audit(req, {
+      userId: req.user?.id ?? null,
+      action: "FLOW_STATUS_UPDATE",
+      targetType: "flow",
+      targetId: id,
+      statusCode: 200,
+      metadata: { status: status, name: upd.rows[0].name }
+    });
+
+    res.json(upd.rows[0]);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Failed to update flow status' });
+  }
+});
+
 /** DELETE /api/flows/:id
  * Soft delete a flow
  */

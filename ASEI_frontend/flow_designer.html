@@ -22,6 +22,7 @@
   })();
 </script>
 <script src="https://unpkg.com/jsplumb@2.15.6/dist/js/jsplumb.min.js"></script>
+<script src="js/flowDesignerAPI.js"></script>
 <link rel="icon" type="image/png" href="images/connectify_logo.png">
 <style>
   body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial; }
@@ -76,6 +77,28 @@
   }
   .dot-left { margin-right: 8px; }
   .dot-right { margin-left: 8px; }
+
+  /* Custom Modal Animation */
+  .modal-backdrop {
+    animation: fadeIn 0.2s ease-out;
+  }
+  .modal-content {
+    animation: slideUp 0.3s ease-out;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes slideUp {
+    from { 
+      opacity: 0;
+      transform: translateY(20px) scale(0.95);
+    }
+    to { 
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
 </style>
 </head>
 
@@ -134,16 +157,27 @@
 
 <!-- Main -->
 <main class="ml-60 p-6">
-  <h2 class="text-xl font-semibold mb-4">Flow Designer</h2>
+  <div class="flex items-center justify-between mb-4">
+    <h2 class="text-xl font-semibold">Flow Designer</h2>
+    <div class="flex items-center gap-2">
+      <button id="newFlowBtn" class="px-3 py-2 bg-green-500 hover:bg-green-600 text-white border border-green-600 rounded text-sm">
+        ➕ New Flow
+      </button>
+      <button id="loadFlowBtn" class="px-3 py-2 bg-gray-300 hover:bg-gray-400 dark:bg-gray-600 dark:hover:bg-gray-700 border dark:border-neutral-600 rounded text-sm">
+        📂 Load Flow
+      </button>
+      <input id="flowNameInput" type="text" placeholder="My Flow" class="px-3 py-2 border dark:border-neutral-600 dark:bg-neutral-700 rounded text-sm" value="New Flow">
+    </div>
+  </div>
 
   <!-- Toolbar -->
   <div class="flex flex-col mb-2">
     <div class="flex gap-2 justify-end">
       <button class="px-3 py-2 bg-gray-300 hover:bg-gray-400 dark:bg-gray-500 dark:hover:bg-gray-600 border dark:border-neutral-600 rounded" onclick="exportFlow()">Export</button>
       <button class="px-3 py-2 bg-gray-500 hover:bg-gray-600 dark:bg-gray-700 dark:hover:bg-gray-800 border dark:border-neutral-800 text-white rounded" onclick="saveFlow('draft')">Save Draft</button>
-      <button class="px-3 py-2 bg-blue-500 hover:bg-blue-600 dark:bg-blue-700 dark:hover:bg-blue-800 boder dark:border-blue-800 text-white rounded" onclick="saveFlow('deployed')">Deploy Flow</button>
+      <button class="px-3 py-2 bg-blue-500 hover:bg-blue-600 dark:bg-blue-700 dark:hover:bg-blue-800 boder dark:border-blue-800 text-white rounded" onclick="saveFlow('active')">Deploy Flow</button>
     </div>
-    <div class="text-neutral-500 text-sm text-left">Drag nodes onto the grid and connect them by dragging from the right dot to another node’s left dot.</div>
+    <div class="text-neutral-500 text-sm text-left">Drag nodes onto the grid and connect them by dragging from the right dot to another node's left dot.</div>
   </div>
 
   <div class="flex flex-col gap-4">
@@ -215,6 +249,8 @@
 let jsPlumbInstance;
 let nodes = [];
 let connections = [];
+let currentFlowId = null;
+let currentFlowName = 'New Flow';
 const canvas = document.getElementById('canvas');
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -232,14 +268,60 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('propertiesPanel').classList.add('hidden');
   });
 
+  // Check authentication
+  checkAuth();
+
+  // Setup load flow button
+  document.getElementById('loadFlowBtn').addEventListener('click', showLoadFlowModal);
+
+  // Setup new flow button
+  document.getElementById('newFlowBtn').addEventListener('click', async () => {
+    if (nodes.length > 0) {
+      const confirmed = await showConfirmModal(
+        'Start New Flow',
+        'Are you sure you want to start a new flow? Any unsaved changes will be lost.',
+        'Start New Flow',
+        'Cancel'
+      );
+      if (!confirmed) return;
+    }
+    clearCanvasSilent();
+    currentFlowId = null;
+    currentFlowName = 'New Flow';
+    document.getElementById('flowNameInput').value = 'New Flow';
+    showNotification('Started new flow', 'info');
+  });
+
   if(typeof loadTemplate === "function"){
     loadTemplate();
   }
 });
 
+// Check if user is authenticated
+async function checkAuth() {
+  try {
+    const response = await fetch('/api/dashboard/me', {
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    if (!response.ok) {
+      window.location.href = '/login';
+      return;
+    }
+    const userData = await response.json();
+    // Update profile info if needed
+    if (userData.firstName) {
+      document.querySelector('#profileBtn span').textContent = `${userData.firstName} ${userData.lastName || ''}`.trim();
+    }
+  } catch (error) {
+    console.error('Auth check failed:', error);
+    window.location.href = '/login';
+  }
+}
+
 function createNode(type, kindOverride, nameOverride) {
   const id = 'node_' + Math.random().toString(36).substr(2, 9);
-  const kind = kindOverride || (type.startsWith('mtn.') ? 'api' : type);
+  const kind = kindOverride || (type.startsWith('mtn.') || type.startsWith('fW.') ? 'api' : type);
   const name = nameOverride || type[0].toUpperCase() + type.slice(1);
 
   const el = document.createElement('div');
@@ -285,7 +367,12 @@ function openProps(id, name) {
 function saveNodeLabel(id) {
   const newName = document.getElementById('prop_name').value;
   const el = document.getElementById(id);
-  if (el) el.querySelector('span').textContent = newName;
+  if (el) {
+    el.querySelector('span').textContent = newName;
+    // Update in nodes array
+    const node = nodes.find(n => n.id === id);
+    if (node) node.name = newName;
+  }
 }
 
 function removeNode(id) {
@@ -301,27 +388,317 @@ function removeNode(id) {
     el.remove();
   }
 
+  // Remove from nodes array
+  nodes = nodes.filter(n => n.id !== id);
+
   const panel = document.getElementById('propertiesPanel');
   if(panel) panel.classList.add('hidden');
 }
 
 function exportFlow() {
-  const connections = jsPlumbInstance.getAllConnections().map(c=>({from:c.sourceId,to:c.targetId}));
-  console.log(JSON.stringify({nodes,connections}, null, 2));
-  alert('Flow exported to console');
+  const connections = jsPlumbInstance.getAllConnections().map(c=>({
+    from: c.sourceId.replace('_right', ''),
+    to: c.targetId.replace('_left', '')
+  }));
+  
+  const flowData = {
+    nodes: nodes.map(n => ({
+      id: n.id,
+      type: n.type,
+      kind: n.kind,
+      label: n.name,
+      x: document.getElementById(n.id)?.offsetLeft || n.x,
+      y: document.getElementById(n.id)?.offsetTop || n.y
+    })),
+    edges: connections
+  };
+  
+  console.log(JSON.stringify(flowData, null, 2));
+  
+  // Download as JSON
+  const blob = new Blob([JSON.stringify(flowData, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${currentFlowName.replace(/\s+/g, '_')}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  
+  showNotification('Flow exported successfully!', 'success');
 }
 
-function saveFlow(status) {
-  alert(status === 'draft' ? 'Draft saved!' : 'Flow deployed!');
+async function saveFlow(status) {
+  const flowName = document.getElementById('flowNameInput').value.trim() || 'Untitled Flow';
+  
+  if (nodes.length === 0) {
+    showNotification('Cannot save an empty flow. Add some nodes first.', 'error');
+    return;
+  }
+
+  try {
+    // Update positions before saving
+    nodes.forEach(n => {
+      const el = document.getElementById(n.id);
+      if (el) {
+        n.x = el.offsetLeft;
+        n.y = el.offsetTop;
+      }
+    });
+
+    const connections = jsPlumbInstance.getAllConnections().map(c=>({
+      from: c.sourceId.replace('_right', ''),
+      to: c.targetId.replace('_left', '')
+    }));
+    
+    const graph = {
+      nodes: nodes.map(n => ({
+        id: n.id,
+        type: n.type,
+        kind: n.kind,
+        label: n.name,
+        x: n.x,
+        y: n.y
+      })),
+      edges: connections
+    };
+
+    // Create or update flow
+    if (!currentFlowId) {
+      const flow = await FlowAPI.createFlow(flowName, 'Created from flow designer');
+      currentFlowId = flow.id;
+      currentFlowName = flowName;
+    }
+
+    // Save version
+    await FlowAPI.saveFlowVersion(currentFlowId, graph);
+
+    // Update status if deploying
+    if (status === 'active') {
+      await FlowAPI.updateFlowStatus(currentFlowId, 'active');
+      showNotification('Flow deployed successfully!', 'success');
+    } else {
+      await FlowAPI.updateFlowStatus(currentFlowId, 'draft');
+      showNotification('Draft saved successfully!', 'success');
+    }
+
+    document.getElementById('flowNameInput').value = currentFlowName;
+  } catch (error) {
+    console.error('Save failed:', error);
+    showNotification('Failed to save flow. Please try again.', 'error');
+  }
 }
 
 function clearCanvas() {
+  if (!confirm('Are you sure you want to clear the canvas? This will remove all nodes and connections.')) {
+    return;
+  }
+  
+  canvas.innerHTML = '';
+  jsPlumbInstance.reset();
+  nodes = [];
+  currentFlowId = null;
+  currentFlowName = 'New Flow';
+  document.getElementById('flowNameInput').value = 'New Flow';
+
+  const panel= document.getElementById('propertiesPanel');
+  if(panel) panel.classList.add('hidden');
+  
+  showNotification('Canvas cleared', 'info');
+}
+
+// Make clearCanvas async to use custom modal
+async function clearCanvas() {
+  const confirmed = await showConfirmModal(
+    'Clear Canvas',
+    'Are you sure you want to clear the canvas? This will remove all nodes and connections.',
+    'Clear Canvas',
+    'Cancel'
+  );
+  
+  if (!confirmed) return;
+  
+  canvas.innerHTML = '';
+  jsPlumbInstance.reset();
+  nodes = [];
+  currentFlowId = null;
+  currentFlowName = 'New Flow';
+  document.getElementById('flowNameInput').value = 'New Flow';
+
+  const panel= document.getElementById('propertiesPanel');
+  if(panel) panel.classList.add('hidden');
+  
+  showNotification('Canvas cleared', 'info');
+}
+
+// Helper function to clear without confirmation (for internal use)
+function clearCanvasSilent() {
   canvas.innerHTML = '';
   jsPlumbInstance.reset();
   nodes = [];
 
   const panel= document.getElementById('propertiesPanel');
   if(panel) panel.classList.add('hidden');
+}
+
+// Load flow modal
+async function showLoadFlowModal() {
+  try {
+    const flows = await FlowAPI.getAllFlows();
+    
+    if (flows.length === 0) {
+      showNotification('No flows found. Create a new flow first.', 'info');
+      return;
+    }
+
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50';
+    modal.innerHTML = `
+      <div class="bg-white dark:bg-neutral-800 rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+        <h3 class="text-lg font-semibold mb-4">Load Flow</h3>
+        <div class="space-y-2 mb-4">
+          ${flows.map(f => `
+            <div class="border dark:border-neutral-700 rounded p-3 hover:bg-neutral-100 dark:hover:bg-neutral-700 cursor-pointer flex justify-between items-center" onclick="loadFlowById('${f.id}')">
+              <div class="flex-1">
+                <div class="font-medium">${f.name}</div>
+                <div class="text-sm text-neutral-500">
+                  ${f.latest_version > 0 
+                    ? `✅ Version ${f.latest_version} • Updated: ${new Date(f.updated_at).toLocaleDateString()}`
+                    : '⚠️ No design saved yet • Click to start designing'}
+                </div>
+              </div>
+              <span class="px-2 py-1 text-xs rounded ${f.status === 'active' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'}">${f.status || 'draft'}</span>
+            </div>
+          `).join('')}
+        </div>
+        <button class="px-4 py-2 bg-gray-300 dark:bg-gray-600 rounded hover:bg-gray-400 dark:hover:bg-gray-700" onclick="this.closest('.fixed').remove()">Close</button>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.remove();
+    });
+  } catch (error) {
+    console.error('Failed to load flows:', error);
+    showNotification('Failed to load flows list', 'error');
+  }
+}
+
+async function loadFlowById(flowId) {
+  try {
+    const data = await FlowAPI.getFlow(flowId);
+    
+    if (!data.latestVersion || !data.latestVersion.graph) {
+      // Flow exists but has no graph data - start with empty canvas
+      const confirmed = await showConfirmModal(
+        'Start Designing Flow',
+        `"${data.flow.name}" has no saved design yet. Would you like to start designing this flow now?`,
+        'Start Designing',
+        'Cancel'
+      );
+      
+      if (confirmed) {
+        clearCanvasSilent();
+        currentFlowId = data.flow.id;
+        currentFlowName = data.flow.name;
+        document.getElementById('flowNameInput').value = data.flow.name;
+        
+        // Close modal
+        document.querySelector('.fixed.inset-0')?.remove();
+        
+        showNotification(`Started editing: ${data.flow.name}`, 'info');
+      }
+      return;
+    }
+
+    clearCanvasSilent();
+    
+    currentFlowId = data.flow.id;
+    currentFlowName = data.flow.name;
+    document.getElementById('flowNameInput').value = data.flow.name;
+    
+    renderTemplate(data.latestVersion.graph);
+    
+    // Close modal
+    document.querySelector('.fixed.inset-0')?.remove();
+    
+    showNotification(`Loaded: ${data.flow.name}`, 'success');
+  } catch (error) {
+    console.error('Failed to load flow:', error);
+    showNotification('Failed to load flow', 'error');
+  }
+}
+
+// Notification system
+function showNotification(message, type = 'info') {
+  const notification = document.createElement('div');
+  const colors = {
+    success: 'bg-green-500',
+    error: 'bg-red-500',
+    warning: 'bg-yellow-500',
+    info: 'bg-blue-500'
+  };
+  
+  notification.className = `fixed top-4 right-4 ${colors[type]} text-white px-6 py-3 rounded-lg shadow-lg z-50 transition-opacity`;
+  notification.textContent = message;
+  
+  document.body.appendChild(notification);
+  
+  setTimeout(() => {
+    notification.style.opacity = '0';
+    setTimeout(() => notification.remove(), 300);
+  }, 3000);
+}
+
+// Custom Confirmation Modal
+function showConfirmModal(title, message, confirmText = 'Confirm', cancelText = 'Cancel') {
+  return new Promise((resolve) => {
+    const modal = document.createElement('div');
+    modal.className = 'modal-backdrop fixed inset-0 bg-black/50 flex items-center justify-center z-50';
+    modal.innerHTML = `
+      <div class="modal-content bg-white dark:bg-neutral-800 rounded-lg shadow-xl max-w-md w-full mx-4 overflow-hidden">
+        <div class="p-6">
+          <h3 class="text-lg font-semibold mb-2 text-neutral-900 dark:text-neutral-100">${title}</h3>
+          <p class="text-neutral-600 dark:text-neutral-400 mb-6">${message}</p>
+          <div class="flex gap-3 justify-end">
+            <button class="cancel-btn px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors font-medium">
+              ${cancelText}
+            </button>
+            <button class="confirm-btn px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors font-medium">
+              ${confirmText}
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    const confirmBtn = modal.querySelector('.confirm-btn');
+    const cancelBtn = modal.querySelector('.cancel-btn');
+    
+    const cleanup = (result) => {
+      modal.style.opacity = '0';
+      modal.querySelector('.modal-content').style.transform = 'scale(0.95)';
+      setTimeout(() => modal.remove(), 200);
+      resolve(result);
+    };
+    
+    confirmBtn.addEventListener('click', () => cleanup(true));
+    cancelBtn.addEventListener('click', () => cleanup(false));
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) cleanup(false);
+    });
+    
+    // ESC key support
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') {
+        cleanup(false);
+        document.removeEventListener('keydown', handleEsc);
+      }
+    };
+    document.addEventListener('keydown', handleEsc);
+  });
 }
 </script>
 
