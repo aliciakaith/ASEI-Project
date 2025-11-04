@@ -14,20 +14,26 @@ async function getOrgId() {
 }
 
 /** GET /api/flows
- * List all non-deleted flows (with latest version number if available)
+ * List all non-deleted flows for the current user's organization (with latest version number if available)
  */
-router.get('/', async (_req, res) => {
+router.get('/', async (req, res) => {
   try {
+    const orgId = req.user?.org;
+    if (!orgId) {
+      return res.status(401).json({ error: 'Organization not found' });
+    }
+
     const rows = await query(
       `
-      SELECT f.id, f.name, f.description, f.created_at, f.updated_at,
+      SELECT f.id, f.name, f.description, f.status, f.created_at, f.updated_at,
              COALESCE(MAX(v.version), 0) AS latest_version
       FROM flows f
       LEFT JOIN flow_versions v ON v.flow_id = f.id
-      WHERE f.is_deleted = FALSE
+      WHERE f.is_deleted = FALSE AND f.org_id = $1
       GROUP BY f.id
       ORDER BY f.created_at DESC
-      `
+      `,
+      [orgId]
     );
     res.json(rows.rows);
   } catch (e) {
@@ -38,14 +44,18 @@ router.get('/', async (_req, res) => {
 
 /** POST /api/flows
  * Body: { name, description }
- * Creates a new flow under Demo Org
+ * Creates a new flow under the current user's organization
  */
 router.post('/', async (req, res) => {
   const { name, description } = req.body || {};
   if (!name) return res.status(400).json({ error: 'name is required' });
 
   try {
-    const orgId = await getOrgId();
+    const orgId = req.user?.org;
+    if (!orgId) {
+      return res.status(401).json({ error: 'Organization not found' });
+    }
+
     const result = await query(
       `
       INSERT INTO flows (org_id, name, description)
@@ -74,11 +84,21 @@ router.post('/', async (req, res) => {
 
 /** GET /api/flows/:id
  * Returns flow info + latest version payload if exists
+ * Only returns flows belonging to the current user's organization
  */
 router.get('/:id', async (req, res) => {
   const { id } = req.params;
+  const orgId = req.user?.org;
+  
+  if (!orgId) {
+    return res.status(401).json({ error: 'Organization not found' });
+  }
+
   try {
-    const flowRes = await query(`SELECT * FROM flows WHERE id = $1 AND is_deleted = FALSE`, [id]);
+    const flowRes = await query(
+      `SELECT * FROM flows WHERE id = $1 AND org_id = $2 AND is_deleted = FALSE`, 
+      [id, orgId]
+    );
     if (flowRes.rows.length === 0) return res.status(404).json({ error: 'Flow not found' });
 
     const verRes = await query(

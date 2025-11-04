@@ -175,21 +175,28 @@ class FlowExecutor {
 
       // Execute based on node type and kind
       let output;
-      switch (node.type) {
-        case 'trigger':
-          output = await this.executeTrigger(node, stepId);
-          break;
-        case 'action':
-          output = await this.executeAction(node, inputData, stepId);
-          break;
-        case 'condition':
-          output = await this.executeCondition(node, inputData, stepId);
-          break;
-        case 'transform':
-          output = await this.executeTransform(node, inputData, stepId);
-          break;
-        default:
-          throw new Error(`Unknown node type: ${node.type}`);
+      
+      // Handle special node types
+      if (node.type === 'start') {
+        // Start nodes just pass through the trigger data
+        output = await this.executeTrigger(node, stepId);
+      } else if (node.type === 'end') {
+        // End nodes collect all inputs and mark completion
+        output = { completed: true, inputs: inputData, timestamp: new Date().toISOString() };
+        await this.log('info', 'Flow reached end node', { output }, stepId);
+      } else if (node.type === 'trigger') {
+        output = await this.executeTrigger(node, stepId);
+      } else if (node.type === 'condition') {
+        output = await this.executeCondition(node, inputData, stepId);
+      } else if (node.type === 'transform') {
+        output = await this.executeTransform(node, inputData, stepId);
+      } else if (node.kind === 'api' || node.type.includes('.') || node.type === 'action') {
+        // API nodes (MTN, Flutterwave, HTTP, etc.)
+        output = await this.executeAction(node, inputData, stepId);
+      } else {
+        // Default to action for unknown types
+        await this.log('warn', `Unknown node type '${node.type}', treating as action`, {}, stepId);
+        output = await this.executeAction(node, inputData, stepId);
       }
 
       // Store output

@@ -39,22 +39,8 @@ async function createNotification(req, { type = 'info', title = '', message = ''
 router.post("/dev/seed-demo", async (req, res) => {
   const orgId = req.user.org;
 
-  // 4 active flows - only insert if they don't already exist
-  const flowNames = ['Payments', 'KYC Checks', 'Notifications', 'Reconciler'];
-  
-  for (const flowName of flowNames) {
-    await query(
-      `
-      INSERT INTO flows (id, org_id, name, status)
-      SELECT gen_random_uuid(), $1, $2, 'active'
-      WHERE NOT EXISTS (
-        SELECT 1 FROM flows 
-        WHERE org_id = $1 AND name = $2 AND is_deleted = FALSE
-      );
-      `,
-      [orgId, flowName]
-    );
-  }
+  // Remove demo flows - users should create their own flows
+  // Flows are now created via the Flow Designer UI
 
   // recent tx events
 await query(

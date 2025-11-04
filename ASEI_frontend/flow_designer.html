@@ -480,16 +480,12 @@ async function saveFlow(status) {
       const deployResult = await FlowAPI.updateFlowStatus(currentFlowId, 'active');
       executionResult = deployResult.execution;
       
-      // Show executions button and notification about execution
+      // Show executions button
       document.getElementById('viewExecutionsBtn').classList.remove('hidden');
       
       if (executionResult) {
-        showNotification(`🚀 Flow deployed and execution started! ID: ${executionResult.executionId.substring(0, 8)}...`, 'success');
-        
         // Auto-open execution monitor after a brief delay
         setTimeout(() => viewExecutionDetails(executionResult.executionId), 1500);
-      } else {
-        showNotification('Flow deployed successfully!', 'success');
       }
     } else {
       await FlowAPI.updateFlowStatus(currentFlowId, 'draft');
@@ -1030,7 +1026,12 @@ async function viewExecutionDetails(executionId) {
                     <span class="font-medium">${step.node_id}</span>
                     <span class="text-sm text-neutral-500">${step.execution_time_ms ? `${step.execution_time_ms}ms` : '-'}</span>
                   </div>
-                  <div class="text-xs text-neutral-500">${step.node_type} • ${step.node_kind || 'N/A'}</div>
+                  <div class="text-xs text-neutral-500">${
+                    step.node_type === 'start' ? 'Start Node' :
+                    step.node_type === 'end' ? 'End Node' :
+                    step.node_kind && step.node_kind !== step.node_type ? `${step.node_type} • ${step.node_kind}` :
+                    step.node_type
+                  }</div>
                   ${step.error_message ? `<div class="text-xs text-red-600 mt-1">${step.error_message}</div>` : ''}
                 </div>
               `).join('')}
