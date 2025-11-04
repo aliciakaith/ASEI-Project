@@ -176,8 +176,9 @@
       <button class="px-3 py-2 bg-gray-300 hover:bg-gray-400 dark:bg-gray-500 dark:hover:bg-gray-600 border dark:border-neutral-600 rounded" onclick="exportFlow()">Export</button>
       <button class="px-3 py-2 bg-gray-500 hover:bg-gray-600 dark:bg-gray-700 dark:hover:bg-gray-800 border dark:border-neutral-800 text-white rounded" onclick="saveFlow('draft')">Save Draft</button>
       <button class="px-3 py-2 bg-blue-500 hover:bg-blue-600 dark:bg-blue-700 dark:hover:bg-blue-800 boder dark:border-blue-800 text-white rounded" onclick="saveFlow('active')">Deploy Flow</button>
+      <button id="viewExecutionsBtn" class="px-3 py-2 bg-purple-500 hover:bg-purple-600 dark:bg-purple-700 dark:hover:bg-purple-800 border dark:border-purple-800 text-white rounded hidden" onclick="viewExecutions()">📊 Executions</button>
     </div>
-    <div class="text-neutral-500 text-sm text-left">Drag nodes onto the grid and connect them by dragging from the right dot to another node's left dot.</div>
+    <div class="text-neutral-500 text-sm text-left">Deploy Flow will save, activate, and execute your flow immediately.</div>
   </div>
 
   <div class="flex flex-col gap-4">
@@ -474,8 +475,22 @@ async function saveFlow(status) {
     await FlowAPI.saveFlowVersion(currentFlowId, graph);
 
     // Update status if deploying
+    let executionResult = null;
     if (status === 'active') {
-      await FlowAPI.updateFlowStatus(currentFlowId, 'active');
+      const deployResult = await FlowAPI.updateFlowStatus(currentFlowId, 'active');
+      executionResult = deployResult.execution;
+      
+      // Show executions button and notification about execution
+      document.getElementById('viewExecutionsBtn').classList.remove('hidden');
+      
+      if (executionResult) {
+        showNotification(`🚀 Flow deployed and execution started! ID: ${executionResult.executionId.substring(0, 8)}...`, 'success');
+        
+        // Auto-open execution monitor after a brief delay
+        setTimeout(() => viewExecutionDetails(executionResult.executionId), 1500);
+      } else {
+        showNotification('Flow deployed successfully!', 'success');
+      }
     } else {
       await FlowAPI.updateFlowStatus(currentFlowId, 'draft');
     }
@@ -870,6 +885,188 @@ function showConfirmModal(title, message, confirmText = 'Confirm', cancelText = 
     };
     document.addEventListener('keydown', handleEsc);
   });
+}
+
+// View Executions Modal
+async function viewExecutions() {
+  if (!currentFlowId) {
+    showNotification('No flow loaded', 'warning');
+    return;
+  }
+
+  try {
+    const executions = await FlowAPI.getFlowExecutions(currentFlowId);
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal-backdrop fixed inset-0 bg-black/50 flex items-center justify-center z-50';
+    modal.innerHTML = `
+      <div class="modal-content bg-white dark:bg-neutral-800 rounded-lg shadow-xl max-w-4xl w-full mx-4 overflow-hidden">
+        <div class="p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-semibold text-neutral-900 dark:text-neutral-100">Flow Executions</h3>
+            <button class="close-btn text-2xl text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300">&times;</button>
+          </div>
+          
+          <div class="max-h-96 overflow-y-auto">
+            ${executions.length === 0 ? `
+              <div class="text-center py-8 text-neutral-500">
+                No executions yet. Click "Test Run" to execute this flow.
+              </div>
+            ` : `
+              <table class="w-full text-sm">
+                <thead class="bg-neutral-100 dark:bg-neutral-700">
+                  <tr>
+                    <th class="text-left p-3">ID</th>
+                    <th class="text-left p-3">Trigger</th>
+                    <th class="text-left p-3">Status</th>
+                    <th class="text-left p-3">Started</th>
+                    <th class="text-left p-3">Duration</th>
+                    <th class="text-left p-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${executions.map(exec => `
+                    <tr class="border-b dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-700/50">
+                      <td class="p-3 font-mono text-xs">${exec.id.substring(0, 8)}...</td>
+                      <td class="p-3">
+                        <span class="px-2 py-1 text-xs rounded ${
+                          exec.trigger_type === 'manual' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+                          exec.trigger_type === 'deploy' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' :
+                          'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+                        }">${exec.trigger_type}</span>
+                      </td>
+                      <td class="p-3">
+                        <span class="px-2 py-1 text-xs rounded ${
+                          exec.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                          exec.status === 'failed' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
+                          exec.status === 'running' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                          'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+                        }">${exec.status}</span>
+                      </td>
+                      <td class="p-3 text-xs">${new Date(exec.started_at).toLocaleString()}</td>
+                      <td class="p-3">${exec.execution_time_ms ? `${exec.execution_time_ms}ms` : '-'}</td>
+                      <td class="p-3">
+                        <button 
+                          class="text-blue-500 hover:text-blue-700 text-sm"
+                          onclick="viewExecutionDetails('${exec.id}')">
+                          View Details
+                        </button>
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            `}
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    const closeBtn = modal.querySelector('.close-btn');
+    closeBtn.addEventListener('click', () => modal.remove());
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.remove();
+    });
+  } catch (error) {
+    console.error('Failed to load executions:', error);
+    showNotification('Failed to load executions', 'error');
+  }
+}
+
+// View Execution Details Modal
+async function viewExecutionDetails(executionId) {
+  try {
+    const [execution, steps, logs] = await Promise.all([
+      FlowAPI.getExecution(executionId),
+      FlowAPI.getExecutionSteps(executionId),
+      FlowAPI.getExecutionLogs(executionId, 50)
+    ]);
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal-backdrop fixed inset-0 bg-black/50 flex items-center justify-center z-50';
+    modal.innerHTML = `
+      <div class="modal-content bg-white dark:bg-neutral-800 rounded-lg shadow-xl max-w-5xl w-full mx-4 overflow-hidden">
+        <div class="p-6">
+          <div class="flex justify-between items-center mb-4">
+            <div>
+              <h3 class="text-xl font-semibold text-neutral-900 dark:text-neutral-100">Execution Details</h3>
+              <p class="text-sm text-neutral-500 font-mono">${executionId}</p>
+            </div>
+            <button class="close-btn text-2xl text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300">&times;</button>
+          </div>
+          
+          <div class="grid grid-cols-4 gap-4 mb-6">
+            <div class="bg-neutral-100 dark:bg-neutral-700 p-3 rounded">
+              <div class="text-xs text-neutral-500 dark:text-neutral-400">Status</div>
+              <div class="text-lg font-semibold">${execution.status}</div>
+            </div>
+            <div class="bg-neutral-100 dark:bg-neutral-700 p-3 rounded">
+              <div class="text-xs text-neutral-500 dark:text-neutral-400">Duration</div>
+              <div class="text-lg font-semibold">${execution.execution_time_ms || '-'}ms</div>
+            </div>
+            <div class="bg-neutral-100 dark:bg-neutral-700 p-3 rounded">
+              <div class="text-xs text-neutral-500 dark:text-neutral-400">Trigger</div>
+              <div class="text-lg font-semibold">${execution.trigger_type}</div>
+            </div>
+            <div class="bg-neutral-100 dark:bg-neutral-700 p-3 rounded">
+              <div class="text-xs text-neutral-500 dark:text-neutral-400">Steps</div>
+              <div class="text-lg font-semibold">${steps.length}</div>
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <h4 class="font-semibold mb-2">Execution Steps</h4>
+            <div class="max-h-48 overflow-y-auto">
+              ${steps.map(step => `
+                <div class="border-l-4 ${
+                  step.status === 'completed' ? 'border-green-500' :
+                  step.status === 'failed' ? 'border-red-500' :
+                  step.status === 'running' ? 'border-yellow-500' :
+                  'border-gray-300'
+                } pl-3 py-2 mb-2">
+                  <div class="flex justify-between">
+                    <span class="font-medium">${step.node_id}</span>
+                    <span class="text-sm text-neutral-500">${step.execution_time_ms ? `${step.execution_time_ms}ms` : '-'}</span>
+                  </div>
+                  <div class="text-xs text-neutral-500">${step.node_type} • ${step.node_kind || 'N/A'}</div>
+                  ${step.error_message ? `<div class="text-xs text-red-600 mt-1">${step.error_message}</div>` : ''}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <div>
+            <h4 class="font-semibold mb-2">Execution Logs</h4>
+            <div class="max-h-64 overflow-y-auto bg-neutral-900 text-neutral-100 p-3 rounded font-mono text-xs">
+              ${logs.reverse().map(log => `
+                <div class="${
+                  log.level === 'error' ? 'text-red-400' :
+                  log.level === 'warn' ? 'text-yellow-400' :
+                  log.level === 'info' ? 'text-blue-400' :
+                  'text-neutral-400'
+                }">
+                  [${new Date(log.created_at).toLocaleTimeString()}] ${log.level.toUpperCase()}: ${log.message}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    const closeBtn = modal.querySelector('.close-btn');
+    closeBtn.addEventListener('click', () => modal.remove());
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.remove();
+    });
+  } catch (error) {
+    console.error('Failed to load execution details:', error);
+    showNotification('Failed to load execution details', 'error');
+  }
 }
 </script>
 

@@ -144,6 +144,97 @@ const FlowAPI = {
       console.error('Failed to update flow status:', error);
       throw error;
     }
+  },
+
+  /**
+   * Start a manual execution of a flow
+   */
+  async executeFlow(flowId, triggerData = {}) {
+    try {
+      const response = await fetch('/api/executions/start', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          flowId, 
+          triggerType: 'manual',
+          triggerData 
+        })
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to execute flow:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get execution details
+   */
+  async getExecution(executionId) {
+    try {
+      const response = await fetch(`/api/executions/${executionId}`, {
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to fetch execution:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get execution steps
+   */
+  async getExecutionSteps(executionId) {
+    try {
+      const response = await fetch(`/api/executions/${executionId}/steps`, {
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to fetch execution steps:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get execution logs
+   */
+  async getExecutionLogs(executionId, limit = 100) {
+    try {
+      const response = await fetch(`/api/executions/${executionId}/logs?limit=${limit}`, {
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to fetch execution logs:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get all executions for a flow
+   */
+  async getFlowExecutions(flowId, limit = 20) {
+    try {
+      const response = await fetch(`/api/executions/flow/${flowId}?limit=${limit}`, {
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to fetch flow executions:', error);
+      throw error;
+    }
   }
 };
 

@@ -17,6 +17,7 @@ import { requireAuth } from "./middleware/authMiddleware.js";
 import connectionsRouter from "./routes/connections.js";
 import mtnRouter from "./routes/mtn.js";
 import flutterwaveRoutes from './routes/flutterwave.js';
+import executionsRouter from './routes/executions.js';
 
 
 // logging
@@ -109,6 +110,7 @@ app.use("/api/roles", requireAuth, rolesRouter);
 app.use("/api/dashboard", requireAuth, dashboardRouter);
 app.use("/api/connections", requireAuth, connectionsRouter);
 app.use("/api/mtn", requireAuth, mtnRouter);
+app.use("/api/executions", requireAuth, executionsRouter);
 
 
 

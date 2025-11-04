@@ -2,6 +2,7 @@
 import express from "express";
 import { query } from "../db/postgres.js";
 import { audit } from "../logging/audit.js";
+import ExecutionService from "../execution/ExecutionService.js";
 
 const router = express.Router();
 
@@ -190,6 +191,7 @@ router.get('/:id/versions/:version', async (req, res) => {
 
 /** PATCH /api/flows/:id/status
  * Update flow status (for deployment)
+ * When status changes to 'active', automatically trigger execution
  */
 router.patch('/:id/status', async (req, res) => {
   const { id } = req.params;
@@ -206,6 +208,8 @@ router.patch('/:id/status', async (req, res) => {
     );
     if (upd.rowCount === 0) return res.status(404).json({ error: 'Flow not found' });
 
+    const flow = upd.rows[0];
+
     // flow status updated
     await audit(req, {
       userId: req.user?.id ?? null,
@@ -213,10 +217,28 @@ router.patch('/:id/status', async (req, res) => {
       targetType: "flow",
       targetId: id,
       statusCode: 200,
-      metadata: { status: status, name: upd.rows[0].name }
+      metadata: { status: status, name: flow.name }
     });
 
-    res.json(upd.rows[0]);
+    // If deploying (status = active), trigger execution
+    let executionResult = null;
+    if (status === 'active') {
+      try {
+        executionResult = await ExecutionService.startExecution(id, 'deploy', {
+          deployedBy: req.user?.id ?? 'system',
+          deployedAt: new Date().toISOString()
+        });
+        console.log(`Flow ${flow.name} deployed and execution started:`, executionResult.executionId);
+      } catch (execError) {
+        console.error('Failed to start execution on deploy:', execError);
+        // Don't fail the status update if execution fails
+      }
+    }
+
+    res.json({
+      ...flow,
+      execution: executionResult
+    });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Failed to update flow status' });
