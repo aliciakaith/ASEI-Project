@@ -220,7 +220,7 @@
         </div>
       </section>
 
-
+      <!-- Service Integrations -->
 <!-- Service Integrations -->
 <section class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4">
   <div class="flex items-center justify-between mb-4">
@@ -389,17 +389,6 @@ const api = {
     if (!res.ok) throw new Error(`${options.method||'GET'} ${url} → ${res.status}`);
     return res.status === 204 ? null : res.json();
   }
-  
-  async function fetchWithTimeout(url, opts = {}, ms = 15000) {
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), ms);
-  try {
-    return await fetch(url, { ...opts, signal: ctrl.signal });
-  } finally {
-    clearTimeout(t);
-  }
-}
-
 
   function toast(btnEl, okText='Done ✓', revertText='Done', ms=1500) {
     if (!btnEl) return;
@@ -448,14 +437,7 @@ function timeAgo(tsMs){
 }
 
 const remove_key = 'connectify.removeNotifs';
-let removeNotifs = new Set();
-try{
-  const saved = JSON.parse(localStorage.getItem(remove_key) ?? '[]');
-  removeNotifs = new Set((saved || []).map(String));
-}
-catch{
-  removeNotifs = new Set();
-}
+const removeNotifs = new Set(JSON.parse(localStorage.getItem(remove_key)) || '[]');
 const rmberRemove = (id) =>{
   removeNotifs.add(String(id));
   localStorage.setItem(remove_key, JSON.stringify([...removeNotifs]));
@@ -486,7 +468,7 @@ async function loadNotifs() {
       list.innerHTML = `<div class="p-3 text-xs text-neutral-500">No notifications</div>`;
     } else {
         list.innerHTML = visible.map(n => `
-        <div class="relative p-3 hover:bg-neutral-50 dark:hover:bg-neutral-600" data-id="${n.id}">
+        <div class="relative p-3 hover:bg-neutral-50 dard:hover:bg-neutral-600">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
               ${typeChip(n.type)}
@@ -497,7 +479,7 @@ async function loadNotifs() {
           <div class="mt-1 pr-8 text-xs text-neutral-600 dark:text-gray-200">${n.message || ''}</div>
           ${!n.isRead ? `<span class="mt-2 inline-block h-1.5 w-1.5 rounded-full bg-red-500"></span>` : ''}
 
-          <button class="js-notif-bin absolute bottom-2 right-2 p-1.5 rounded data-id="${n.id}" aria-label="Remove">
+          <button class="js-notif-bin absolute bottom-2 right-2 p-1.5 rounded hover:bg-neutral-100" data-id="${n.id}" aria-label="Remove">
             <svg class="w-4 h-4 text-gray-800 dark:text-white" aria-hidden="true" width="24" height="24" fill="none" viewBox="0 0 24 24">
               <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 7h14m-9 3v8m4-8v8M10 3h4a1 1 0 0 1 1 1v3H9V4a1 1 0 0 1 1-1ZM6 7h12v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7Z"/>
             </svg>
@@ -511,31 +493,17 @@ async function loadNotifs() {
     badge.classList.toggle('hidden', unread === 0);
 
     if(!list._wired){
-      list._wired = true;
+      list.wired = true;
       list.addEventListener('click', async(e) =>{
         const bin = e.target.closest('.js-notif-bin');
         if(!bin) return;
 
-        e.stopPropagation();
+        const id = bin.dataset.id;
+        remberRemove(id);
 
-        const id = bin.dataset.id || bin.closest('[data-id]')?.dataset.id;
-        if(!id) return;
-        rmberRemove(id);
-
-        bin.closest('[data-id]')?.remove();
-
-        const remaining = list.querySelectorAll('[data-id]').length;
-        if(!remaining){
-          list.innerHTML = `<div class="p-3 text-xs text-neutral-500">No notifications</div>`;
-          badge.textContent = '';
-          badge.classList.add('hidden');
-        }
-        else{
-          const unread = list.querySelectorAll('[data-id] .bg-red-500').length;
-          badge.textContent = unread ? String(unread) : '';
-          badge.classList.toggle('hidden', unread === 0);
-        }
-      });
+        const row = bin.closest('[data-id]');
+        row?.remove();
+      })
     }
 
     // Optional auto mark-all (keep or remove)
@@ -549,18 +517,14 @@ async function loadNotifs() {
 window.loadNotifs = loadNotifs;
 document.addEventListener('DOMContentLoaded', () => {
   const mark = $('notifMarkAll');
-  if (!mark) return;
-  mark.addEventListener('click', async() =>{
-    try{
-      await fetchJson(api.notifReadAll, {method: 'POST'});
-    }
-    catch{}
-  if(window._lastNotifs?.length){
-    window.__lastNotifs.forEach(n => removeNotifs.add(String(n.id)));
-    localStorage.setItem(remove_key, JSON.stringify([...removeNotifs]));
+  if (mark) {
+    mark.addEventListener('click', async () => {
+      try {
+        await fetchJson(api.notifReadAll, { method: 'POST' });
+        await loadNotifs();
+      } catch {}
+    });
   }
-  awaitloadNotifs();
-  });
 });
 
 
@@ -598,10 +562,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const { points = [] } = await fetchJson(api.series);
     return points.map(p => ({ x: new Date(Number(p.t)), y: p.count }));
   }
-  
-  const isDark = document.documentElement.classList.contains('dark');
-  const axisColour = isDark ? '#ffffff' : '#000000';
-  const tickColour = isDark ? '#9ca3af' : '#9ca3af';
   async function initChart() {
     const canvas = $('txChart');
     if (!canvas) return;
@@ -627,11 +587,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
           }
         },
-
         interaction: { mode: 'index', intersect: false },
         scales: {
-          x: { type: 'time', time: { unit: 'hour', displayFormats: { hour: 'HH:mm' }}, ticks: { autoSkip: true, maxTicksLimit: 6, color: tickColour }, grid: {color: 'transparent', borderColor: axisColour}},
-          y: { beginAtZero: true, ticks: { precision: 0, color: tickColour }, grid: {color: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)', borderColor: axisColour} }
+          x: { type: 'time', time: { unit: 'hour', displayFormats: { hour: 'HH:mm' }}, ticks: { autoSkip: true, maxTicksLimit: 6 }, grid: { display: false }},
+          y: { beginAtZero: true, ticks: { precision: 0 } }
         }
       }
     });
@@ -858,13 +817,12 @@ form?.addEventListener('submit', async (e) => {
     if (submitBtn) { submitBtn.textContent = 'Generating…'; submitBtn.disabled = true; }
 
     try {
-      const resp = await fetchWithTimeout(api.complianceGenerate, {
+      const resp = await fetch(api.complianceGenerate, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ reportType: type, recipientEmail: recipient })
-      }, 30000);
-
+      });
 
       const payload = await (async () => {
         try { return await resp.json(); } catch { return { error: 'invalid_json' }; }
@@ -930,12 +888,8 @@ form?.addEventListener('submit', async (e) => {
 
       // keep modal open so user can download; optionally hide after a bit
       // hide();
-} catch (err) {
-   const isAbort = err && (err.name === 'AbortError' || /timeout|aborted/i.test(String(err)));
-   alert(isAbort
-     ? 'Error generating report: request timed out (try again or check SMTP).'
-     : 'Error generating report: ' + (err.message || err)
-   );
+    } catch (err) {
+      alert('Error generating report: ' + (err.message || err));
     } finally {
       if (submitBtn) { submitBtn.textContent = origText; submitBtn.disabled = false; }
     }

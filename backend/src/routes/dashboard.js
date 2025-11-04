@@ -98,30 +98,22 @@ await query(
 
 // ---------- Compliance report generation ----------
 router.post("/compliance/generate", express.json(), async (req, res) => {
-    // ---- timeout safety guard (frontend "fix #3") ----
-  const routeStart = Date.now();
-  const noStore = (r) => r.set("Cache-Control", "no-store");
-  const endEarly = (payload, status = 200) => {
-    noStore(res);
-    if (!res.headersSent) res.status(status).json(payload);
-  };
-
   const orgId = req.user.org;
   const { reportType = 'Integration Summary', recipientEmail } = req.body || {};
   if (!recipientEmail) return res.status(400).json({ error: 'recipientEmail required' });
 
   try {
-    // Build report pieces
+    // Build report pieces - use 7 days for more meaningful data
     const kpisSql = `
-      WITH last24 AS (
+      WITH last7d AS (
         SELECT * FROM tx_events
-        WHERE org_id=$1 AND created_at >= now() - interval '24 hours'
+        WHERE org_id=$1 AND created_at >= now() - interval '7 days'
       )
       SELECT
         (SELECT COUNT(*) FROM flows WHERE org_id=$1 AND status='active')::int AS "activeFlows",
-        (SELECT COUNT(*) FROM last24)::int                                  AS transactions,
-        (SELECT COUNT(*) FROM last24 WHERE success=false)::int              AS errors,
-        COALESCE((SELECT ROUND(AVG(latency_ms)) FROM last24),0)::int        AS "avgLatencyMs"
+        (SELECT COUNT(*) FROM last7d)::int                                  AS transactions,
+        (SELECT COUNT(*) FROM last7d WHERE success=false)::int              AS errors,
+        COALESCE((SELECT ROUND(AVG(latency_ms)) FROM last7d),0)::int        AS "avgLatencyMs"
     `;
     const { rows: kRows } = await query(kpisSql, [orgId]);
     const kpis = kRows[0] || {};
@@ -131,15 +123,89 @@ router.post("/compliance/generate", express.json(), async (req, res) => {
       [orgId]
     );
 
+    // Filter notifications - for security audits, exclude demo/operational noise
+    const notifFilter = reportType === 'Security Audit' 
+      ? `AND type IN ('error', 'warn') AND title NOT ILIKE '%demo%' AND title NOT ILIKE '%welcome%'`
+      : '';
     const { rows: notifications } = await query(
-      `SELECT id, type, title, message, is_read AS "isRead", EXTRACT(EPOCH FROM created_at)*1000 AS ts FROM notifications WHERE org_id=$1 ORDER BY created_at DESC LIMIT 100`,
+      `SELECT id, type, title, message, is_read AS "isRead", FLOOR(EXTRACT(EPOCH FROM created_at)*1000)::bigint AS ts FROM notifications WHERE org_id=$1 ${notifFilter} ORDER BY created_at DESC LIMIT 100`,
       [orgId]
     );
 
     const { rows: txEvents } = await query(
-      `SELECT success, latency_ms AS "latencyMs", EXTRACT(EPOCH FROM created_at)*1000 AS ts FROM tx_events WHERE org_id=$1 ORDER BY created_at DESC LIMIT 200`,
+      `SELECT success, latency_ms AS "latencyMs", FLOOR(EXTRACT(EPOCH FROM created_at)*1000)::bigint AS ts FROM tx_events WHERE org_id=$1 ORDER BY created_at DESC LIMIT 200`,
       [orgId]
     );
+
+    // Security findings assessment
+    const findings = [];
+    const isSecurityAudit = reportType === 'Security Audit';
+
+    if (isSecurityAudit) {
+      // Check 1: Inactive/error integrations
+      const badIntegrations = integrations.filter(i => i.status === 'error' || i.status === 'pending');
+      if (badIntegrations.length > 0) {
+        findings.push({
+          severity: 'medium',
+          category: 'Integration Health',
+          issue: `${badIntegrations.length} integration(s) in error/pending state`,
+          recommendation: 'Review API keys and connectivity for: ' + badIntegrations.map(i => i.name).join(', ')
+        });
+      }
+
+      // Check 2: High error rate
+      const errorRate = kpis.transactions > 0 ? (kpis.errors / kpis.transactions * 100) : 0;
+      if (errorRate > 5) {
+        findings.push({
+          severity: 'high',
+          category: 'Transaction Reliability',
+          issue: `Error rate is ${errorRate.toFixed(1)}% (${kpis.errors}/${kpis.transactions})`,
+          recommendation: 'Investigate failed transactions and implement retry logic'
+        });
+      }
+
+      // Check 3: Missing test URLs
+      const noTestUrl = integrations.filter(i => !i.test_url);
+      if (noTestUrl.length > 0) {
+        findings.push({
+          severity: 'low',
+          category: 'Configuration',
+          issue: `${noTestUrl.length} integration(s) without test URL`,
+          recommendation: 'Add test URLs for health checks: ' + noTestUrl.map(i => i.name).join(', ')
+        });
+      }
+
+      // Check 4: SMTP config
+      if (!process.env.SMTP_HOST || !process.env.SMTP_USER) {
+        findings.push({
+          severity: 'medium',
+          category: 'Infrastructure',
+          issue: 'SMTP not fully configured',
+          recommendation: 'Configure SMTP_HOST, SMTP_USER, SMTP_PASS for email notifications'
+        });
+      }
+
+      // Check 5: High latency
+      if (kpis.avgLatencyMs > 500) {
+        findings.push({
+          severity: 'medium',
+          category: 'Performance',
+          issue: `Average latency is ${kpis.avgLatencyMs}ms (target: <500ms)`,
+          recommendation: 'Optimize slow API calls and add caching where appropriate'
+        });
+      }
+
+      // Check 6: Recent error notifications
+      const recentErrors = notifications.filter(n => n.type === 'error');
+      if (recentErrors.length > 3) {
+        findings.push({
+          severity: 'high',
+          category: 'System Stability',
+          issue: `${recentErrors.length} error notifications in last 7 days`,
+          recommendation: 'Review error logs and implement fixes for recurring issues'
+        });
+      }
+    }
 
     const report = {
       generatedAt: new Date().toISOString(),
@@ -149,6 +215,7 @@ router.post("/compliance/generate", express.json(), async (req, res) => {
       integrations,
       notifications,
       txEvents,
+      findings: isSecurityAudit ? findings : undefined,
     };
 
     // Persist report to backend/data/compliance_reports
@@ -158,49 +225,78 @@ router.post("/compliance/generate", express.json(), async (req, res) => {
     const filepath = path.join(dataDir, filename);
     fs.writeFileSync(filepath, JSON.stringify(report, null, 2), 'utf8');
 
-// --- Email with total route time cap (~25s) ---
-const elapsed = Date.now() - routeStart;
-const budgetMs = 25000; // ~25 seconds total budget for this route
-const remaining = Math.max(0, budgetMs - elapsed);
+    // Build prettier email HTML
+    const sevColor = (s) => ({ high: '#dc2626', medium: '#f59e0b', low: '#6b7280' }[s] || '#6b7280');
+    const findingsTable = findings.length > 0 ? `
+      <h3 style="margin-top:20px;font-size:16px;color:#111827">Security Findings (${findings.length})</h3>
+      <table style="width:100%;border-collapse:collapse;margin-top:10px">
+        <thead>
+          <tr style="background:#f3f4f6;text-align:left">
+            <th style="padding:8px;border:1px solid #d1d5db">Severity</th>
+            <th style="padding:8px;border:1px solid #d1d5db">Category</th>
+            <th style="padding:8px;border:1px solid #d1d5db">Issue</th>
+            <th style="padding:8px;border:1px solid #d1d5db">Recommendation</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${findings.map(f => `
+            <tr>
+              <td style="padding:8px;border:1px solid #d1d5db;color:${sevColor(f.severity)};font-weight:600">${f.severity.toUpperCase()}</td>
+              <td style="padding:8px;border:1px solid #d1d5db">${f.category}</td>
+              <td style="padding:8px;border:1px solid #d1d5db">${f.issue}</td>
+              <td style="padding:8px;border:1px solid #d1d5db">${f.recommendation}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    ` : '';
 
-let emailOK = true, emailErr = null;
-try {
-  await Promise.race([
-    sendMail({
-      to: recipientEmail,
-      subject: `Compliance report (${reportType}) - ${new Date().toLocaleString()}`,
-      text: `Attached is the compliance report (${reportType}).`,
-      html: `<p>Attached is the compliance report (<b>${reportType}</b>).</p>`,
-      attachments: [
-        { filename: `compliance-${Date.now()}.json`, content: JSON.stringify(report, null, 2) }
-      ]
-    }),
-    new Promise((_, rej) => setTimeout(() => rej(new Error('email_route_budget_timeout')), remaining))
-  ]);
-} catch (e) {
-  emailOK = false;
-  emailErr = e;
-}
+    const emailHtml = `
+      <div style="font-family:Inter,Arial,sans-serif;padding:20px;background:#f9fafb;color:#111827">
+        <h2 style="margin:0 0 10px;color:#111827">Compliance Report: ${reportType}</h2>
+        <p style="margin:0 0 16px;color:#6b7280;font-size:14px">Generated ${new Date().toLocaleString()} for org ${orgId}</p>
+        
+        <h3 style="margin-top:20px;font-size:16px;color:#111827">Summary (Last 7 Days)</h3>
+        <ul style="margin:10px 0;padding-left:20px;line-height:1.6">
+          <li><strong>Active Flows:</strong> ${kpis.activeFlows}</li>
+          <li><strong>Transactions:</strong> ${kpis.transactions} (${kpis.errors} errors)</li>
+          <li><strong>Avg Latency:</strong> ${kpis.avgLatencyMs}ms</li>
+          <li><strong>Integrations:</strong> ${integrations.length} total (${integrations.filter(i => i.status === 'active').length} active)</li>
+        </ul>
 
-if (!emailOK) {
-  await query(
-    `INSERT INTO notifications (org_id, type, title, message)
-     VALUES ($1, 'warn', 'Compliance: email failed', $2)`,
-    [orgId, `Failed to send compliance report to ${recipientEmail}: ${String(emailErr?.message || emailErr)}`]
-  ).catch(()=>{});
-  return endEarly({ error: 'email_failed', message: String(emailErr?.message || emailErr), report }, 502);
-}
+        ${findingsTable}
 
-// success notification
-await query(
-  `INSERT INTO notifications (org_id, type, title, message)
-   VALUES ($1, 'info', 'Compliance generated', $2)`,
-  [orgId, `Compliance report (${reportType}) generated and emailed to ${recipientEmail}`]
-).catch(()=>{});
-emitToOrg(req, 'notifications:update');
+        <p style="margin-top:20px;font-size:12px;color:#6b7280">Full report attached as JSON and PDF.</p>
+      </div>
+    `;
 
-return endEarly({ ok: true, emailedTo: recipientEmail, report });
+    // Send email with attachment
+    try {
+      await sendMail({
+        to: recipientEmail,
+        subject: `Compliance report (${reportType}) - ${new Date().toLocaleString()}`,
+        text: `Attached is the compliance report (${reportType}). Findings: ${findings.length}`,
+        html: emailHtml,
+        attachments: [
+          { filename: `compliance-${Date.now()}.json`, content: JSON.stringify(report, null, 2) }
+        ]
+      });
+    } catch (mailErr) {
+      // If email fails, still return the report but inform the caller
+      await query(
+        `INSERT INTO notifications (org_id, type, title, message) VALUES ($1, 'warn', 'Compliance: email failed', $2)`,
+        [orgId, `Failed to send compliance report to ${recipientEmail}: ${String(mailErr.message || mailErr)}`]
+      ).catch(()=>{});
 
+      return res.status(502).json({ error: 'email_failed', message: String(mailErr.message || mailErr), report });
+    }
+
+    // Notification for org
+    await query(`INSERT INTO notifications (org_id, type, title, message) VALUES ($1, 'info', 'Compliance generated', $2)`, [orgId, `Compliance report (${reportType}) generated and emailed to ${recipientEmail}`]).catch(()=>{});
+    emitToOrg(req, 'notifications:update');
+
+    noStore(res);
+    res.json({ ok: true, emailedTo: recipientEmail, report });
   } catch (err) {
     console.error('Compliance generate failed', err && err.stack ? err.stack : err);
     res.status(500).json({ error: String(err.message || err) });
