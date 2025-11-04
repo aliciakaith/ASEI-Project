@@ -5,6 +5,7 @@ import { requireAuth } from "../middleware/authMiddleware.js";
 import fs from "fs";
 import path from "path";
 import { sendMail } from "../mailer.js";
+import PDFDocument from "pdfkit";
 
 const router = express.Router();
 router.use(requireAuth);
@@ -207,6 +208,13 @@ router.post("/compliance/generate", express.json(), async (req, res) => {
       }
     }
 
+    // Derived roll-up for easier UI rendering
+    const integrationsByStatus = {
+      active: integrations.filter(i => i.status === 'active'),
+      pending: integrations.filter(i => i.status === 'pending'),
+      error: integrations.filter(i => i.status === 'error'),
+    };
+
     const report = {
       generatedAt: new Date().toISOString(),
       org: orgId,
@@ -216,6 +224,13 @@ router.post("/compliance/generate", express.json(), async (req, res) => {
       notifications,
       txEvents,
       findings: isSecurityAudit ? findings : undefined,
+      summary: {
+        totalIntegrations: integrations.length,
+        activeIntegrations: integrationsByStatus.active.length,
+        pendingIntegrations: integrationsByStatus.pending.length,
+        errorIntegrations: integrationsByStatus.error.length,
+        errorRate: kpis.transactions > 0 ? ((kpis.errors / kpis.transactions) * 100).toFixed(1) + '%' : '0%',
+      }
     };
 
     // Persist report to backend/data/compliance_reports
@@ -225,8 +240,91 @@ router.post("/compliance/generate", express.json(), async (req, res) => {
     const filepath = path.join(dataDir, filename);
     fs.writeFileSync(filepath, JSON.stringify(report, null, 2), 'utf8');
 
+    // Generate PDF
+    const pdfFilename = filename.replace(/\.json$/, '') + '.pdf';
+    const pdfPath = path.join(dataDir, pdfFilename);
+    try {
+      await new Promise((resolve, reject) => {
+        const doc = new PDFDocument({ size: 'A4', margin: 50 });
+        const out = fs.createWriteStream(pdfPath);
+        doc.pipe(out);
+
+        doc.fontSize(18).text(`Compliance Report: ${reportType}`, { align: 'center' });
+        doc.moveDown();
+        doc.fontSize(10).text(`Generated: ${report.generatedAt}`);
+        doc.text(`Organization: ${orgId}`);
+        doc.moveDown();
+
+        doc.fontSize(12).text('KPIs (Last 7 Days)', { underline: true });
+        doc.fontSize(10);
+        doc.text(`Active Flows: ${kpis.activeFlows}`);
+        doc.text(`Transactions: ${kpis.transactions} (${kpis.errors} errors, ${report.summary.errorRate} error rate)`);
+        doc.text(`Avg Latency: ${kpis.avgLatencyMs}ms`);
+        doc.moveDown();
+
+        doc.fontSize(12).text('Integrations Breakdown', { underline: true });
+        doc.fontSize(10);
+        doc.text(`Total: ${integrations.length} (🟢 Active: ${integrationsByStatus.active.length}, 🟡 Pending: ${integrationsByStatus.pending.length}, 🔴 Error: ${integrationsByStatus.error.length})`);
+        if (integrationsByStatus.active.length > 0) {
+          doc.text(`Active: ${integrationsByStatus.active.map(i => i.name).join(', ')}`);
+        }
+        if (integrationsByStatus.pending.length > 0) {
+          doc.text(`Pending: ${integrationsByStatus.pending.map(i => i.name).join(', ')}`);
+        }
+        if (integrationsByStatus.error.length > 0) {
+          doc.text(`Error: ${integrationsByStatus.error.map(i => i.name).join(', ')}`);
+        }
+        doc.moveDown();
+
+        if (isSecurityAudit && findings.length > 0) {
+          doc.fontSize(12).text('Security Findings', { underline: true });
+          findings.forEach(f => {
+            doc.fontSize(10).text(`[${f.severity.toUpperCase()}] ${f.category}: ${f.issue}`, { continued: false });
+            doc.fontSize(9).text(`  → ${f.recommendation}`);
+          });
+          doc.moveDown();
+        }
+
+        doc.fontSize(12).text('Recent Notifications', { underline: true });
+        doc.fontSize(9);
+        notifications.slice(0, 20).forEach(n => doc.text(`${new Date(Number(n.ts)).toLocaleString()} [${n.type}] ${n.title}`));
+
+        doc.end();
+        out.on('finish', resolve);
+        out.on('error', reject);
+      });
+    } catch (pdfErr) {
+      console.warn('PDF generation failed', pdfErr);
+    }
+
     // Build prettier email HTML
     const sevColor = (s) => ({ high: '#dc2626', medium: '#f59e0b', low: '#6b7280' }[s] || '#6b7280');
+    
+    // Integration breakdown by status (for Integration Summary)
+    const integStatusGroups = {
+      active: integrations.filter(i => i.status === 'active'),
+      pending: integrations.filter(i => i.status === 'pending'),
+      error: integrations.filter(i => i.status === 'error'),
+    };
+    
+    const integrationBreakdown = reportType === 'Integration Summary' ? `
+      <h3 style="margin-top:20px;font-size:16px;color:#111827">Integration Status Breakdown</h3>
+      <div style="margin:10px 0">
+        <div style="margin-bottom:8px">
+          <span style="color:#10b981;font-weight:600">🟢 Active (${integStatusGroups.active.length})</span>
+          ${integStatusGroups.active.length > 0 ? `<div style="margin-left:20px;color:#6b7280;font-size:13px">${integStatusGroups.active.map(i => i.name).join(', ')}</div>` : ''}
+        </div>
+        <div style="margin-bottom:8px">
+          <span style="color:#f59e0b;font-weight:600">🟡 Pending (${integStatusGroups.pending.length})</span>
+          ${integStatusGroups.pending.length > 0 ? `<div style="margin-left:20px;color:#6b7280;font-size:13px">${integStatusGroups.pending.map(i => i.name).join(', ')}</div>` : ''}
+        </div>
+        <div style="margin-bottom:8px">
+          <span style="color:#dc2626;font-weight:600">🔴 Error (${integStatusGroups.error.length})</span>
+          ${integStatusGroups.error.length > 0 ? `<div style="margin-left:20px;color:#6b7280;font-size:13px">${integStatusGroups.error.map(i => i.name).join(', ')}</div>` : ''}
+        </div>
+      </div>
+    ` : '';
+    
     const findingsTable = findings.length > 0 ? `
       <h3 style="margin-top:20px;font-size:16px;color:#111827">Security Findings (${findings.length})</h3>
       <table style="width:100%;border-collapse:collapse;margin-top:10px">
@@ -254,32 +352,38 @@ router.post("/compliance/generate", express.json(), async (req, res) => {
     const emailHtml = `
       <div style="font-family:Inter,Arial,sans-serif;padding:20px;background:#f9fafb;color:#111827">
         <h2 style="margin:0 0 10px;color:#111827">Compliance Report: ${reportType}</h2>
-        <p style="margin:0 0 16px;color:#6b7280;font-size:14px">Generated ${new Date().toLocaleString()} for org ${orgId}</p>
+        <p style="margin:0 0 16px;color:#6b7280;font-size:14px">Generated ${new Date().toISOString()} for org ${orgId}</p>
         
         <h3 style="margin-top:20px;font-size:16px;color:#111827">Summary (Last 7 Days)</h3>
         <ul style="margin:10px 0;padding-left:20px;line-height:1.6">
           <li><strong>Active Flows:</strong> ${kpis.activeFlows}</li>
-          <li><strong>Transactions:</strong> ${kpis.transactions} (${kpis.errors} errors)</li>
+          <li><strong>Transactions:</strong> ${kpis.transactions} (${kpis.errors} errors, ${report.summary.errorRate} error rate)</li>
           <li><strong>Avg Latency:</strong> ${kpis.avgLatencyMs}ms</li>
-          <li><strong>Integrations:</strong> ${integrations.length} total (${integrations.filter(i => i.status === 'active').length} active)</li>
+          <li><strong>Integrations:</strong> ${integrations.length} total (${integStatusGroups.active.length} active)</li>
         </ul>
 
+        ${integrationBreakdown}
         ${findingsTable}
 
         <p style="margin-top:20px;font-size:12px;color:#6b7280">Full report attached as JSON and PDF.</p>
       </div>
     `;
 
-    // Send email with attachment
+    // Send email with attachments (JSON + PDF)
     try {
+      const attachments = [ 
+        { filename: `compliance-${Date.now()}.json`, content: JSON.stringify(report, null, 2) }
+      ];
+      if (fs.existsSync(pdfPath)) {
+        attachments.push({ filename: `compliance-${Date.now()}.pdf`, path: pdfPath });
+      }
+
       await sendMail({
         to: recipientEmail,
-        subject: `Compliance report (${reportType}) - ${new Date().toLocaleString()}`,
-        text: `Attached is the compliance report (${reportType}). Findings: ${findings.length}`,
+        subject: `Compliance report (${reportType}) - ${new Date().toISOString().split('T')[0]}`,
+        text: `Attached is the compliance report (${reportType}). ${isSecurityAudit ? `Findings: ${findings.length}` : ''}`,
         html: emailHtml,
-        attachments: [
-          { filename: `compliance-${Date.now()}.json`, content: JSON.stringify(report, null, 2) }
-        ]
+        attachments
       });
     } catch (mailErr) {
       // If email fails, still return the report but inform the caller
