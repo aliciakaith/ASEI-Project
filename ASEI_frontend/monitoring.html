@@ -9,6 +9,9 @@
   tailwind.config = { darkMode: 'class' };
 </script>
 
+<!-- graph/chart -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
 <script>
   (function () {
     const KEY = 'connectify.theme';
@@ -112,13 +115,12 @@
       Below is a placeholder for upcoming live performance graphs. It will visualize CPU, memory, and API usage over time.
     </p>
       <div class="px-4 pt-4 pb-0 flex">
-        <div class="text-sm font-medium">Monitoring</div>
-        <p id="deployDate" class="ml-auto text-xs text-neutral-500 dark:text-neutral-400"></p>
+       <p id="monitorDate" class="ml-auto text-xs text-neutral-500 dark:text-neutral-400"></p>
       </div>
 
       <div class="px-4 pb-4">
         <div class="h-48">
-          <canvas id="deployChart" class="h-48 w-full"></canvas>
+          <canvas id="monitorChart" class="h-48 w-full"></canvas>
         </div>
       </div>
   </section>
@@ -241,5 +243,101 @@
     if (saveImg) applyPfpToDOM(saveImg);
   });
 </script>
+
+    <!-- Chart -->
+<script>
+  const $ = (id) => document.getElementById(id);
+
+  // Mock data
+  async function loadSeries() {
+    const out = [];
+    const now = new Date();
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(now);
+      d.setHours(0, 0, 0, 0);
+      d.setDate(now.getDate() - i);
+      // mock counts
+      const y = Math.floor(1 + Math.random() * 6);
+      out.push({ x: d.getTime(), y });
+    }
+    return out;
+  }
+
+  function currentThemeIsDark() {
+    return document.documentElement.classList.contains('dark');
+  }
+
+  let monitorChart;
+  async function initMonitorChart() {
+    const canvas = $('monitorChart');
+    if (!canvas) return;
+
+    // update
+    const stamp = $('monitorDate');
+    if (stamp) {
+      const d = new Date();
+      stamp.textContent = `Updated: ${d.toLocaleDateString()} ${d.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}`;
+
+    }
+    const data = await loadSeries();
+
+    // dark mode
+    const lineColor = currentThemeIsDark() ? '#a8b3cf' : '#1f2937';
+    const gridColor = currentThemeIsDark() ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+    const tickColor = currentThemeIsDark() ? '#cbd5e1' : '#475569';
+
+
+
+    monitorChart = new Chart(canvas, {
+      type: 'line',
+      data: {
+        datasets: [{
+          label: 'Monitoring',
+          data,
+          borderWidth: 2,
+          tension: 0.35,
+          borderColor: lineColor,
+          fill: false,
+          pointRadius: 0,
+          pointHitRadius: 10
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {mode: 'index', intersect: false},
+        plugins: {
+          legend: {display: false},
+          tooltip: {
+            displayColors: false,
+            callbacks: {
+              title(items){
+                const d = new Date(items[0].parsed.x);
+                return d.toLocaleDateString(undefined, {year: 'numeric', month: 'short', day: '2-digit'});
+              },
+              label(item) { return `Monitoring: ${item.parsed.y}`;}
+            }
+          }
+        },
+        scales: {
+          x: {
+            type: 'time',
+            time: {unit: 'hour', displayFormats: {hour: 'HH:mm'}, tooltipFormat: 'HH:mm'},
+            grid: {color: gridColor, drawOnChartArea: false},
+            ticks: {color: tickColor, maxTicksLimit: 7}
+          },
+          y: {
+            beginAtZero: true,
+            suggestedMax: Math.max(...data.map(p => p.y)) + 1,
+            ticks: {precision: 0, color: tickColor},
+            grid: {color: gridColor}
+          }
+        }
+      }
+    });
+  }
+  document.addEventListener('DOMContentLoaded', initMonitorChart);
+</script>
+
 </body>
 </html>
