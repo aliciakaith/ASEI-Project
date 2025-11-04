@@ -216,6 +216,70 @@ io.on("connection", (socket) => {
   }
 })();
 
+// Auto-verify integrations on startup if env vars are configured
+(async function autoVerifyIntegrations() {
+  try {
+    // Check Flutterwave
+    if (process.env.FLW_SECRET_KEY && process.env.FLW_BASE_URL) {
+      console.log('Flutterwave credentials detected, verifying...');
+      const flutterwaveClient = (await import('./providers/flutterwave/index.js')).default;
+      const fw = flutterwaveClient({ 
+        secretKey: process.env.FLW_SECRET_KEY, 
+        baseUrl: process.env.FLW_BASE_URL 
+      });
+      try {
+        await fw.ping();
+        await pool.query(
+          `UPDATE integrations SET status = 'active', last_checked = now() WHERE LOWER(name) = 'flutterwave'`
+        );
+        console.log('✅ Flutterwave integrations marked as active');
+      } catch (err) {
+        await pool.query(
+          `UPDATE integrations SET status = 'error', last_checked = now() WHERE LOWER(name) = 'flutterwave'`
+        );
+        console.warn('❌ Flutterwave verification failed:', err.message);
+      }
+    } else {
+      // No credentials configured - mark as error (not configured)
+      await pool.query(
+        `UPDATE integrations SET status = 'error', last_checked = now() WHERE LOWER(name) = 'flutterwave'`
+      );
+      console.log('⚠️  Flutterwave not configured (missing FLW_SECRET_KEY or FLW_BASE_URL)');
+    }
+
+    // Check MTN MoMo
+    if (process.env.MTN_SUBSCRIPTION_KEY && process.env.MTN_API_USER && process.env.MTN_API_KEY) {
+      console.log('MTN MoMo credentials detected, verifying...');
+      const { getAccessToken } = await import('./providers/mtn/auth.js');
+      try {
+        await getAccessToken({
+          subscriptionKey: process.env.MTN_SUBSCRIPTION_KEY,
+          apiUserId: process.env.MTN_API_USER,
+          apiKey: process.env.MTN_API_KEY,
+          baseUrl: process.env.MTN_BASE || 'https://sandbox.momodeveloper.mtn.com'
+        });
+        await pool.query(
+          `UPDATE integrations SET status = 'active', last_checked = now() WHERE LOWER(name) = 'mtn mobile money'`
+        );
+        console.log('✅ MTN Mobile Money integrations marked as active');
+      } catch (err) {
+        await pool.query(
+          `UPDATE integrations SET status = 'error', last_checked = now() WHERE LOWER(name) = 'mtn mobile money'`
+        );
+        console.warn('❌ MTN MoMo verification failed:', err.message);
+      }
+    } else {
+      // No credentials configured - mark as error (not configured)
+      await pool.query(
+        `UPDATE integrations SET status = 'error', last_checked = now() WHERE LOWER(name) = 'mtn mobile money'`
+      );
+      console.log('⚠️  MTN MoMo not configured (missing credentials in .env)');
+    }
+  } catch (err) {
+    console.error('Failed to auto-verify integrations:', err.message);
+  }
+})();
+
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`App running at http://localhost:${PORT}`);
 });

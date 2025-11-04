@@ -63,6 +63,7 @@ router.post("/",
 
     const id = uuidv4();
     const owner = req.user?.id || uuidv4(); // TODO: replace with actual user id from your auth
+    const orgId = req.user?.org;
     const cfg = {
       subscriptionKey: req.body.config.subscriptionKey,
       apiUserId: req.body.config.apiUserId,
@@ -71,6 +72,35 @@ router.post("/",
       targetEnvironment: req.body.config.targetEnvironment || req.body.env || "sandbox",
       callbackUrl: req.body.config.callbackUrl || null,
     };
+    
+    // Test the connection before saving
+    try {
+      const baseUrl = cfg.baseUrl || "https://sandbox.momodeveloper.mtn.com";
+      await getAccessToken({
+        subscriptionKey: cfg.subscriptionKey, 
+        apiUserId: cfg.apiUserId, 
+        apiKey: cfg.apiKey, 
+        baseUrl
+      });
+      
+      // Mark MTN integration as active if validation succeeds
+      if (orgId) {
+        await query(
+          `UPDATE integrations SET status = 'active', last_checked = now() WHERE org_id = $1 AND LOWER(name) = 'mtn mobile money'`,
+          [orgId]
+        ).catch(err => console.error('Failed to update MTN integration status:', err));
+      }
+    } catch (e) {
+      // Mark as error if verification fails
+      if (orgId) {
+        await query(
+          `UPDATE integrations SET status = 'error', last_checked = now() WHERE org_id = $1 AND LOWER(name) = 'mtn mobile money'`,
+          [orgId]
+        ).catch(err => console.error('Failed to update MTN integration status:', err));
+      }
+      return res.status(400).json({ ok: false, error: e.response?.data || e.message });
+    }
+    
     await ensureTable();
     await query(
       "INSERT INTO connections(id, owner_user_id, provider, env, label, config_enc) VALUES ($1,$2,$3,$4,$5,$6)",

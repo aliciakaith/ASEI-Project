@@ -20,6 +20,7 @@ router.get('/api/connectors', (req, res) => {
 /** Save Flutterwave connector after verifying keys */
 router.post('/api/connectors/flutterwave', express.json(), async (req, res) => {
   const userId = getUserId(req);
+  const orgId = req.user?.org;
   const { publicKey, secretKey, encryptionKey, accountAlias } = req.body || {};
   if (!publicKey || !secretKey || !encryptionKey) {
     return res.status(400).json({ error: 'publicKey, secretKey, encryptionKey are required' });
@@ -27,7 +28,22 @@ router.post('/api/connectors/flutterwave', express.json(), async (req, res) => {
   try {
     const fw = flutterwaveClient({ secretKey, baseUrl: FLW_BASE_URL });
     await fw.ping();
+    
+    // Mark Flutterwave integration as active if it exists
+    if (orgId) {
+      await query(
+        `UPDATE integrations SET status = 'active', last_checked = now() WHERE org_id = $1 AND LOWER(name) = 'flutterwave'`,
+        [orgId]
+      ).catch(err => console.error('Failed to update Flutterwave integration status:', err));
+    }
   } catch (e) {
+    // Mark as error if verification fails
+    if (orgId) {
+      await query(
+        `UPDATE integrations SET status = 'error', last_checked = now() WHERE org_id = $1 AND LOWER(name) = 'flutterwave'`,
+        [orgId]
+      ).catch(err => console.error('Failed to update Flutterwave integration status:', err));
+    }
     return res.status(400).json({ error: `Key verification failed: ${e.message}` });
   }
   const saved = saveConnector(

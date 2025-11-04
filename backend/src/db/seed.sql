@@ -36,36 +36,22 @@ FROM org, (VALUES
 ) AS t(n)
 ON CONFLICT (org_id, name) DO NOTHING;
 
--- 6) Demo Transactions (for chart + KPIs)
-WITH org AS (SELECT id AS org_id FROM organizations WHERE name = 'Demo Org')
-INSERT INTO tx_events (org_id, success, latency_ms, created_at)
-SELECT org.org_id, v.success, v.latency, v.ts
-FROM org,
-     ( VALUES
-       (true,  120, now() - interval '3 hour'),
-       (false, 260, now() - interval '2 hour'),
-       (true,   95, now() - interval '1 hour'),
-       (true,   80, now() - interval '10 minute')
-     ) AS v(success, latency, ts);
-
--- 7) Demo Integrations
+-- 6) Real Integrations (marked as error by default - not configured yet)
+-- Will become active once user adds API keys or if env vars are set on startup
 WITH org AS (SELECT id AS org_id FROM organizations WHERE name = 'Demo Org')
 INSERT INTO integrations (org_id, name, status, test_url)
-SELECT org.org_id, v.name, v.status, v.test_url
+SELECT org.org_id, v.name, 'error', v.test_url
 FROM org,
      ( VALUES
-       ('MTN Mobile Money', 'active', 'https://sandbox.momodeveloper.mtn.com'),
-       ('Flutterwave', 'active', 'https://api.flutterwave.com/v3')
-     ) AS v(name, status, test_url)
+       ('MTN Mobile Money', 'https://sandbox.momodeveloper.mtn.com'),
+       ('Flutterwave', 'https://api.flutterwave.com/v3'),
+       ('Airtel Money', 'https://openapiuat.airtel.africa'),
+       ('Pesapal', 'https://www.pesapal.com/api')
+     ) AS v(name, test_url)
 ON CONFLICT (org_id, LOWER(name)) DO NOTHING;
 
--- 8) Demo Notifications
+-- 7) Welcome Notification Only
 WITH org AS (SELECT id AS org_id FROM organizations WHERE name = 'Demo Org')
 INSERT INTO notifications (org_id, type, title, message)
-SELECT org.org_id, v.type, v.title, v.message
-FROM org,
-     ( VALUES
-       ('info',  'Welcome',         'Your workspace is ready.'),
-       ('warn',  'High latency',    'Average latency exceeded 200ms in the last hour.'),
-       ('error', 'Sandbox failure', 'Payment to sandbox gateway failed (HTTP 500).')
-     ) AS v(type, title, message);
+SELECT org.org_id, 'info', 'Welcome', 'Your workspace is ready. Add integrations to get started.'
+FROM org;
