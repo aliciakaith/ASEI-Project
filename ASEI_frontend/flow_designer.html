@@ -176,7 +176,7 @@
       <button class="px-3 py-2 bg-gray-300 hover:bg-gray-400 dark:bg-gray-500 dark:hover:bg-gray-600 border dark:border-neutral-600 rounded" onclick="exportFlow()">Export</button>
       <button class="px-3 py-2 bg-gray-500 hover:bg-gray-600 dark:bg-gray-700 dark:hover:bg-gray-800 border dark:border-neutral-800 text-white rounded" onclick="saveFlow('draft')">Save Draft</button>
       <button class="px-3 py-2 bg-blue-500 hover:bg-blue-600 dark:bg-blue-700 dark:hover:bg-blue-800 boder dark:border-blue-800 text-white rounded" onclick="saveFlow('active')">Deploy Flow</button>
-      <button id="viewExecutionsBtn" class="px-3 py-2 bg-purple-500 hover:bg-purple-600 dark:bg-purple-700 dark:hover:bg-purple-800 border dark:border-purple-800 text-white rounded hidden" onclick="viewExecutions()">📊 Executions</button>
+  <button id="viewExecutionsBtn" class="px-3 py-2 bg-purple-500 hover:bg-purple-600 dark:bg-purple-700 dark:hover:bg-purple-800 border dark:border-purple-800 text-white rounded hidden" onclick="viewExecutions()">Executions</button>
     </div>
     <div class="text-neutral-500 text-sm text-left">Deploy Flow will save, activate, and execute your flow immediately.</div>
   </div>
@@ -322,6 +322,37 @@ async function checkAuth() {
     window.location.href = '/login';
   }
 }
+// Delete Execution
+async function deleteExecution(executionId) {
+  const confirmed = await showConfirmModal(
+    'Delete Execution',
+    'Are you sure you want to delete this execution record? This action cannot be undone.',
+    'Delete',
+    'Cancel'
+  );
+  
+  if (!confirmed) return;
+  
+  try {
+    const resp = await fetch(`/api/executions/${executionId}`, {
+      method: 'DELETE',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({ error: 'Failed to delete' }));
+      throw new Error(err.error || `HTTP ${resp.status}`);
+    }
+    
+    // Close any open modals and refresh the executions list
+    document.querySelectorAll('.modal-backdrop').forEach(m => m.remove());
+    setTimeout(() => viewExecutions(), 300);
+  } catch (error) {
+    console.error('Failed to delete execution:', error);
+    showNotification('Failed to delete execution', 'error');
+  }
+}
+
 
 function createNode(type, kindOverride, nameOverride) {
   const id = 'node_' + Math.random().toString(36).substr(2, 9);
@@ -688,7 +719,7 @@ function showNotification(message, type = 'info') {
     info: 'bg-blue-500'
   };
   
-  notification.className = `fixed top-4 right-4 ${colors[type]} text-white px-6 py-3 rounded-lg shadow-lg z-50 transition-opacity`;
+  notification.className = `fixed top-4 left-1/2 transform -translate-x-1/2 ${colors[type]} text-white px-6 py-3 rounded-lg shadow-lg z-50 transition-opacity`;
   notification.textContent = message;
   
   document.body.appendChild(notification);
@@ -942,11 +973,18 @@ async function viewExecutions() {
                       <td class="p-3 text-xs">${new Date(exec.started_at).toLocaleString()}</td>
                       <td class="p-3">${exec.execution_time_ms ? `${exec.execution_time_ms}ms` : '-'}</td>
                       <td class="p-3">
-                        <button 
-                          class="text-blue-500 hover:text-blue-700 text-sm"
-                          onclick="viewExecutionDetails('${exec.id}')">
-                          View Details
-                        </button>
+                        <div class="flex gap-2">
+                          <button 
+                            class="text-blue-500 hover:text-blue-700 text-sm"
+                            onclick="viewExecutionDetails('${exec.id}')">
+                            View Details
+                          </button>
+                          <button 
+                            class="text-red-500 hover:text-red-700 text-sm"
+                            onclick="deleteExecution('${exec.id}')">
+                            Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   `).join('')}

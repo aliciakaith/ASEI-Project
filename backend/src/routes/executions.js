@@ -2,6 +2,7 @@
 import express from 'express';
 import ExecutionService from '../execution/ExecutionService.js';
 import { audit } from '../logging/audit.js';
+import { query } from '../db/postgres.js';
 
 const router = express.Router();
 
@@ -123,6 +124,56 @@ router.post('/:executionId/cancel', async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('Failed to cancel execution:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+/**
+ * DELETE /api/executions/:executionId
+ * Delete an execution record and all its associated data
+ */
+router.delete('/:executionId', async (req, res) => {
+  const { executionId } = req.params;
+  const orgId = req.user?.org;
+
+  try {
+    if (!orgId) return res.status(401).json({ error: 'Organization not found' });
+
+    // Ensure this execution belongs to the user's organization
+    const owned = await query(
+      `SELECT e.id
+       FROM flow_executions e
+       JOIN flows f ON f.id = e.flow_id
+       WHERE e.id = $1 AND f.org_id = $2`,
+      [executionId, orgId]
+    );
+    if (owned.rowCount === 0) {
+      return res.status(404).json({ error: 'Execution not found' });
+    }
+
+    // Delete execution logs first (foreign key)
+    await query('DELETE FROM execution_logs WHERE execution_id = $1', [executionId]);
+    
+    // Delete execution steps (foreign key)
+    await query('DELETE FROM execution_steps WHERE execution_id = $1', [executionId]);
+    
+    // Delete the execution record
+    const result = await query('DELETE FROM flow_executions WHERE id = $1 RETURNING id', [executionId]);
+    
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Execution not found' });
+    }
+
+    await audit(req, {
+      userId: req.user?.id ?? null,
+      action: 'FLOW_EXECUTION_DELETED',
+      targetType: 'execution',
+      targetId: executionId,
+      statusCode: 200
+    });
+
+    res.json({ success: true, message: 'Execution deleted' });
+  } catch (error) {
+    console.error('Failed to delete execution:', error);
     res.status(500).json({ error: error.message });
   }
 });
