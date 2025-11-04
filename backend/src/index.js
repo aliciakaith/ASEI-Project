@@ -18,6 +18,7 @@ import connectionsRouter from "./routes/connections.js";
 import mtnRouter from "./routes/mtn.js";
 import flutterwaveRoutes from './routes/flutterwave.js';
 import executionsRouter from './routes/executions.js';
+import templatesRouter from './routes/templates.js';
 
 
 // logging
@@ -111,6 +112,9 @@ app.use("/api/dashboard", requireAuth, dashboardRouter);
 app.use("/api/connections", requireAuth, connectionsRouter);
 app.use("/api/mtn", requireAuth, mtnRouter);
 app.use("/api/executions", requireAuth, executionsRouter);
+
+// Public API for templates
+app.use("/api/templates", templatesRouter);
 
 
 

@@ -74,7 +74,7 @@
 
           <img id="initialSidebarPfp" src="images/default_avatar.png" class="js-initial-pfp h-8 w-8 rounded-full object-cover" alt="O Pfp"/>
           <img id="mainPfp" class="js-main-pfp h-8 w-8 rounded-full object-cover hidden" alt="N Pfp"/>
-          <span class="text-sm font-medium">Insert User Name</span>
+          <span class="js-profile-name text-sm font-medium">Insert User Name</span>
       </div>
     </div>
   </aside>
@@ -86,125 +86,18 @@
 
   <!-- Search + Filter -->
   <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6 space-y-3 md:space-y-0">
-    <input type="text" placeholder="Search templates..." 
+    <input id="templateSearch" type="text" placeholder="Search templates..." 
            class="border rounded px-3 py-2 w-full md:w-1/3 dark:bg-neutral-600 dark:border-neutral-700">
-    
-    <select class="border dark:bg-neutral-700 dark:border-neutral-800 rounded px-3 py-2 w-full md:w-48">
+    <select id="templateCategory" class="border dark:bg-neutral-700 dark:border-neutral-800 rounded px-3 py-2 w-full md:w-48">
       <option value="all">All Categories</option>
       <option value="payments">Payments</option>
-      <option value="banking">Banking</option>
       <option value="utilities">Utilities</option>
       <option value="remittance">Remittances</option>
     </select>
   </div>
 
-  <!-- Templates Grid -->
-  <div class="flex flex-col sm:grid-cols-2 lg:grid-cols-3 gap-1">
-    <span class="text-sm uppercase text-neutral-500 dark:text-neutral-400 mb-1">MTN</span>
-
-    <div class="grid sm:grid-cols-2 lg-grid-cols-3 gap-4">
-    <!-- MTN Card 1 -->
-      <div class="bg-white dark:bg-neutral-800 border dark:border-neutral-700 p-4 rounded shadow flex flex-col justify-between">
-        <div>
-          <h3 class="font-semibold text-lg dark:text-neutral-200">Mobile Money → Bank Settlement</h3>
-          <p class="text-sm text-neutral-600 mt-1 dark:text-neutral-500">Automates transfers from mobile wallets into bank accounts.</p>
-          <span class="inline-block mt-2 px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded">Official</span>
-        </div>
-        <div class="mt-4 flex space-x-2">
-          <button class="preview-btn px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded dark:bg-gray-600 dark:hover:bg-gray-700" 
-            data-title="Mobile Money → Bank Settlement"
-            data-desc="Automates transfers from mobile wallets into bank accounts with real-time reconciliation and API hooks."
-            data-img="images/template-1.png"
-            data-img-dark="images/template-1Dark.png">
-            Preview
-          </button>
-          <button class="use-template-btn px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded" data-template-id="card-1">Use Template</button>
-        </div>
-      </div>
-
-      <!-- MTN Card 2 -->
-      <div class="bg-white dark:bg-neutral-800 border dark:border-neutral-700 p-4 rounded shadow flex flex-col justify-between">
-        <div>
-          <h3 class="font-semibold text-lg dark:text-neutral-200">Utility Bills → Core Banking</h3>
-          <p class="text-sm text-neutral-600 mt-1 dark:text-neutral-500">Handles bill collection and reconciliation into core banking system.</p>
-          <span class="inline-block mt-2 px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded">Community</span>
-        </div>
-        <div class="mt-4 flex space-x-2">
-          <button class="preview-btn px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded dark:bg-gray-600 dark:hover:bg-gray-700"
-            data-title="Utility Bills → Core Banking"
-            data-desc="Integrates utility payment collections directly into core banking using RESTful APIs."
-            data-img="images/template-2.png"
-            data-img-dark="images/template-2Dark.png">
-            Preview
-          </button>
-          <button class="use-template-btn px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded" data-template-id="card-2">Use Template</button>
-        </div>
-      </div>
-
-      <!-- MTN Card 3 -->
-      <div class="bg-white dark:bg-neutral-800 border dark:border-neutral-700 p-4 rounded shadow flex flex-col justify-between">
-        <div>
-          <h3 class="font-semibold text-lg dark:text-neutral-200">Remittance → Wallet</h3>
-          <p class="text-sm text-neutral-600 mt-1 dark:text-neutral-500">Maps international remittances directly into local mobile wallets.</p>
-          <span class="inline-block mt-2 px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded">Official</span>
-        </div>
-        <div class="mt-4 flex space-x-2">
-          <button class="preview-btn px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded dark:bg-gray-600 dark:hover:bg-gray-700"
-            data-title="Remittance → Wallet"
-            data-desc="Maps remittances to mobile wallets using AML checks, FX conversions, and partner APIs."
-            data-img="images/template-3.png"
-            data-img-dark="images/template-3Dark.png">
-            Preview
-          </button>
-          <button class="use-template-btn px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded" data-template-id="card-3">Use Template</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-    <div class="flex flex-col sm:grid-cols-2 lg:grid-cols-3 gap-1 mt-8">
-    <span class="text-sm uppercase text-neutral-500 dark:text-neutral-400 mb-1">FlutterWave</span>
-
-    <div class="grid sm:grid-cols-2 lg-grid-cols-3 gap-4">
-    <!-- FW Card 4 -->
-      <div class="bg-white dark:bg-neutral-800 border dark:border-neutral-700 p-4 rounded shadow flex flex-col justify-between">
-        <div>
-          <h3 class="font-semibold text-lg dark:text-neutral-200">Verify Payment</h3>
-          <p class="text-sm text-neutral-600 mt-1 dark:text-neutral-500">Confirms payment have been made.</p>
-          <span class="inline-block mt-2 px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded">Official</span>
-        </div>
-        <div class="mt-4 flex space-x-2">
-          <button class="preview-btn px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded dark:bg-gray-600 dark:hover:bg-gray-700" 
-            data-title="Verify Payment"
-            data-desc="Confirms payment have been made."
-            data-img="images/template-4.png"
-            data-img-dark="images/template-4Dark.png">
-            Preview
-          </button>
-          <button class="use-template-btn px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded" data-template-id="card-4">Use Template</button>
-        </div>
-      </div>
-
-      <!-- FW Card 5 -->
-      <div class="bg-white dark:bg-neutral-800 border dark:border-neutral-700 p-4 rounded shadow flex flex-col justify-between">
-        <div>
-          <h3 class="font-semibold text-lg dark:text-neutral-200">Payment</h3>
-          <p class="text-sm text-neutral-600 mt-1 dark:text-neutral-500">Initiates a one-time payment.</p>
-          <span class="inline-block mt-2 px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded">Official</span>
-        </div>
-        <div class="mt-4 flex space-x-2">
-          <button class="preview-btn px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded dark:bg-gray-600 dark:hover:bg-gray-700"
-            data-title="Payment"
-            data-desc="Initiates a one-time payment."
-            data-img="images/template-5.png"
-            data-img-dark="images/template-5Dark.png">
-            Preview
-          </button>
-          <button class="use-template-btn px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded" data-template-id="card-5">Use Template</button>
-        </div>
-      </div>
-    </div>
-  </div>
+  <!-- Templates Grid (dynamic) -->
+  <div id="templatesGrid"></div>
 </main>
 
 <!-- Preview Modal -->
@@ -230,169 +123,177 @@
 
 <!-- Script -->
 <script>
-  // Profile Image
-  const imageStore = 'connectify.pfpUrl';
-  function applyPfpToDOM(pfpUrl){
-    document.querySelectorAll('.js-main-pfp').forEach(img =>{
-      img.src = pfpUrl;
-      img.classList.remove("hidden");
-    });
-    document.querySelectorAll(".js-initial-pfp").forEach(el => el.classList.add("hidden"));
+// Profile Image
+const imageStore = 'connectify.pfpUrl';
+function applyPfpToDOM(pfpUrl){
+  document.querySelectorAll('.js-main-pfp').forEach(img =>{
+    img.src = pfpUrl;
+    img.classList.remove("hidden");
+  });
+  document.querySelectorAll(".js-initial-pfp").forEach(el => el.classList.add("hidden"));
+}
+document.addEventListener('DOMContentLoaded', ()=>{
+  const saveImg = localStorage.getItem(imageStore);
+  if(saveImg) applyPfpToDOM(saveImg);
+  
+  // Load user profile name
+  loadUserProfile();
+});
+
+// Load user profile name from backend
+async function loadUserProfile() {
+  try {
+    const res = await fetch('/api/dashboard/me', { credentials: 'include' });
+    if (res.ok) {
+      const me = await res.json();
+      const fullName = [me?.firstName, me?.lastName].filter(Boolean).join(' ').trim();
+      const emailLocal = (me?.email || '').split('@')[0];
+      const displayName = fullName || emailLocal || 'User';
+      
+      // Update profile name in sidebar
+      document.querySelectorAll('.js-profile-name').forEach(el => {
+        el.textContent = displayName;
+      });
+    }
+  } catch (e) {
+    console.warn('Failed to load user profile', e);
   }
-  document.addEventListener('DOMContentLoaded', ()=>{
-    const saveImg = localStorage.getItem(imageStore);
-    if(saveImg) applyPfpToDOM(saveImg);
+}
+
+// --- Templates Dynamic Loading ---
+const templatesGrid = document.getElementById('templatesGrid');
+const searchInput = document.getElementById('templateSearch');
+const categorySelect = document.getElementById('templateCategory');
+let allTemplates = [];
+let filteredTemplates = [];
+
+function renderTemplates(templates) {
+  if (!templates.length) {
+    templatesGrid.innerHTML = '<div class="text-neutral-500 dark:text-neutral-400">No templates found.</div>';
+    return;
+  }
+  // Group by provider
+  const providers = {};
+  templates.forEach(t => {
+    if (!providers[t.provider]) providers[t.provider] = [];
+    providers[t.provider].push(t);
   });
+  let html = '';
+  Object.entries(providers).forEach(([provider, tpls]) => {
+    html += `<div class="flex flex-col sm:grid-cols-2 lg:grid-cols-3 gap-1 mt-8">
+      <span class="text-sm uppercase text-neutral-500 dark:text-neutral-400 mb-1">${provider}</span>
+      <div class="grid sm:grid-cols-2 lg-grid-cols-3 gap-4">`;
+    tpls.forEach(t => {
+      const badgeClass = t.badgeColor === 'yellow' ? 'bg-yellow-100 text-yellow-700' : 'bg-purple-100 text-purple-700';
+      html += `<div class="bg-white dark:bg-neutral-800 border dark:border-neutral-700 p-4 rounded shadow flex flex-col justify-between">
+        <div>
+          <h3 class="font-semibold text-lg dark:text-neutral-200">${t.name}</h3>
+          <p class="text-sm text-neutral-600 mt-1 dark:text-neutral-500">${t.description}</p>
+          <span class="inline-block mt-2 px-2 py-1 ${badgeClass} text-xs rounded">${t.badge}</span>
+        </div>
+        <div class="mt-4 flex space-x-2">
+          <button class="preview-btn px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded dark:bg-gray-600 dark:hover:bg-gray-700" 
+            data-id="${t.id}">Preview</button>
+          <button class="use-template-btn px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded" data-id="${t.id}">Use Template</button>
+        </div>
+      </div>`;
+    });
+    html += '</div></div>';
+  });
+  templatesGrid.innerHTML = html;
+  attachTemplateEvents();
+}
 
-  // Preview Modal
-  const previewModal = document.getElementById("previewModal");
-  const previewTitle = document.getElementById("previewTitle");
-  const previewDesc = document.getElementById("previewDesc");
-  const closePreview = document.getElementById("closePreview");
-  const closePreviewBtn = document.getElementById("closePreviewBtn");
+function filterTemplates() {
+  const search = searchInput.value.trim().toLowerCase();
+  const cat = categorySelect.value;
+  filteredTemplates = allTemplates.filter(t => {
+    const matchesCat = cat === 'all' || t.category === cat;
+    const matchesSearch = t.name.toLowerCase().includes(search) || t.description.toLowerCase().includes(search);
+    return matchesCat && matchesSearch;
+  });
+  renderTemplates(filteredTemplates);
+}
 
-  const previewImg = document.getElementById("previewImg");
-  const previewNoImg = document.getElementById("previewNoImg");
-  let templateId = null;
-  document.querySelectorAll(".preview-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      previewTitle.textContent = btn.dataset.title;
-      previewDesc.textContent = btn.dataset.desc;
-
-      const isDark = document.documentElement.classList.contains('dark');
-      const img = btn.dataset.img;
-      const darkImg = btn.dataset.imgDark;
-      const finalImg = isDark && darkImg ? darkImg : img;
-      if(finalImg){
-        previewImg.src = finalImg;
-        previewImg.classList.remove("hidden");
-        previewNoImg.classList.add('hidden');
-      }
-
-      previewModal.classList.remove("hidden");
-
-      const useTemplateInPreviewBtn = btn.parentElement.querySelector("[data-template-id]");
-      templateId = useTemplateInPreviewBtn ? useTemplateInPreviewBtn.dataset.templateId : null;
+function attachTemplateEvents() {
+  // Preview
+  document.querySelectorAll('.preview-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const t = allTemplates.find(x => x.id === btn.dataset.id);
+      if (!t) return;
+      showPreviewModal(t);
     });
   });
-  document.getElementById("previewTemplate").addEventListener('click', () =>{
-    if(!templateId){
-      alert("Select a template");
-      return;
-    }
-    const temp = connectify_templates[templateId]
-      if(!temp){
-        alert("There is no existing template");
-        return;
-      }
-      localStorage.setItem("connectify.selectedTemplate", JSON.stringify(temp));
-      window.location.href = "flow_designer.html?from=templates";
-  });
-
-  [closePreview, closePreviewBtn].forEach(el =>
-    el.addEventListener("click", () => previewModal.classList.add("hidden"))
-  );
-  window.addEventListener("click", e => {
-    if (e.target === previewModal) previewModal.classList.add("hidden");
-  });
-</script>
-
-<script>
-  const connectify_templates = {
-    "card-1": {
-      id: "card-1",
-      name: "Mobile Money → Bank Settlement",
-      nodes: [
-        {id: "start", type: "start", kind: "start", label: "Start", x: 100, y: 100},
-        {id: "accHolder", type: "mtn.getAccountHolder", kind: "api", label: "Account Holder", x: 300, y: 100},
-        {id: "reqToPay", type: "mtn.requestToPay", kind: "api", label: "Request to Pay", x: 100, y: 200},
-        {id: "checkStatus", type: "mtn.checkStatus", kind: "api", label: "Check Status", x: 350, y: 200},
-        {id: "getBalance", type: "mtn.getBalance", kind: "api", label: "Get Balance", x: 100, y: 300},
-        {id: "end", type: "end", kind: "end", label: "Bank Settlement", x: 350, y: 300}
-      ],
-      edges: [
-        {from: "start", to: "accHolder"},
-        {from: "accHolder", to: "reqToPay"},
-        {from: "reqToPay", to: "checkStatus"},
-        {from: "checkStatus", to: "getBalance"},
-        {from: "getBalance", to: "end"}
-      ]
-    },
-    "card-2": {
-      id: "card-2",
-      name: "Utility Bills → Core Banking",
-      nodes: [
-        {id: "start", type: "start", kind: "start", label: "Start", x: 100, y: 100},
-        {id: "reqToPay", type: "mtn.requestToPay", kind: "api", label: "Request to Pay", x: 100, y: 200},
-        {id: "checkStatus", type: "mtn.checkStatus", kind: "api", label: "Check Status", x: 350, y: 200},
-        {id: "getBalance", type: "mtn.getBalance", kind: "api", label: "Get Balance", x: 100, y: 300},
-        {id: "end", type: "end", kind: "end", label: "Core Banking", x: 350, y: 300}
-      ],
-      edges: [
-        {from: "start", to: "reqToPay"},
-        {from: "reqToPay", to: "checkStatus"},
-        {from: "checkStatus", to: "getBalance"},
-        {from: "getBalance", to: "end"}
-      ]
-    },
-    "card-3": {
-      id: "card-3",
-      name: "Remittance → Wallet",
-      nodes: [
-        {id: "start", type: "start", kind: "start", label: "Start", x: 100, y: 100},
-        {id: "accHolder", type: "mtn.getAccountHolder", kind: "api", label: "Account Holder", x: 300, y: 100},
-        {id: "reqToPay", type: "mtn.requestToPay", kind: "api", label: "Request to Pay", x: 100, y: 200},
-        {id: "checkStatus", type: "mtn.checkStatus", kind: "api", label: "Check Status", x: 350, y: 200},
-        {id: "end", type: "end", kind: "end", label: "Wallet", x: 100, y: 300}
-      ],
-      edges: [
-        {from: "start", to: "accHolder"},
-        {from: "accHolder", to: "reqToPay"},
-        {from: "reqToPay", to: "checkStatus"},
-        {from: "checkStatus", to: "end"}
-      ]
-    },
-    "card-4": {
-      id: "card-4",
-      name: "Verify Payment",
-      nodes: [
-        {id: "start", type: "start", kind: "start", label: "Start", x: 50, y: 100},
-        {id: "payment", type: "fW.fWPayment", kind: "api", label: "Payment", x: 250, y: 100},
-        {id: "verifyPayment", type: "fW.fWVerifyPayment", kind: "api", label: "Verify Payment", x: 450, y: 100},
-        {id: "end", type: "end", kind: "end", label: "End", x: 550, y: 200}
-      ],
-      edges: [
-        {from: "start", to: "payment"},
-        {from: "payment", to: "verifyPayment"},
-        {from: "verifyPayment", to: "end"}
-      ]
-    },
-    "card-5": {
-      id: "card-5",
-      name: "Payment",
-      nodes: [
-        {id: "start", type: "start", kind: "start", label: "Start", x: 50, y: 100},
-        {id: "payment", type: "fW.fWPayment", kind: "api", label: "Payment", x: 250, y: 100},
-        {id: "end", type: "end", kind: "end", label: "End", x: 450, y: 100}
-      ],
-      edges: [
-        {from: "start", to: "payment"},
-        {from: "payment", to: "end"}
-      ]
-    }
-  };
-
-  // use template -> opened in fow desginer
-  document.querySelectorAll(".use-template-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const id = btn.dataset.templateId;
-      const temp = connectify_templates[id];
-      if (!temp) return alert("Template not found");
-
-      localStorage.setItem("connectify.selectedTemplate", JSON.stringify(temp));
-      window.location.href = "flow_designer.html?from=templates";
+  // Use Template
+  document.querySelectorAll('.use-template-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const t = allTemplates.find(x => x.id === btn.dataset.id);
+      if (!t) return alert('Template not found');
+      localStorage.setItem('connectify.selectedTemplate', JSON.stringify(t));
+      window.location.href = 'flow_designer.html?from=templates';
     });
   });
+}
+
+// Modal logic
+const previewModal = document.getElementById("previewModal");
+const previewTitle = document.getElementById("previewTitle");
+const previewDesc = document.getElementById("previewDesc");
+const closePreview = document.getElementById("closePreview");
+const closePreviewBtn = document.getElementById("closePreviewBtn");
+const previewImg = document.getElementById("previewImg");
+const previewNoImg = document.getElementById("previewNoImg");
+let previewTemplateObj = null;
+
+function showPreviewModal(t) {
+  previewTitle.textContent = t.name;
+  previewDesc.textContent = t.longDesc || t.description;
+  const isDark = document.documentElement.classList.contains('dark');
+  const img = isDark && t.imgDark ? t.imgDark : t.img;
+  if (img) {
+    previewImg.src = img;
+    previewImg.classList.remove('hidden');
+    previewNoImg.classList.add('hidden');
+  } else {
+    previewImg.classList.add('hidden');
+    previewNoImg.classList.remove('hidden');
+  }
+  previewModal.classList.remove('hidden');
+  previewTemplateObj = t;
+}
+
+document.getElementById("previewTemplate").addEventListener('click', () =>{
+  if (!previewTemplateObj) {
+    alert("Select a template");
+    return;
+  }
+  localStorage.setItem("connectify.selectedTemplate", JSON.stringify(previewTemplateObj));
+  window.location.href = "flow_designer.html?from=templates";
+});
+
+[closePreview, closePreviewBtn].forEach(el =>
+  el.addEventListener("click", () => previewModal.classList.add("hidden"))
+);
+window.addEventListener("click", e => {
+  if (e.target === previewModal) previewModal.classList.add("hidden");
+});
+
+// Fetch templates from backend
+async function loadTemplates() {
+  try {
+    const res = await fetch('/api/templates');
+    const data = await res.json();
+    allTemplates = data.templates || [];
+    filterTemplates();
+  } catch (e) {
+    templatesGrid.innerHTML = '<div class="text-red-500">Failed to load templates.</div>';
+  }
+}
+
+searchInput.addEventListener('input', filterTemplates);
+categorySelect.addEventListener('change', filterTemplates);
+
+loadTemplates();
 </script>
 
 

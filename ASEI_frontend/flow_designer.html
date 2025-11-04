@@ -1139,7 +1139,7 @@ async function viewExecutionDetails(executionId) {
       console.warn("no template", e);
       return;
     }
-    clearCanvas();
+    clearCanvasSilent();
     renderTemplate(temp);
     localStorage.removeItem("connectify.selectedTemplate")
   }
