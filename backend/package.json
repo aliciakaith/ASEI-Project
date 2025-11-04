@@ -22,7 +22,7 @@
     "jose": "^6.1.0",
     "jsonwebtoken": "^9.0.2",
     "node-fetch": "^3.3.2",
-    "nodemailer": "^7.0.6",
+    "nodemailer": "^7.0.10",
     "openid-client": "^6.8.1",
     "passport": "^0.7.0",
     "passport-apple": "^2.0.2",
