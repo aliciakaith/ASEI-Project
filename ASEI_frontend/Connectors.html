@@ -186,179 +186,387 @@
     </div>
   </div>
 </div>
-
 <script>
+/* ===============================
+   CONFIG
+================================= */
 const BACKEND_URL = "http://localhost:3001";
 
-/* ─────────────────────────────────────────────
-   MTN Connection Logic
-────────────────────────────────────────────── */
-async function testMtnConnection() {
-  const el = document.getElementById("mtn_test_result");
-  el.textContent = "Testing MTN connection...";
-  el.className = "text-sm text-blue-600";
+const ENDPOINTS = {
+  list:        (userId) => `${BACKEND_URL}/api/connectors?userId=${encodeURIComponent(userId)}`,
+  saveGeneric: (userId) => `${BACKEND_URL}/api/connectors?userId=${encodeURIComponent(userId)}`,
+  deleteOne:   (id, userId) => `${BACKEND_URL}/api/connectors/${encodeURIComponent(id)}?userId=${encodeURIComponent(userId)}`,
 
+  // Flutterwave-specific routes (mounted at /api in your backend)
+  flwSave:     `${BACKEND_URL}/api/connectors/flutterwave`,         // POST {label, publicKey, secretKey, encryptionKey}
+  flwTest:     `${BACKEND_URL}/api/connectors/flutterwave/test`,    // POST {connectorId}
+
+  // MTN test = call balance with saved connection
+  mtnBalance:  (connectionId) => `${BACKEND_URL}/api/mtn/collections/balance?connectionId=${encodeURIComponent(connectionId)}`
+};
+
+/* ===============================
+   USER CONTEXT HELPERS
+   (Try several places for userId; no HTML changes needed)
+================================= */
+function getUserId() {
+  // Prefer a stable localStorage key if you already set one on login
+  const keys = [
+    'connectify.userId',
+    'connectify.user.id',
+    'user.id',
+    'uid'
+  ];
+  for (const k of keys) {
+    const v = localStorage.getItem(k);
+    if (v) return v;
+  }
+  // Try cookie
+  const m = document.cookie.match(/(?:^|;\s*)uid=([^;]+)/);
+  if (m) return decodeURIComponent(m[1]);
+  // Last resort (works with your /api/connectors file store for dev)
+  return 'demo';
+}
+
+function defaultHeaders() {
+  const uid = getUserId();
+  return { 'Content-Type': 'application/json', 'x-user-id': uid };
+}
+
+/* ===============================
+   STATE
+================================= */
+let connectors = [];   // [{id, provider, label, status, type, lastSync, config}]
+let justSavedIds = { mtn: null, flutterwave: null };
+
+/* ===============================
+   UI: open/close modals
+   (support both function names for Flutterwave button)
+================================= */
+function openMtnModal(){ document.getElementById('mtnConnModal')?.classList.remove('hidden'); }
+function closeMtnModal(){ document.getElementById('mtnConnModal')?.classList.add('hidden'); }
+
+function openFlwModal(){ document.getElementById('flwConnModal')?.classList.remove('hidden'); }
+function closeFlwModal(){ document.getElementById('flwConnModal')?.classList.add('hidden'); }
+
+// In case your button calls a different name:
+function openFlutterwaveModal(){ openFlwModal(); }
+function closeFlutterwaveModal(){ closeFlwModal(); }
+
+/* ===============================
+   LIST + RENDER
+================================= */
+async function loadConnectors() {
+  const userId = getUserId();
+  try {
+    const res = await fetch(ENDPOINTS.list(userId), { credentials: 'include', headers: { 'x-user-id': userId } });
+    const data = await res.json();
+    connectors = Array.isArray(data) ? data : (data.items || []);
+  } catch (err) {
+    console.warn('Failed to load connectors', err);
+    connectors = [];
+  }
+  renderTable();
+  updateKPIs();
+}
+
+function badge(status) {
+  const map = {
+    Active:  'bg-green-100 text-green-700',
+    Pending: 'bg-yellow-100 text-yellow-700',
+    Failed:  'bg-red-100 text-red-700'
+  };
+  const cls = map[status] || 'bg-neutral-100 text-neutral-700';
+  return `<span class="px-2 py-1 ${cls} text-xs rounded">${status || '—'}</span>`;
+}
+
+function renderTable() {
+  const tbody = document.getElementById('connectorTable');
+  const empty = document.getElementById('emptyState');
+
+  // be robust to the original HTML not having an id on the search box
+  const searchEl = document.getElementById('searchBox') || document.querySelector('input[placeholder="Search connectors..."]');
+  const q = (searchEl?.value || '').toLowerCase();
+
+  const rows = connectors.filter(c =>
+    (c.label || '').toLowerCase().includes(q) ||
+    (c.provider || '').toLowerCase().includes(q) ||
+    (c.type || '').toLowerCase().includes(q)
+  );
+
+  tbody.innerHTML = rows.map(c => `
+    <tr class="border-t hover:bg-neutral-50 dark:bg-neutral-600 dark:border-neutral-400">
+      <td class="p-3">${c.label || (c.provider === 'mtn' ? 'MTN Mobile Money' : c.provider || '—')}</td>
+      <td class="p-3">${c.type || 'API'}</td>
+      <td class="p-3">${badge(c.status || 'Active')}</td>
+      <td class="p-3 text-neutral-500 text-xs dark:text-neutral-400">${c.lastSync || '—'}</td>
+      <td class="p-3 space-x-2">
+        <button class="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-500 rounded" onclick="editConnector('${c.id}')">Edit</button>
+        <button class="px-2 py-1 text-xs bg-red-500 text-white rounded" onclick="deleteConnector('${c.id}')">Delete</button>
+      </td>
+    </tr>
+  `).join('');
+
+  empty?.classList.toggle('hidden', rows.length > 0);
+  // table is already wrapped in .overflow-x-auto in your HTML, so it will be responsive
+}
+
+function updateKPIs() {
+  const total   = connectors.length;
+  const active  = connectors.filter(c => (c.status || '').toLowerCase() === 'active').length;
+  const pending = connectors.filter(c => (c.status || '').toLowerCase() === 'pending').length;
+  const failed  = connectors.filter(c => (c.status || '').toLowerCase() === 'failed').length;
+
+  document.getElementById('totalConnectors').textContent  = total;
+  document.getElementById('activeConnectors').textContent = active;
+  document.getElementById('pendingConnectors').textContent= pending;
+  document.getElementById('failedConnectors').textContent = failed;
+}
+
+/* ===============================
+   SAVE / DELETE (generic)
+================================= */
+async function saveGenericConnector(payload) {
+  const userId = getUserId();
+  const res = await fetch(ENDPOINTS.saveGeneric(userId), {
+    method: 'POST',
+    headers: defaultHeaders(),
+    credentials: 'include',
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) throw new Error('Save failed');
+  return res.json(); // expected { id, ... }
+}
+
+async function deleteConnector(id) {
+  if (!confirm('Delete this connector?')) return;
+  const userId = getUserId();
+  try {
+    await fetch(ENDPOINTS.deleteOne(id, userId), {
+      method: 'DELETE',
+      headers: { 'x-user-id': userId },
+      credentials: 'include'
+    });
+    connectors = connectors.filter(c => c.id !== id);
+    renderTable();
+    updateKPIs();
+  } catch (e) {
+    alert('Failed to delete connector.');
+  }
+}
+
+function editConnector(_id) {
+  alert('Edit coming soon');
+}
+
+/* ===============================
+   MTN: Test + Save
+   (real test by calling /api/mtn/collections/balance after save)
+================================= */
+async function testMtnConnection() {
+  const el = document.getElementById('mtn_test_result');
+  const btn = document.getElementById('mtn_save_btn');
+  el.textContent = 'Testing MTN connection...';
+  el.className = 'text-sm text-blue-600';
+
+  // Gather fields
   const payload = {
-    provider: "mtn",
-    label: document.getElementById("mtn_label").value.trim(),
-    subscriptionKey: document.getElementById("mtn_subscriptionKey").value.trim(),
-    apiUserId: document.getElementById("mtn_apiUserId").value.trim(),
-    apiKey: document.getElementById("mtn_apiKey").value.trim(),
-    baseUrl: document.getElementById("mtn_baseUrl").value.trim(),
-    callbackUrl: document.getElementById("mtn_callbackUrl").value.trim()
+    provider: 'mtn',
+    label: (document.getElementById('mtn_label').value || '').trim(),
+    status: 'Active',
+    type: 'API',
+    config: {
+      subscriptionKey: (document.getElementById('mtn_subscriptionKey').value || '').trim(),
+      apiUserId:       (document.getElementById('mtn_apiUserId').value || '').trim(),
+      apiKey:          (document.getElementById('mtn_apiKey').value || '').trim(),
+      baseUrl:         (document.getElementById('mtn_baseUrl').value || '').trim(),
+      callbackUrl:     (document.getElementById('mtn_callbackUrl').value || '').trim()
+    }
   };
 
-  if (!payload.subscriptionKey || !payload.apiUserId || !payload.apiKey) {
-    el.textContent = "⚠️ Please fill in all required fields.";
-    el.className = "text-sm text-red-600";
+  // Basic required fields
+  if (!payload.config.subscriptionKey || !payload.config.apiUserId || !payload.config.apiKey || !payload.config.baseUrl) {
+    el.textContent = '⚠️ Please fill in Subscription Key, API User ID, API Key, Base URL.';
+    el.className = 'text-sm text-red-600';
     return;
   }
 
   try {
-    const res = await fetch(`${BACKEND_URL}/api/connections/test`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-    const data = await res.json();
+    // Save first (so we get a connectionId to test with)
+    const saved = await saveGenericConnector(payload);
+    justSavedIds.mtn = saved.id;
 
-    if (res.ok && data.success) {
-      el.textContent = "✅ MTN Connected successfully!";
-      el.className = "text-sm text-green-600 font-medium";
-      document.getElementById("mtn_save_btn").disabled = false;
-      document.getElementById("mtn_save_btn").classList.remove("opacity-50");
-    } else {
-      throw new Error(data.message || "Connection test failed");
-    }
+    // Real test by calling balance endpoint (backend will fetch token under the hood)
+    const res = await fetch(ENDPOINTS.mtnBalance(saved.id), {
+      headers: defaultHeaders(),
+      credentials: 'include'
+    });
+
+    if (!res.ok) throw new Error(`Balance check failed (${res.status})`);
+    el.textContent = '✅ MTN Connected successfully (balance reachable).';
+    el.className = 'text-sm text-green-600 font-medium';
+    btn.disabled = false; btn.classList.remove('opacity-50');
+
+    await loadConnectors();
   } catch (err) {
-    console.error("MTN Test Error:", err);
-    el.textContent = "❌ MTN connection failed: " + err.message;
-    el.className = "text-sm text-red-600";
+    console.error('MTN Test Error:', err);
+    el.textContent = '❌ MTN connection failed: ' + (err.message || 'Unknown error');
+    el.className = 'text-sm text-red-600';
+    btn.disabled = true; if (!btn.classList.contains('opacity-50')) btn.classList.add('opacity-50');
   }
 }
 
 async function saveMtnConnection() {
-  const el = document.getElementById("mtn_test_result");
-  el.textContent = "Saving MTN connection...";
-  el.className = "text-sm text-blue-600";
-
-  const payload = {
-    provider: "mtn",
-    label: document.getElementById("mtn_label").value.trim(),
-    subscriptionKey: document.getElementById("mtn_subscriptionKey").value.trim(),
-    apiUserId: document.getElementById("mtn_apiUserId").value.trim(),
-    apiKey: document.getElementById("mtn_apiKey").value.trim(),
-    baseUrl: document.getElementById("mtn_baseUrl").value.trim(),
-    callbackUrl: document.getElementById("mtn_callbackUrl").value.trim()
-  };
+  // If we just saved during test, we’re done
+  if (justSavedIds.mtn) {
+    closeMtnModal();
+    alert('✅ MTN connection saved successfully!');
+    justSavedIds.mtn = null;
+    return;
+  }
+  // Otherwise do a normal save (no retest)
+  const el = document.getElementById('mtn_test_result');
+  el.textContent = 'Saving MTN connection...';
+  el.className = 'text-sm text-blue-600';
 
   try {
-    const res = await fetch(`${BACKEND_URL}/api/connections`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-    const data = await res.json();
-    if (res.ok) {
-      closeMtnModal();
-      alert("✅ MTN connection saved successfully!");
-      location.reload();
-    } else {
-      throw new Error(data.message || "Save failed");
-    }
+    const payload = {
+      provider: 'mtn',
+      label: (document.getElementById('mtn_label').value || '').trim(),
+      status: 'Active',
+      type: 'API',
+      config: {
+        subscriptionKey: (document.getElementById('mtn_subscriptionKey').value || '').trim(),
+        apiUserId:       (document.getElementById('mtn_apiUserId').value || '').trim(),
+        apiKey:          (document.getElementById('mtn_apiKey').value || '').trim(),
+        baseUrl:         (document.getElementById('mtn_baseUrl').value || '').trim(),
+        callbackUrl:     (document.getElementById('mtn_callbackUrl').value || '').trim()
+      }
+    };
+    await saveGenericConnector(payload);
+    closeMtnModal();
+    alert('✅ MTN connection saved successfully!');
+    await loadConnectors();
   } catch (err) {
-    console.error("MTN Save Error:", err);
-    el.textContent = "❌ Save failed: " + err.message;
-    el.className = "text-sm text-red-600";
+    el.textContent = '❌ Save failed: ' + (err.message || 'Unknown error');
+    el.className = 'text-sm text-red-600';
   }
 }
 
-/* ─────────────────────────────────────────────
-   Flutterwave Connection Logic
-────────────────────────────────────────────── */
-async function testFlutterwaveConnection() {
-  const el = document.getElementById("fw_test_result");
-  el.textContent = "Testing Flutterwave connection...";
-  el.className = "text-sm text-blue-600";
+/* ===============================
+   FLUTTERWAVE: Test + Save
+   (uses your /api/connectors/flutterwave + /api/connectors/flutterwave/test)
+================================= */
+async function testFlwConnection() {
+  const el  = document.getElementById('flw_test_result');
+  const btn = document.getElementById('flw_save_btn');
+  el.textContent = 'Testing Flutterwave connection...';
+  el.className = 'text-sm text-blue-600';
 
-  const payload = {
-    provider: "flutterwave",
-    public_key: document.getElementById("fw_publicKey").value.trim(),
-    secret_key: document.getElementById("fw_secretKey").value.trim(),
-    encryption_key: document.getElementById("fw_encryptionKey").value.trim(),
-  };
+  const label          = (document.getElementById('flw_label').value || '').trim();
+  const publicKey      = (document.getElementById('flw_publicKey').value || '').trim();
+  const secretKey      = (document.getElementById('flw_secretKey').value || '').trim();
+  const encryptionKey  = (document.getElementById('flw_encryptionKey').value || '').trim();
+  const baseUrl        = (document.getElementById('flw_baseUrl')?.value || '').trim(); // optional
 
-  if (!payload.public_key || !payload.secret_key || !payload.encryption_key) {
-    el.textContent = "⚠️ Please fill in all required fields.";
-    el.className = "text-sm text-red-600";
+  if (!publicKey || !secretKey || !encryptionKey) {
+    el.textContent = '⚠️ Please fill in Public Key, Secret Key, and Encryption Key.';
+    el.className = 'text-sm text-red-600';
     return;
   }
 
   try {
-    const res = await fetch(`${BACKEND_URL}/api/connectors/flutterwave/test`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
+    // 1) Save securely via your flutterwave route (it returns the created connector)
+    const resSave = await fetch(ENDPOINTS.flwSave, {
+      method: 'POST',
+      headers: defaultHeaders(),
+      credentials: 'include',
+      body: JSON.stringify({ label, publicKey, secretKey, encryptionKey, baseUrl })
     });
-    const data = await res.json();
+    if (!resSave.ok) throw new Error('Save failed');
+    const saved = await resSave.json();
+    justSavedIds.flutterwave = saved.id;
 
-    if (res.ok && data.success) {
-      el.textContent = "✅ Flutterwave connected successfully!";
-      el.className = "text-sm text-green-600 font-medium";
-      document.getElementById("fw_save_btn").disabled = false;
-      document.getElementById("fw_save_btn").classList.remove("opacity-50");
-    } else {
-      throw new Error(data.message || "Connection test failed");
+    // 2) Test that saved connector by id
+    const resTest = await fetch(ENDPOINTS.flwTest, {
+      method: 'POST',
+      headers: defaultHeaders(),
+      credentials: 'include',
+      body: JSON.stringify({ connectorId: saved.id })
+    });
+    const testData = await resTest.json();
+    if (!resTest.ok || testData.ok === false) {
+      throw new Error(testData.error || 'API key verification failed');
     }
+
+    el.textContent = '✅ Flutterwave connected successfully!';
+    el.className = 'text-sm text-green-600 font-medium';
+    btn.disabled = false; btn.classList.remove('opacity-50');
+
+    await loadConnectors();
   } catch (err) {
-    console.error("Flutterwave Test Error:", err);
-    el.textContent = "❌ Flutterwave connection failed: " + err.message;
-    el.className = "text-sm text-red-600";
+    console.error('Flutterwave Test Error:', err);
+    el.textContent = '❌ Flutterwave connection failed: ' + (err.message || 'Unknown error');
+    el.className = 'text-sm text-red-600';
+    btn.disabled = true; if (!btn.classList.contains('opacity-50')) btn.classList.add('opacity-50');
   }
 }
 
-async function saveFlutterwaveConnection() {
-  const el = document.getElementById("fw_test_result");
-  el.textContent = "Saving Flutterwave connection...";
-  el.className = "text-sm text-blue-600";
-
-  const payload = {
-    provider: "flutterwave",
-    label: document.getElementById("fw_label").value.trim(),
-    public_key: document.getElementById("fw_publicKey").value.trim(),
-    secret_key: document.getElementById("fw_secretKey").value.trim(),
-    encryption_key: document.getElementById("fw_encryptionKey").value.trim(),
-  };
+async function saveFlwConnection() {
+  if (justSavedIds.flutterwave) {
+    closeFlwModal();
+    alert('✅ Flutterwave connection saved successfully!');
+    justSavedIds.flutterwave = null;
+    return;
+  }
+  // If user clicks Save without testing first, do a simple save
+  const el = document.getElementById('flw_test_result');
+  el.textContent = 'Saving Flutterwave connection...';
+  el.className = 'text-sm text-blue-600';
 
   try {
-    const res = await fetch(`${BACKEND_URL}/api/connectors/flutterwave`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
+    const label          = (document.getElementById('flw_label').value || '').trim();
+    const publicKey      = (document.getElementById('flw_publicKey').value || '').trim();
+    const secretKey      = (document.getElementById('flw_secretKey').value || '').trim();
+    const encryptionKey  = (document.getElementById('flw_encryptionKey').value || '').trim();
+    const baseUrl        = (document.getElementById('flw_baseUrl')?.value || '').trim();
+
+    const res = await fetch(ENDPOINTS.flwSave, {
+      method: 'POST',
+      headers: defaultHeaders(),
+      credentials: 'include',
+      body: JSON.stringify({ label, publicKey, secretKey, encryptionKey, baseUrl })
     });
-    const data = await res.json();
-    if (res.ok) {
-      closeFwModal();
-      alert("✅ Flutterwave connection saved successfully!");
-      location.reload();
-    } else {
-      throw new Error(data.message || "Save failed");
-    }
+    if (!res.ok) throw new Error('Save failed');
+
+    closeFlwModal();
+    alert('✅ Flutterwave connection saved successfully!');
+    await loadConnectors();
   } catch (err) {
-    console.error("Flutterwave Save Error:", err);
-    el.textContent = "❌ Save failed: " + err.message;
-    el.className = "text-sm text-red-600";
+    el.textContent = '❌ Save failed: ' + (err.message || 'Unknown error');
+    el.className = 'text-sm text-red-600';
   }
 }
 
-/* ─────────────────────────────────────────────
-   Modal Helpers
-────────────────────────────────────────────── */
-function openMtnModal(){ document.getElementById('mtnConnModal').classList.remove('hidden'); }
-function closeMtnModal(){ document.getElementById('mtnConnModal').classList.add('hidden'); }
+/* ===============================
+   BOOT
+================================= */
+document.addEventListener('DOMContentLoaded', () => {
+  // live search (works even if your input has no id)
+  const searchEl = document.getElementById('searchBox') || document.querySelector('input[placeholder="Search connectors..."]');
+  if (searchEl) searchEl.addEventListener('input', renderTable);
 
-function openFwModal(){ document.getElementById('fwConnModal').classList.remove('hidden'); }
-function closeFwModal(){ document.getElementById('fwConnModal').classList.add('hidden'); }
+  loadConnectors();
+
+  // keep your profile image behavior intact
+  const imageStore = 'connectify.pfpUrl';
+  const savedImg = localStorage.getItem(imageStore);
+  if (savedImg) {
+    document.querySelectorAll('.js-main-pfp').forEach(img => { img.src = savedImg; img.classList.remove('hidden'); });
+    document.querySelectorAll('.js-initial-pfp').forEach(el => el.classList.add('hidden'));
+  }
+});
 </script>
+
 </body>
 </html>
