@@ -582,7 +582,8 @@ router.get("/me", async (req, res) => {
             email,
             org_id AS "org",
             first_name AS "firstName",
-            last_name  AS "lastName"
+            last_name  AS "lastName",
+            profile_picture AS "profilePicture"
      FROM users WHERE id=$1`,
     [id]
   );

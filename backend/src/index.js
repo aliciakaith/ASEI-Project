@@ -14,11 +14,14 @@ import rolesRouter from "./routes/roles.js";
 import authRouter from "./routes/auth.js";
 import dashboardRouter from "./routes/dashboard.js";
 import { requireAuth } from "./middleware/authMiddleware.js";
+import { rateLimitMiddleware, cleanupOldTracking } from "./middleware/rateLimitMiddleware.js";
+import { ipWhitelistMiddleware } from "./middleware/ipWhitelistMiddleware.js";
 import connectionsRouter from "./routes/connections.js";
 import mtnRouter from "./routes/mtn.js";
 import flutterwaveRoutes from './routes/flutterwave.js';
 import executionsRouter from './routes/executions.js';
 import templatesRouter from './routes/templates.js';
+import ipWhitelistRouter from './routes/ipWhitelist.js';
 
 
 // logging
@@ -103,15 +106,16 @@ app.get("/health", (req, res) => {
 });
 
 // ------------------------------------------------------
-// Protected API routes
+// Protected API routes (with rate limiting and IP whitelist)
 // ------------------------------------------------------
 app.use("/api/auth", authRouter);
-app.use("/api/flows", requireAuth, flowsRouter);
-app.use("/api/roles", requireAuth, rolesRouter);
-app.use("/api/dashboard", requireAuth, dashboardRouter);
-app.use("/api/connections", requireAuth, connectionsRouter);
-app.use("/api/mtn", requireAuth, mtnRouter);
-app.use("/api/executions", requireAuth, executionsRouter);
+app.use("/api/ip-whitelist", requireAuth, ipWhitelistRouter);
+app.use("/api/flows", requireAuth, ipWhitelistMiddleware, rateLimitMiddleware, flowsRouter);
+app.use("/api/roles", requireAuth, ipWhitelistMiddleware, rateLimitMiddleware, rolesRouter);
+app.use("/api/dashboard", requireAuth, ipWhitelistMiddleware, rateLimitMiddleware, dashboardRouter);
+app.use("/api/connections", requireAuth, ipWhitelistMiddleware, rateLimitMiddleware, connectionsRouter);
+app.use("/api/mtn", requireAuth, ipWhitelistMiddleware, rateLimitMiddleware, mtnRouter);
+app.use("/api/executions", requireAuth, ipWhitelistMiddleware, rateLimitMiddleware, executionsRouter);
 
 // Public API for templates
 app.use("/api/templates", templatesRouter);
@@ -227,6 +231,12 @@ app.use(
 // ------------------------------------------------------
 const PORT = process.env.PORT || 3001;
 await runMigrations();
+
+// Start rate limit cleanup job (runs every hour)
+setInterval(() => {
+  cleanupOldTracking();
+}, 60 * 60 * 1000);
+
 const server = createServer(app);
 
 const io = new Server(server, {

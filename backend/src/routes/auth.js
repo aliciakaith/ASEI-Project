@@ -6,6 +6,7 @@ import { query } from "../db/postgres.js";
 import { Issuer, generators } from "openid-client";
 import { sendMail, verificationEmail } from "../mailer.js";
 import { audit } from "../logging/audit.js";
+import { sendErrorAlert } from "../utils/errorNotification.js";
 
 // ---- Password policy helper (server-side) ----
 function validatePassword(password, { email, firstName, lastName } = {}) {
@@ -605,7 +606,7 @@ router.get("/me", async (req, res) => {
     console.log('[/api/auth/me] Token payload:', payload);
 
     const { rows, rowCount } = await query(
-      "SELECT id, email, first_name, last_name, org_id, deactivated_at FROM users WHERE id=$1",
+      "SELECT id, email, first_name, last_name, org_id, deactivated_at, rate_limit, send_error_alerts, allow_ip_whitelist, profile_picture FROM users WHERE id=$1",
       [payload.id]
     );
     if (!rowCount) return res.status(401).json({ error: "Unknown user" });
@@ -619,7 +620,11 @@ router.get("/me", async (req, res) => {
         email: u.email, 
         firstName: u.first_name, 
         lastName: u.last_name,
-        deactivatedAt: u.deactivated_at
+        deactivatedAt: u.deactivated_at,
+        rateLimit: u.rate_limit || 1000,
+        sendErrorAlerts: u.send_error_alerts !== false,
+        allowIpWhitelist: u.allow_ip_whitelist || false,
+        profilePicture: u.profile_picture || null
       }
     });
   } catch (e) {
@@ -637,7 +642,7 @@ router.put("/profile", async (req, res) => {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ error: "Not authenticated" });
 
-    const { firstName, lastName, email } = req.body;
+    const { firstName, lastName, email, rateLimit, sendErrorAlerts, allowIpWhitelist, profilePicture } = req.body;
 
     // If email is being changed, check if it's already in use
     if (email) {
@@ -666,6 +671,26 @@ router.put("/profile", async (req, res) => {
     if (email !== undefined) {
       updates.push(`email=$${paramCount++}`);
       values.push(email);
+    }
+    if (rateLimit !== undefined) {
+      const limit = parseInt(rateLimit);
+      if (isNaN(limit) || limit < 1 || limit > 100000) {
+        return res.status(400).json({ error: "Rate limit must be between 1 and 100,000" });
+      }
+      updates.push(`rate_limit=$${paramCount++}`);
+      values.push(limit);
+    }
+    if (sendErrorAlerts !== undefined) {
+      updates.push(`send_error_alerts=$${paramCount++}`);
+      values.push(Boolean(sendErrorAlerts));
+    }
+    if (allowIpWhitelist !== undefined) {
+      updates.push(`allow_ip_whitelist=$${paramCount++}`);
+      values.push(Boolean(allowIpWhitelist));
+    }
+    if (profilePicture !== undefined) {
+      updates.push(`profile_picture=$${paramCount++}`);
+      values.push(profilePicture); // base64 string or null
     }
 
     if (updates.length === 0) {
@@ -775,6 +800,53 @@ router.post("/reactivate", async (req, res) => {
     res.json({ ok: true, message: "Account reactivated successfully" });
   } catch (error) {
     console.error("Failed to reactivate account:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/auth/test-error-notification
+ * Test endpoint to verify error notification system
+ */
+router.post("/test-error-notification", async (req, res) => {
+  try {
+    // Extract and verify JWT token from cookies
+    const token = req.cookies?.token;
+    if (!token) {
+      return res.status(401).json({ error: "Not authenticated - no token found" });
+    }
+
+    const SECRET = process.env.JWT_SECRET || "supersecret";
+    let payload;
+    try {
+      payload = jwt.verify(token, SECRET);
+    } catch (err) {
+      return res.status(401).json({ error: "Invalid or expired token" });
+    }
+
+    const userId = payload.id;
+    if (!userId) {
+      return res.status(401).json({ error: "Invalid token payload" });
+    }
+
+    // Send a test error notification
+    await sendErrorAlert(userId, {
+      type: 'TEST_ERROR',
+      message: 'This is a test error notification to verify the system is working correctly.',
+      flowName: 'Test Flow',
+      executionId: 'test-execution-id',
+      metadata: {
+        testField: 'This is a test',
+        timestamp: new Date().toISOString()
+      }
+    });
+
+    res.json({ 
+      ok: true, 
+      message: "Test error notification sent! Check your email if 'Send error alerts' is enabled in settings." 
+    });
+  } catch (error) {
+    console.error("Failed to send test notification:", error);
     res.status(500).json({ error: error.message });
   }
 });

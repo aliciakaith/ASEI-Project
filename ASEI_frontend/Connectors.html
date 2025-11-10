@@ -820,11 +820,32 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // keep your profile image behavior intact
   const imageStore = 'connectify.pfpUrl';
-  const savedImg = localStorage.getItem(imageStore);
-  if (savedImg) {
-    document.querySelectorAll('.js-main-pfp').forEach(img => { img.src = savedImg; img.classList.remove('hidden'); });
-    document.querySelectorAll('.js-initial-pfp').forEach(el => el.classList.add('hidden'));
-  }
+  
+  // Load from backend first
+  fetch('/api/auth/me', { credentials: 'include' })
+    .then(res => res.ok ? res.json() : null)
+    .then(data => {
+      if (data?.user?.profilePicture) {
+        document.querySelectorAll('.js-main-pfp').forEach(img => { img.src = data.user.profilePicture; img.classList.remove('hidden'); });
+        document.querySelectorAll('.js-initial-pfp').forEach(el => el.classList.add('hidden'));
+      } else {
+        // Fallback to localStorage
+        const savedImg = localStorage.getItem(imageStore);
+        if (savedImg) {
+          document.querySelectorAll('.js-main-pfp').forEach(img => { img.src = savedImg; img.classList.remove('hidden'); });
+          document.querySelectorAll('.js-initial-pfp').forEach(el => el.classList.add('hidden'));
+        }
+      }
+    })
+    .catch(e => {
+      console.warn("Could not load profile picture from backend:", e);
+      // Fallback to localStorage
+      const savedImg = localStorage.getItem(imageStore);
+      if (savedImg) {
+        document.querySelectorAll('.js-main-pfp').forEach(img => { img.src = savedImg; img.classList.remove('hidden'); });
+        document.querySelectorAll('.js-initial-pfp').forEach(el => el.classList.add('hidden'));
+      }
+    });
 });
 </script>
 

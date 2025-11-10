@@ -851,5 +851,37 @@
   });
     </script>
 
+<!-- Profile Picture Loading Script -->
+<script>
+  const imageStore = 'connectify.pfpUrl';
+  function applyPfpToDOM(pfpUrl) {
+    document.querySelectorAll('.js-main-pfp').forEach(img => {
+      img.src = pfpUrl;
+      img.classList.remove("hidden");
+    });
+    document.querySelectorAll(".js-initial-pfp").forEach(el => el.classList.add("hidden"));
+  }
+  
+  document.addEventListener('DOMContentLoaded', async () => {
+    // Load from backend first
+    try {
+      const res = await fetch('/api/auth/me', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.user?.profilePicture) {
+          applyPfpToDOM(data.user.profilePicture);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn("Could not load profile picture from backend:", e);
+    }
+    
+    // Fallback to localStorage
+    const saveImg = localStorage.getItem(imageStore);
+    if (saveImg) applyPfpToDOM(saveImg);
+  });
+</script>
+
 </body>
 </html>

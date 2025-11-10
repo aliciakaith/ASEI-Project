@@ -132,9 +132,26 @@ function applyPfpToDOM(pfpUrl){
   });
   document.querySelectorAll(".js-initial-pfp").forEach(el => el.classList.add("hidden"));
 }
-document.addEventListener('DOMContentLoaded', ()=>{
-  const saveImg = localStorage.getItem(imageStore);
-  if(saveImg) applyPfpToDOM(saveImg);
+document.addEventListener('DOMContentLoaded', async ()=>{
+  // Load from backend first
+  try {
+    const res = await fetch('/api/auth/me', { credentials: 'include' });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.user?.profilePicture) {
+        applyPfpToDOM(data.user.profilePicture);
+      } else {
+        // Fallback to localStorage
+        const saveImg = localStorage.getItem(imageStore);
+        if(saveImg) applyPfpToDOM(saveImg);
+      }
+    }
+  } catch (e) {
+    console.warn("Could not load profile picture from backend:", e);
+    // Fallback to localStorage
+    const saveImg = localStorage.getItem(imageStore);
+    if(saveImg) applyPfpToDOM(saveImg);
+  }
   
   // Load user profile name
   loadUserProfile();

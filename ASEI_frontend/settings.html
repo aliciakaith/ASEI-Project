@@ -92,7 +92,7 @@
 
           <img id="initialSidebarPfp" src="images/default_avatar.png" class="js-initial-pfp h-8 w-8 rounded-full object-cover" alt="O Pfp"/>
           <img id="mainPfp" class="js-main-pfp h-8 w-8 rounded-full object-cover hidden" alt="N Pfp"/>
-          <span class="text-sm font-medium">Insert User Name</span>
+          <span id="sidebarUsername" class="text-sm font-medium">Loading...</span>
       </div>
 
     </div>
@@ -177,24 +177,55 @@
 
         <div class="mb-2">
           <h3 class="font-semibold mb-2">Security</h3>
-          <label class="flex items-center space-x-2">
-            <input type="checkbox" class="form-checkbox"> <span>Allow IP Whitelist Only</span>
+          <label class="flex items-center space-x-2 mb-3">
+            <input id="allowIpWhitelistCheckbox" type="checkbox" class="form-checkbox"> <span>Allow IP Whitelist Only</span>
           </label>
+          
+          <!-- IP Whitelist Management -->
+          <div id="ipWhitelistSection" class="hidden mt-3 p-3 bg-neutral-100 dark:bg-neutral-800 rounded border border-neutral-300 dark:border-neutral-600">
+            <div class="mb-3">
+              <p class="text-sm mb-2">Your current IP: <span id="currentIpAddress" class="font-mono font-semibold">Loading...</span></p>
+              <button id="addCurrentIpBtn" class="px-3 py-1.5 text-sm bg-green-500 hover:bg-green-600 text-white rounded">
+                Add Current IP
+              </button>
+            </div>
+            
+            <div class="mb-3">
+              <label class="block text-sm font-medium mb-1">Add IP Address</label>
+              <div class="flex gap-2">
+                <input id="newIpAddress" type="text" placeholder="192.168.1.1" class="flex-1 border dark:border-gray-600 bg-neutral-200 dark:bg-neutral-700 rounded px-3 py-1.5 text-sm">
+                <input id="newIpDescription" type="text" placeholder="Description (optional)" class="flex-1 border dark:border-gray-600 bg-neutral-200 dark:bg-neutral-700 rounded px-3 py-1.5 text-sm">
+                <button id="addIpBtn" class="px-3 py-1.5 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded whitespace-nowrap">
+                  Add IP
+                </button>
+              </div>
+            </div>
+            
+            <div>
+              <h4 class="text-sm font-medium mb-2">Whitelisted IPs</h4>
+              <div id="ipWhitelistList" class="space-y-2 max-h-48 overflow-y-auto">
+                <p class="text-sm text-neutral-500">No IPs whitelisted yet</p>
+              </div>
+            </div>
+          </div>
+          
+          <p class="text-xs text-neutral-600 dark:text-neutral-400 mt-2">When enabled, only requests from whitelisted IP addresses will be allowed.</p>
         </div>
 <div class="border-t border-gray-400 dark:border-gray-400 pt-1">
 
         <div class="mb-2">
           <h3 class="font-semibold mb-2">Notifications</h3>
           <label class="flex items-center space-x-2">
-            <input type="checkbox" checked class="form-checkbox"> <span>Send error alerts</span>
+            <input id="sendErrorAlertsCheckbox" type="checkbox" checked class="form-checkbox"> <span>Send error alerts</span>
           </label>
         </div>
 <div class="border-t border-gray-400 dark:border-gray-400 pt-1">
 
           <div>
             <h3 class="font-semibold mb-2">Advance Settings</h3>
-            <label class="block text-sm font-medium">API Rate Limit</label>
-              <input type="number" value="1000" class="border dark:border-gray-600 bg-neutral-200 dark:bg-neutral-600 rounded px-3 py-2 w-full sm:w-48 mb-4">
+            <label class="block text-sm font-medium">API Rate Limit (requests per hour)</label>
+              <input id="rateLimitInput" type="number" min="1" max="100000" value="1000" class="border dark:border-gray-600 bg-neutral-200 dark:bg-neutral-600 rounded px-3 py-2 w-full sm:w-48 mb-2">
+              <p class="text-xs text-neutral-600 dark:text-neutral-400 mb-4">Maximum number of API requests you can make per hour. Set between 1-100,000.</p>
           </div>
 <div class="border-t border-gray-400 dark:border-gray-400 pt-3">
 
@@ -316,7 +347,7 @@
 
   if(pfpTrigger && updatePfp){
     pfpTrigger.addEventListener("click", () => updatePfp.click());
-    updatePfp.addEventListener("change", (e) => {
+    updatePfp.addEventListener("change", async (e) => {
       const file = e.target.files[0];
 
       if(!file){
@@ -328,10 +359,22 @@
         return;
       }
       const reader = new FileReader();
-      reader.onload = () =>{
+      reader.onload = async () =>{
         const pfpUrl = reader.result;
         try{
-          localStorage.setItem(imageStore, pfpUrl)
+          localStorage.setItem(imageStore, pfpUrl);
+          
+          // Save to backend immediately
+          const res = await fetch('/api/auth/profile', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ profilePicture: pfpUrl })
+          });
+          
+          if (!res.ok) {
+            console.warn("Could not save avatar to backend.");
+          }
         }
         catch (e){
           console.warn("Could not save avatar. Try again.", e);
@@ -350,7 +393,23 @@
       element.classList.add("hidden");
     });
   }
-  function hydrate(){
+  async function hydrate(){
+    // Load from backend first
+    try {
+      const res = await fetch('/api/auth/me', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.user?.profilePicture) {
+          applyPfpToDOM(data.user.profilePicture);
+          localStorage.setItem(imageStore, data.user.profilePicture);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn("Could not load profile picture from backend:", e);
+    }
+    
+    // Fallback to localStorage
     const saveImg = localStorage.getItem(imageStore);
     if(saveImg) applyPfpToDOM(saveImg);
   }
@@ -443,15 +502,42 @@
       document.getElementById('viewLName').textContent = currentUser.lastName || '';
       document.getElementById('viewEmail').textContent = currentUser.email || '';
       
+      // Update rate limit
+      const rateLimitInput = document.getElementById('rateLimitInput');
+      if (rateLimitInput) {
+        rateLimitInput.value = currentUser.rateLimit || 1000;
+      }
+      
+      // Update checkboxes
+      const sendErrorAlertsCheckbox = document.getElementById('sendErrorAlertsCheckbox');
+      const allowIpWhitelistCheckbox = document.getElementById('allowIpWhitelistCheckbox');
+      if (sendErrorAlertsCheckbox) {
+        sendErrorAlertsCheckbox.checked = currentUser.sendErrorAlerts !== false;
+      }
+      if (allowIpWhitelistCheckbox) {
+        allowIpWhitelistCheckbox.checked = currentUser.allowIpWhitelist || false;
+        
+        // Show IP whitelist section if enabled
+        if (currentUser.allowIpWhitelist) {
+          document.getElementById('ipWhitelistSection').classList.remove('hidden');
+          loadCurrentIp();
+          loadIpWhitelist();
+        }
+      }
+      
       // Update profile username display
       const fullName = `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim();
       document.getElementById('profileUsername').textContent = fullName || 'User';
+      document.getElementById('sidebarUsername').textContent = fullName || 'User';
       
       // Store original data
       originalData = {
         firstName: currentUser.firstName || '',
         lastName: currentUser.lastName || '',
-        email: currentUser.email || ''
+        email: currentUser.email || '',
+        rateLimit: currentUser.rateLimit || 1000,
+        sendErrorAlerts: currentUser.sendErrorAlerts !== false,
+        allowIpWhitelist: currentUser.allowIpWhitelist || false
       };
       
       // Check deactivation status
@@ -469,13 +555,30 @@
     const firstName = document.getElementById('editFName').value.trim();
     const lastName = document.getElementById('editLName').value.trim();
     const email = document.getElementById('editEmail').value.trim();
+    const rateLimit = parseInt(document.getElementById('rateLimitInput').value);
+    const sendErrorAlerts = document.getElementById('sendErrorAlertsCheckbox').checked;
+    const allowIpWhitelist = document.getElementById('allowIpWhitelistCheckbox').checked;
+    
+    // Validate rate limit
+    if (isNaN(rateLimit) || rateLimit < 1 || rateLimit > 100000) {
+      showNotification('Rate limit must be between 1 and 100,000', 'error');
+      return false;
+    }
     
     try {
       const res = await fetch('/api/auth/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ firstName, lastName, email })
+        body: JSON.stringify({ 
+          firstName, 
+          lastName, 
+          email, 
+          rateLimit,
+          sendErrorAlerts,
+          allowIpWhitelist,
+          profilePicture: localStorage.getItem(imageStore)
+        })
       });
       
       if (!res.ok) {
@@ -583,6 +686,10 @@
     document.getElementById('editLName').value = originalData.lastName;
     document.getElementById('editEmail').value = originalData.email;
     
+    document.getElementById('rateLimitInput').value = originalData.rateLimit;
+    document.getElementById('sendErrorAlertsCheckbox').checked = originalData.sendErrorAlerts;
+    document.getElementById('allowIpWhitelistCheckbox').checked = originalData.allowIpWhitelist;
+    
     showNotification('Changes reset', 'info');
   });
 
@@ -591,6 +698,151 @@
 
   // Reactivate account button
   document.getElementById('reactivateBtn')?.addEventListener('click', reactivateAccount);
+
+  // IP Whitelist Management
+  let currentWhitelist = [];
+
+  // Toggle IP whitelist section visibility
+  document.getElementById('allowIpWhitelistCheckbox')?.addEventListener('change', (e) => {
+    const section = document.getElementById('ipWhitelistSection');
+    if (e.target.checked) {
+      section.classList.remove('hidden');
+      loadCurrentIp();
+      loadIpWhitelist();
+    } else {
+      section.classList.add('hidden');
+    }
+  });
+
+  // Load current IP address
+  async function loadCurrentIp() {
+    try {
+      const res = await fetch('/api/ip-whitelist/current-ip', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch current IP');
+      
+      const data = await res.json();
+      document.getElementById('currentIpAddress').textContent = data.currentIp;
+    } catch (error) {
+      console.error('Failed to load current IP:', error);
+      document.getElementById('currentIpAddress').textContent = 'Unknown';
+    }
+  }
+
+  // Load IP whitelist
+  async function loadIpWhitelist() {
+    try {
+      const res = await fetch('/api/ip-whitelist', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch whitelist');
+      
+      const data = await res.json();
+      currentWhitelist = data.whitelist || [];
+      renderIpWhitelist();
+    } catch (error) {
+      console.error('Failed to load IP whitelist:', error);
+      showNotification('Failed to load IP whitelist', 'error');
+    }
+  }
+
+  // Render IP whitelist
+  function renderIpWhitelist() {
+    const container = document.getElementById('ipWhitelistList');
+    
+    if (currentWhitelist.length === 0) {
+      container.innerHTML = '<p class="text-sm text-neutral-500">No IPs whitelisted yet</p>';
+      return;
+    }
+
+    container.innerHTML = currentWhitelist.map(entry => `
+      <div class="flex items-center justify-between p-2 bg-neutral-50 dark:bg-neutral-700 rounded text-sm">
+        <div class="flex-1">
+          <span class="font-mono font-semibold">${entry.ip_address}</span>
+          ${entry.description ? `<span class="text-neutral-600 dark:text-neutral-400 ml-2">- ${entry.description}</span>` : ''}
+          <div class="text-xs text-neutral-500">${new Date(entry.created_at).toLocaleString()}</div>
+        </div>
+        <button onclick="removeIpFromWhitelist('${entry.id}')" class="px-2 py-1 text-xs bg-red-500 hover:bg-red-600 text-white rounded">
+          Remove
+        </button>
+      </div>
+    `).join('');
+  }
+
+  // Add current IP to whitelist
+  document.getElementById('addCurrentIpBtn')?.addEventListener('click', async () => {
+    const currentIp = document.getElementById('currentIpAddress').textContent;
+    if (currentIp === 'Loading...' || currentIp === 'Unknown') {
+      showNotification('Current IP not available', 'error');
+      return;
+    }
+    
+    await addIpToWhitelist(currentIp, 'Current IP');
+  });
+
+  // Add IP to whitelist
+  document.getElementById('addIpBtn')?.addEventListener('click', async () => {
+    const ipAddress = document.getElementById('newIpAddress').value.trim();
+    const description = document.getElementById('newIpDescription').value.trim();
+    
+    if (!ipAddress) {
+      showNotification('Please enter an IP address', 'error');
+      return;
+    }
+    
+    await addIpToWhitelist(ipAddress, description);
+    
+    // Clear inputs
+    document.getElementById('newIpAddress').value = '';
+    document.getElementById('newIpDescription').value = '';
+  });
+
+  // Add IP to whitelist helper
+  async function addIpToWhitelist(ipAddress, description) {
+    try {
+      const res = await fetch('/api/ip-whitelist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ ipAddress, description })
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        showNotification(data.error || 'Failed to add IP', 'error');
+        return;
+      }
+      
+      showNotification('IP address added to whitelist', 'success');
+      await loadIpWhitelist();
+    } catch (error) {
+      console.error('Failed to add IP:', error);
+      showNotification('Failed to add IP to whitelist', 'error');
+    }
+  }
+
+  // Remove IP from whitelist (global function for onclick)
+  window.removeIpFromWhitelist = async function(id) {
+    if (!confirm('Remove this IP from whitelist?')) return;
+    
+    try {
+      const res = await fetch(`/api/ip-whitelist/${id}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        showNotification(data.error || 'Failed to remove IP', 'error');
+        return;
+      }
+      
+      showNotification('IP address removed from whitelist', 'success');
+      await loadIpWhitelist();
+    } catch (error) {
+      console.error('Failed to remove IP:', error);
+      showNotification('Failed to remove IP from whitelist', 'error');
+    }
+  };
 
   // Initialize
   document.addEventListener('DOMContentLoaded', loadUserData);

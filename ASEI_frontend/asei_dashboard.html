@@ -400,7 +400,7 @@ const api = {
   // ---------- Profile (name + avatar) ----------
   async function initProfile() {
     try {
-      // backend /api/dashboard/me returns a plain user object: { id, email, org, firstName, lastName }
+      // backend /api/dashboard/me returns a plain user object: { id, email, org, firstName, lastName, profilePicture }
       const me = await fetchJson(api.me);
 
       // Build a friendly display name: prefer first+last, fall back to email localpart, then generic 'User'
@@ -412,9 +412,11 @@ const api = {
       qsa('.js-profile-name').forEach(el => el.textContent = displayName);
 
       // Prefer real avatar if provided, otherwise show the initial-avatar image
-      if (me?.avatarUrl) {
-        qsa('.js-main-pfp').forEach(img => { img.src = me.avatarUrl; img.classList.remove('hidden'); });
+      if (me?.profilePicture) {
+        qsa('.js-main-pfp').forEach(img => { img.src = me.profilePicture; img.classList.remove('hidden'); });
         qsa('.js-initial-pfp').forEach(img => img.classList.add('hidden'));
+        // Sync to localStorage for consistency
+        try { localStorage.setItem('connectify.pfpUrl', me.profilePicture); } catch(e) {}
       } else {
         qsa('.js-initial-pfp').forEach(img => img.classList.remove('hidden'));
         qsa('.js-main-pfp').forEach(img => img.classList.add('hidden'));

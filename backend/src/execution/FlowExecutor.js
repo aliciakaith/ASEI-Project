@@ -3,6 +3,7 @@
 
 import { query } from '../db/postgres.js';
 import axios from 'axios';
+import { sendErrorAlert } from '../utils/errorNotification.js';
 
 class FlowExecutor {
   constructor(executionId, flowId, flowVersion, triggerType, triggerData = {}) {
@@ -93,6 +94,46 @@ class FlowExecutor {
       await this.log('error', `Flow execution failed: ${error.message}`, {
         error: error.stack
       });
+
+      // Send error notification to users in the organization
+      try {
+        const flowInfo = await query(
+          `SELECT f.name, f.org_id, f.id as flow_id 
+           FROM flows f 
+           WHERE f.id = $1`,
+          [this.flowId]
+        );
+
+        if (flowInfo.rows.length > 0) {
+          const flow = flowInfo.rows[0];
+          
+          // Get all users in the organization
+          const orgUsers = await query(
+            `SELECT id FROM users WHERE org_id = $1`,
+            [flow.org_id]
+          );
+
+          // Send error alert to each user in the org
+          for (const user of orgUsers.rows) {
+            await sendErrorAlert(user.id, {
+              type: 'FLOW_EXECUTION_ERROR',
+              message: error.message,
+              flowName: flow.name,
+              executionId: this.executionId,
+              metadata: {
+                flowId: this.flowId,
+                flowVersion: this.flowVersion,
+                triggerType: this.triggerType,
+                executionTime: `${executionTime}ms`,
+                stack: error.stack
+              }
+            });
+          }
+        }
+      } catch (notificationError) {
+        console.error('Failed to send error notifications:', notificationError);
+        // Don't fail the execution if notification fails
+      }
 
       return {
         success: false,
@@ -225,6 +266,39 @@ class FlowExecutor {
       await this.log('error', `Node failed: ${error.message}`, {
         error: error.stack
       }, stepId);
+
+      // Send error notification for critical node failures
+      try {
+        const flowInfo = await query(
+          `SELECT f.name, f.org_id FROM flows f WHERE f.id = $1`,
+          [this.flowId]
+        );
+
+        if (flowInfo.rows.length > 0) {
+          const flow = flowInfo.rows[0];
+          const orgUsers = await query(
+            `SELECT id FROM users WHERE org_id = $1`,
+            [flow.org_id]
+          );
+
+          for (const user of orgUsers.rows) {
+            await sendErrorAlert(user.id, {
+              type: 'NODE_EXECUTION_ERROR',
+              message: error.message,
+              flowName: flow.name,
+              executionId: this.executionId,
+              metadata: {
+                nodeId: node.id,
+                nodeName: node.name || node.type,
+                nodeType: node.type,
+                executionTime: `${executionTime}ms`
+              }
+            });
+          }
+        }
+      } catch (notificationError) {
+        console.error('Failed to send node error notification:', notificationError);
+      }
 
       throw error;
     }

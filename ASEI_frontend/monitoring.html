@@ -89,7 +89,7 @@
 
           <img id="initialSidebarPfp" src="images/default_avatar.png" class="js-initial-pfp h-8 w-8 rounded-full object-cover" alt="O Pfp"/>
           <img id="mainPfp" class="js-main-pfp h-8 w-8 rounded-full object-cover hidden" alt="N Pfp"/>
-          <span class="text-sm font-medium">Insert User Name</span>
+          <span id="sidebarUsername" class="text-sm font-medium">Loading...</span>
       </div>
 
     </div>
@@ -208,7 +208,22 @@
     });
     document.querySelectorAll(".js-initial-pfp").forEach(el => el.classList.add("hidden"));
   }
-  document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('DOMContentLoaded', async () => {
+    // Load from backend first
+    try {
+      const res = await fetch('/api/auth/me', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.user?.profilePicture) {
+          applyPfpToDOM(data.user.profilePicture);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn("Could not load profile picture from backend:", e);
+    }
+    
+    // Fallback to localStorage
     const saveImg = localStorage.getItem(imageStore);
     if (saveImg) applyPfpToDOM(saveImg);
   });
@@ -552,7 +567,27 @@
   document.addEventListener('DOMContentLoaded', () => {
     loadMonitoringData();
     setupInteractions();
+    loadUserName();
   });
+  
+  // Load and display user name
+  async function loadUserName() {
+    try {
+      const res = await fetch('/api/auth/me', { credentials: 'include' });
+      if (!res.ok) return;
+      
+      const data = await res.json();
+      if (data.user) {
+        const fullName = `${data.user.firstName || ''} ${data.user.lastName || ''}`.trim();
+        const sidebarUsername = document.getElementById('sidebarUsername');
+        if (sidebarUsername) {
+          sidebarUsername.textContent = fullName || 'User';
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load user name:', error);
+    }
+  }
 </script>
 
     <!-- Chart -->
