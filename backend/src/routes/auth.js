@@ -504,9 +504,12 @@ router.get("/google", async (req, res) => {
     const state = generators.state();
     const nonce = generators.nonce();
 
+    // Use SameSite=Lax so cookies survive OAuth cross-site redirect back to our domain
+    // Note: SameSite=None without Secure is rejected by modern browsers, and dev is over HTTP.
     const IS_PROD = process.env.NODE_ENV === "production";
-    res.cookie("g_state", state, { httpOnly: true, sameSite: IS_PROD ? "lax" : "none", secure: IS_PROD });
-    res.cookie("g_nonce", nonce, { httpOnly: true, sameSite: IS_PROD ? "lax" : "none", secure: IS_PROD });
+    const cookieBase = { httpOnly: true, sameSite: "lax", secure: IS_PROD, path: "/", maxAge: 10 * 60 * 1000 };
+    res.cookie("g_state", state, cookieBase);
+    res.cookie("g_nonce", nonce, cookieBase);
 
     const authUrl = client.authorizationUrl({
       scope: "openid email profile",
@@ -530,6 +533,14 @@ router.get("/google/callback", async (req, res) => {
 
     const cookieState = req.cookies?.g_state;
     const cookieNonce = req.cookies?.g_nonce;
+
+    if (!cookieState || !cookieNonce) {
+      const message = "Missing OAuth state/nonce cookies. Please start the Google sign-in again.";
+      if (dev) {
+        return res.status(400).json({ error: "Google OAuth callback failed", details: message, got: { state: !!cookieState, nonce: !!cookieNonce } });
+      }
+      return res.status(400).send(message);
+    }
 
     // IMPORTANT: pass the same redirect URI you registered
     const tokenSet = await client.callback(GOOGLE_REDIRECT, params, {

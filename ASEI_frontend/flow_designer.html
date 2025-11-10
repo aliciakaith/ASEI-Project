@@ -154,6 +154,7 @@
       <button class="ml-auto px-3 py-2 bg-gray-300 hover:bg-gray-400 dark:bg-gray-500 dark:hover:bg-gray-600 border dark:border-neutral-600 rounded justify-end" onclick="exportFlow()">Export</button>
       <button class="px-3 py-2 bg-gray-500 hover:bg-gray-600 dark:bg-gray-700 dark:hover:bg-gray-800 border dark:border-neutral-800 text-white rounded justify-end" onclick="saveFlow('draft')">Save Draft</button>
       <button class="px-3 py-2 bg-blue-500 hover:bg-blue-600 dark:bg-blue-700 dark:hover:bg-blue-800 boder dark:border-blue-800 text-white rounded justify-end" onclick="saveFlow('active')">Deploy Flow</button>
+      <button id="viewExecutionsBtn" class="px-3 py-2 bg-purple-500 hover:bg-purple-600 dark:bg-purple-700 dark:hover:bg-purple-800 border dark:border-purple-800 text-white rounded hidden" onclick="viewExecutions()">View Executions</button>
     </div>
   </div>
 
@@ -547,9 +548,24 @@ async function saveFlow(status) {
 
     // Create or update flow
     if (!currentFlowId) {
-      const flow = await FlowAPI.createFlow(flowName, 'Created from flow designer');
-      currentFlowId = flow.id;
-      currentFlowName = flowName;
+      // Try to reuse an existing flow with the same name to avoid duplicate errors
+      try {
+        const existingFlows = await FlowAPI.getAllFlows();
+        const existing = Array.isArray(existingFlows) ? existingFlows.find(f => f.name === flowName) : null;
+        if (existing) {
+          currentFlowId = existing.id;
+          currentFlowName = existing.name;
+        } else {
+          const flow = await FlowAPI.createFlow(flowName, 'Created from flow designer');
+          currentFlowId = flow.id;
+          currentFlowName = flowName;
+        }
+      } catch (e) {
+        // Fallback to creating if listing failed
+        const flow = await FlowAPI.createFlow(flowName, 'Created from flow designer');
+        currentFlowId = flow.id;
+        currentFlowName = flowName;
+      }
     }
 
     // Save version
@@ -558,24 +574,29 @@ async function saveFlow(status) {
     // Update status if deploying
     let executionResult = null;
     if (status === 'active') {
-      const deployResult = await FlowAPI.updateFlowStatus(currentFlowId, 'active');
-      executionResult = deployResult.execution;
-      
-      // Show executions button
-      document.getElementById('viewExecutionsBtn').classList.remove('hidden');
-      
-      if (executionResult) {
-        // Auto-open execution monitor after a brief delay
-        setTimeout(() => viewExecutionDetails(executionResult.executionId), 1500);
+      try {
+        const deployResult = await FlowAPI.updateFlowStatus(currentFlowId, 'active');
+        executionResult = deployResult.execution;
+        const execBtn = document.getElementById('viewExecutionsBtn');
+        if (execBtn) execBtn.classList.remove('hidden');
+        if (executionResult) {
+          // Auto-open execution monitor after a brief delay
+          setTimeout(() => viewExecutionDetails(executionResult.executionId), 1500);
+        }
+        showNotification('Flow deployed successfully', 'success');
+      } catch (deployErr) {
+        console.error('Deploy failed:', deployErr);
+        showNotification('Failed to deploy flow', 'error');
       }
     } else {
       await FlowAPI.updateFlowStatus(currentFlowId, 'draft');
+      showNotification('Draft saved', 'success');
     }
 
     document.getElementById('flowNameInput').value = currentFlowName;
   } catch (error) {
     console.error('Save failed:', error);
-    showNotification('Failed to save flow. Please try again.', 'error');
+    showNotification(status === 'active' ? 'Failed to deploy flow. Please try again.' : 'Failed to save flow. Please try again.', 'error');
   }
 }
 
@@ -714,7 +735,12 @@ async function loadFlowById(flowId) {
     currentFlowName = data.flow.name;
     document.getElementById('flowNameInput').value = data.flow.name;
     
-    renderTemplate(data.latestVersion.graph);
+    try {
+      renderTemplate(data.latestVersion.graph);
+    } catch (e) {
+      console.error('Error rendering loaded flow:', e);
+      showNotification('The saved design could not be rendered', 'error');
+    }
     
     // Close modal
     document.querySelector('.fixed.inset-0')?.remove();
@@ -857,7 +883,12 @@ async function checkForTemplateLoad() {
     document.getElementById('flowNameInput').value = flowName;
     
     // Render template nodes
-    renderTemplate(temp);
+    try {
+      renderTemplate(temp);
+    } catch (e) {
+      console.error('Error rendering template:', e);
+      showNotification('Template could not be rendered. You can still edit manually.', 'warning');
+    }
     
     // Auto-save as a new flow
     try {
@@ -1195,25 +1226,55 @@ async function viewExecutionDetails(executionId) {
   }
 
   function renderTemplate(temp){
-    if(!temp || !Array.isArray(temp.nodes))
-    return;
-
-    temp.nodes.forEach(nodeDef => {
-      createNodeFromTemplate(nodeDef);
-    });
-
-    const edges = temp.edges || temp.connections || [];
-    edges.forEach(edge => {
-      try{
-        jsPlumbInstance.connect({
-          source: edge.from,
-          target: edge.to
-        });
+    // Defensive render wrapper to avoid breaking the designer on malformed graphs
+    try {
+      if(!temp || !Array.isArray(temp.nodes)) {
+        console.warn("renderTemplate: invalid graph payload", temp);
+        showNotification('Invalid graph data – starting with empty canvas', 'warning');
+        return;
       }
-      catch(err){
-        console.warn("no connections", edge, err);
-      }
-    });
+
+      const seenIds = new Set();
+      temp.nodes.forEach(nodeDef => {
+        if(!nodeDef || !nodeDef.id){
+          console.warn("Skipping node without id", nodeDef);
+          return;
+        }
+        if(seenIds.has(nodeDef.id)){
+          console.warn("Duplicate node id detected, skipping", nodeDef.id);
+          return;
+        }
+        seenIds.add(nodeDef.id);
+        try {
+          createNodeFromTemplate(nodeDef);
+        } catch(e){
+          console.error("Failed to create node", nodeDef, e);
+        }
+      });
+
+      const edgesRaw = Array.isArray(temp.edges) ? temp.edges : (Array.isArray(temp.connections) ? temp.connections : []);
+      edgesRaw.forEach(edge => {
+        if(!edge || !edge.from || !edge.to){
+          console.warn("Skipping invalid edge", edge);
+          return;
+        }
+        if(!seenIds.has(edge.from) || !seenIds.has(edge.to)){
+          console.warn("Edge references missing node", edge);
+          return;
+        }
+        try {
+          jsPlumbInstance.connect({
+            source: edge.from,
+            target: edge.to
+          });
+        } catch(err){
+          console.warn("Failed to connect edge", edge, err);
+        }
+      });
+    } catch(err){
+      console.error("renderTemplate: unrecoverable error", err);
+      showNotification('Failed to render flow graph', 'error');
+    }
   }
 
   function createNodeFromTemplate(nodeDef){
@@ -1231,17 +1292,27 @@ async function viewExecutionDetails(executionId) {
       <span>${name}</span>
       <div class="connector-dot dot-right" id="${id}_right"></div>
     `;
-
-    jsPlumbInstance.makeSource(document.getElementById(id + "_right"), {
-      parent: element,
-      anchor: "Right"
-    });
-    jsPlumbInstance.makeTarget(document.getElementById(id + "_left"), {
-      parent: element,
-      anchor: "Left"
-    });
-
+    // Append element to DOM BEFORE registering sources/targets
     canvas.appendChild(element);
+
+    // Safely locate connector handles
+    const rightHandle = document.getElementById(id + "_right");
+    const leftHandle = document.getElementById(id + "_left");
+
+    // Guard against nulls to avoid jsPlumb errors
+    if (rightHandle) {
+      jsPlumbInstance.makeSource(rightHandle, {
+        parent: element,
+        anchor: "Right"
+      });
+    }
+    if (leftHandle) {
+      jsPlumbInstance.makeTarget(leftHandle, {
+        parent: element,
+        anchor: "Left"
+      });
+    }
+
     attachNodeInteractions(element, id, name);
 
     nodes.push({
