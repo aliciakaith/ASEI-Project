@@ -9,6 +9,10 @@
   tailwind.config = { darkMode: 'class' };
 </script>
 
+<!-- Cropper.js CSS and JS -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+
 <script>
   (function () {
     const KEY = 'connectify.theme';
@@ -37,6 +41,32 @@
 </head>
 <body class="min-h-screen bg-neutral-50 text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100 transition-colors">
 
+<!-- Image Crop Modal -->
+<div id="cropModal" class="hidden fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4">
+  <div class="bg-white dark:bg-neutral-800 rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
+    <div class="p-4 border-b border-neutral-300 dark:border-neutral-600 flex items-center justify-between">
+      <h3 class="text-lg font-semibold">Crop Your Profile Picture</h3>
+      <button id="closeCropModal" class="text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+    <div class="p-4">
+      <div class="max-h-[60vh] overflow-hidden">
+        <img id="cropImage" class="max-w-full">
+      </div>
+    </div>
+    <div class="p-4 border-t border-neutral-300 dark:border-neutral-600 flex justify-end gap-2">
+      <button id="cancelCrop" class="px-4 py-2 bg-gray-400 hover:bg-gray-500 text-white rounded">
+        Cancel
+      </button>
+      <button id="applyCrop" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded">
+        Apply & Upload
+      </button>
+    </div>
+  </div>
+</div>
 
 
   <!-- Sidebar -->
@@ -231,7 +261,6 @@
 
     <div class="flex space-x-3 mb-4">
       <button id="saveEdit" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded">Save Changes</button>
-      <button id="resetEdit" class="px-4 py-2 bg-gray-400 hover:bg-gray-500 text-white rounded">Reset</button>
     </div>
 
     <!-- Deactivate Account Section -->
@@ -344,6 +373,8 @@
   const pfpTrigger = document.getElementById("pfpTrigger");
   const updatePfp = document.getElementById("updatePfp");
   const imageStore = "connectify.pfpUrl";
+  let cropper = null;
+  let selectedFile = null;
 
   if(pfpTrigger && updatePfp){
     pfpTrigger.addEventListener("click", () => updatePfp.click());
@@ -358,32 +389,111 @@
         alert("Please choose an image.");
         return;
       }
+
+      selectedFile = file;
+      
+      // Show cropping modal
+      const cropModal = document.getElementById('cropModal');
+      const cropImage = document.getElementById('cropImage');
+      
       const reader = new FileReader();
-      reader.onload = async () =>{
-        const pfpUrl = reader.result;
-        try{
-          localStorage.setItem(imageStore, pfpUrl);
-          
-          // Save to backend immediately
-          const res = await fetch('/api/auth/profile', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ profilePicture: pfpUrl })
-          });
-          
-          if (!res.ok) {
-            console.warn("Could not save avatar to backend.");
-          }
+      reader.onload = (event) => {
+        cropImage.src = event.target.result;
+        cropModal.classList.remove('hidden');
+        
+        // Initialize Cropper.js
+        if (cropper) {
+          cropper.destroy();
         }
-        catch (e){
-          console.warn("Could not save avatar. Try again.", e);
-        }
-        applyPfpToDOM(pfpUrl);
+        
+        cropper = new Cropper(cropImage, {
+          aspectRatio: 1,
+          viewMode: 1,
+          dragMode: 'move',
+          autoCropArea: 1,
+          restore: false,
+          guides: true,
+          center: true,
+          highlight: false,
+          cropBoxMovable: true,
+          cropBoxResizable: true,
+          toggleDragModeOnDblclick: false,
+        });
       };
       reader.readAsDataURL(file);
     });
   }
+
+  // Handle crop modal buttons
+  document.getElementById('closeCropModal')?.addEventListener('click', closeCropModal);
+  document.getElementById('cancelCrop')?.addEventListener('click', closeCropModal);
+  
+  document.getElementById('applyCrop')?.addEventListener('click', async () => {
+    if (!cropper) return;
+    
+    // Get cropped canvas
+    const canvas = cropper.getCroppedCanvas({
+      width: 400,
+      height: 400,
+      imageSmoothingQuality: 'high'
+    });
+    
+    // Convert to blob
+    canvas.toBlob(async (blob) => {
+      if (!blob) {
+        alert('Failed to crop image');
+        return;
+      }
+      
+      // Create a File object from the blob
+      const croppedFile = new File([blob], selectedFile.name, {
+        type: 'image/jpeg',
+        lastModified: Date.now()
+      });
+      
+      // Convert to data URL for preview
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+      
+      try {
+        localStorage.setItem(imageStore, dataUrl);
+        
+        // Upload to backend
+        try {
+          const form = new FormData();
+          form.append('avatar', croppedFile);
+
+          const res = await fetch('/api/auth/profile/avatar', {
+            method: 'POST',
+            credentials: 'include',
+            body: form
+          });
+
+          if (!res.ok) {
+            console.warn('Could not save avatar to backend.');
+          }
+        } catch (err) {
+          console.warn('Could not save avatar to backend.', err);
+        }
+        
+        applyPfpToDOM(dataUrl);
+        closeCropModal();
+      } catch (e) {
+        console.warn("Could not save avatar. Try again.", e);
+      }
+    }, 'image/jpeg', 0.9);
+  });
+  
+  function closeCropModal() {
+    const cropModal = document.getElementById('cropModal');
+    cropModal.classList.add('hidden');
+    if (cropper) {
+      cropper.destroy();
+      cropper = null;
+    }
+    selectedFile = null;
+    updatePfp.value = ''; // Reset file input
+  }
+
   function applyPfpToDOM(dataUrl){
     document.querySelectorAll(".js-main-pfp").forEach(img =>{
       img.src = dataUrl;
@@ -566,7 +676,7 @@
     }
     
     try {
-      const res = await fetch('/api/auth/profile', {
+        const res = await fetch('/api/auth/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -576,12 +686,9 @@
           email, 
           rateLimit,
           sendErrorAlerts,
-          allowIpWhitelist,
-          profilePicture: localStorage.getItem(imageStore)
+          allowIpWhitelist
         })
-      });
-      
-      if (!res.ok) {
+      });      if (!res.ok) {
         const error = await res.json();
         throw new Error(error.error || 'Failed to update profile');
       }
@@ -674,23 +781,6 @@
     } else {
       showNotification('Click Edit to modify your profile', 'info');
     }
-  });
-
-  // Update reset button
-  document.getElementById('resetEdit')?.addEventListener('click', () => {
-    document.getElementById('viewFName').textContent = originalData.firstName;
-    document.getElementById('viewLName').textContent = originalData.lastName;
-    document.getElementById('viewEmail').textContent = originalData.email;
-    
-    document.getElementById('editFName').value = originalData.firstName;
-    document.getElementById('editLName').value = originalData.lastName;
-    document.getElementById('editEmail').value = originalData.email;
-    
-    document.getElementById('rateLimitInput').value = originalData.rateLimit;
-    document.getElementById('sendErrorAlertsCheckbox').checked = originalData.sendErrorAlerts;
-    document.getElementById('allowIpWhitelistCheckbox').checked = originalData.allowIpWhitelist;
-    
-    showNotification('Changes reset', 'info');
   });
 
   // Deactivate account button

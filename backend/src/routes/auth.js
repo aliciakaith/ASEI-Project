@@ -7,6 +7,8 @@ import { Issuer, generators } from "openid-client";
 import { sendMail, verificationEmail } from "../mailer.js";
 import { audit } from "../logging/audit.js";
 import { sendErrorAlert } from "../utils/errorNotification.js";
+import { requireAuth } from "../middleware/authMiddleware.js";
+import multer from 'multer';
 
 // ---- Password policy helper (server-side) ----
 function validatePassword(password, { email, firstName, lastName } = {}) {
@@ -633,11 +635,49 @@ router.get("/me", async (req, res) => {
   }
 });
 
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
+
+/**
+ * POST /api/auth/profile/avatar
+ * Upload profile avatar (multipart/form-data)
+ */
+router.post('/profile/avatar', requireAuth, upload.single('avatar'), async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+    // Convert to data URL and save in users.profile_picture
+    const mime = req.file.mimetype || 'image/png';
+    const base64 = req.file.buffer.toString('base64');
+    const dataUrl = `data:${mime};base64,${base64}`;
+
+    await query(
+      `UPDATE users SET profile_picture=$1, updated_at=now() WHERE id=$2`,
+      [dataUrl, userId]
+    );
+
+    await audit(req, {
+      userId,
+      action: 'PROFILE_PICTURE_UPDATED',
+      targetType: 'user',
+      targetId: userId,
+      statusCode: 200
+    });
+
+    res.json({ ok: true, profilePicture: dataUrl });
+  } catch (err) {
+    console.error('Failed to upload avatar:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 /**
  * PUT /api/auth/profile
  * Update user profile
  */
-router.put("/profile", async (req, res) => {
+router.put("/profile", requireAuth, async (req, res) => {
   try {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ error: "Not authenticated" });
