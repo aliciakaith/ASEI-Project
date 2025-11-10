@@ -72,11 +72,15 @@ const router = express.Router();
 const SECRET = process.env.JWT_SECRET || "supersecret";
 
 function cookieOpts(maxAgeMs) {
+  const IS_PROD = process.env.NODE_ENV === "production";
   return {
     httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    // In dev, use 'none' to allow cross-origin (e.g., friend's different IP)
+    // In prod, use 'lax' for better security
+    sameSite: IS_PROD ? "lax" : "none",
+    secure: IS_PROD, // Only secure in prod (HTTPS required)
     maxAge: maxAgeMs,
+    path: "/",
   };
 }
 
@@ -437,10 +441,11 @@ router.post("/login", async (req, res) => {
       { expiresIn: jwtTtl }
     );
 
+    const IS_PROD = process.env.NODE_ENV === "production";
     res.cookie("token", token, {
       httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
+      sameSite: IS_PROD ? "lax" : "none",
+      secure: IS_PROD,
       maxAge: cookieMaxAge,
       path: "/",
     });
@@ -464,20 +469,20 @@ router.post("/login", async (req, res) => {
 
 // POST /api/auth/logout
 router.post("/logout", async (req, res) => {
-  const secure = process.env.NODE_ENV === "production";
+  const IS_PROD = process.env.NODE_ENV === "production";
 
   res.clearCookie("token", {
     httpOnly: true,
-    sameSite: "lax",
-    secure,
-    path: "/",           // <-- important
+    sameSite: IS_PROD ? "lax" : "none",
+    secure: IS_PROD,
+    path: "/",
   });
 
   res.clearCookie("pending_email", {
     httpOnly: true,
-    sameSite: "lax",
-    secure,
-    path: "/",           // <-- important (matches how it was set)
+    sameSite: IS_PROD ? "lax" : "none",
+    secure: IS_PROD,
+    path: "/",
   });
 
   await audit(req, {
@@ -499,9 +504,9 @@ router.get("/google", async (req, res) => {
     const state = generators.state();
     const nonce = generators.nonce();
 
-    const secure = process.env.NODE_ENV === "production";
-    res.cookie("g_state", state, { httpOnly: true, sameSite: "lax", secure });
-    res.cookie("g_nonce", nonce, { httpOnly: true, sameSite: "lax", secure });
+    const IS_PROD = process.env.NODE_ENV === "production";
+    res.cookie("g_state", state, { httpOnly: true, sameSite: IS_PROD ? "lax" : "none", secure: IS_PROD });
+    res.cookie("g_nonce", nonce, { httpOnly: true, sameSite: IS_PROD ? "lax" : "none", secure: IS_PROD });
 
     const authUrl = client.authorizationUrl({
       scope: "openid email profile",
@@ -563,18 +568,18 @@ router.get("/google/callback", async (req, res) => {
       user = rows[0];
     }
 
+    const IS_PROD = process.env.NODE_ENV === "production";
     const token = jwt.sign({ id: user.id, email, org: user.org_id }, SECRET, { expiresIn: "7d" });
     res.cookie("token", token, {
       httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
+      sameSite: IS_PROD ? "lax" : "none",
+      secure: IS_PROD,
       maxAge: 7 * 24 * 60 * 60 * 1000,
       path: "/",
     });
 
-    const secure = process.env.NODE_ENV === "production";
-    res.clearCookie("g_state", { httpOnly: true, sameSite: "lax", secure });
-    res.clearCookie("g_nonce", { httpOnly: true, sameSite: "lax", secure });
+    res.clearCookie("g_state", { httpOnly: true, sameSite: IS_PROD ? "lax" : "none", secure: IS_PROD });
+    res.clearCookie("g_nonce", { httpOnly: true, sameSite: IS_PROD ? "lax" : "none", secure: IS_PROD });
 
     // (Optional) You can also audit OAuth login success:
     // await audit(req, {
@@ -887,6 +892,80 @@ router.post("/test-error-notification", async (req, res) => {
     });
   } catch (error) {
     console.error("Failed to send test notification:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/auth/debug
+ * Debug endpoint to verify IP and cookie setup for any user
+ */
+router.get("/debug", async (req, res) => {
+  try {
+    const IS_PROD = process.env.NODE_ENV === "production";
+    
+    // Get client IP from various sources
+    const forwardedFor = req.headers['x-forwarded-for'];
+    const realIp = req.headers['x-real-ip'];
+    const reqIp = req.ip;
+    const remoteAddr = req.connection?.remoteAddress || req.socket?.remoteAddress;
+    
+    const clientIp = (
+      forwardedFor?.split(',')[0].trim() ||
+      realIp ||
+      reqIp ||
+      remoteAddr
+    );
+    
+    // Normalize IPv6
+    const normalizedIp = clientIp === '::1' || clientIp === '::ffff:127.0.0.1' 
+      ? '127.0.0.1' 
+      : (clientIp || '').replace(/^::ffff:/, '');
+    
+    // Cookie info
+    const hasCookie = !!req.cookies?.token;
+    const cookieCount = Object.keys(req.cookies || {}).length;
+    
+    // Origin info
+    const origin = req.headers.origin || req.headers.referer || 'N/A';
+    const host = req.headers.host;
+    
+    res.json({
+      ok: true,
+      environment: IS_PROD ? 'production' : 'development',
+      cookieSettings: {
+        sameSite: IS_PROD ? 'lax' : 'none',
+        secure: IS_PROD,
+        httpOnly: true,
+        path: '/'
+      },
+      ipDetection: {
+        clientIp: normalizedIp,
+        sources: {
+          'x-forwarded-for': forwardedFor || null,
+          'x-real-ip': realIp || null,
+          'req.ip': reqIp || null,
+          'remoteAddress': remoteAddr || null
+        }
+      },
+      cookies: {
+        hasAuthToken: hasCookie,
+        totalCookies: cookieCount,
+        cookieNames: Object.keys(req.cookies || {})
+      },
+      request: {
+        origin,
+        host,
+        method: req.method,
+        authenticated: !!req.user
+      },
+      cors: {
+        trustProxy: req.app.get('trust proxy'),
+        message: 'Dev mode allows all local IPs (192.168.x.x) and configured origins'
+      }
+    });
+  } catch (error) {
+    console.error("Debug endpoint error:", error);
     res.status(500).json({ error: error.message });
   }
 });

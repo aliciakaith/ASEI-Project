@@ -5,7 +5,7 @@ import { query } from "../db/postgres.js";
 import { encryptJSON, decryptJSON } from "../utils/crypto.js";
 import { getAccessToken } from "../providers/mtn/auth.js";
 
-const devUser = { id: "00000000-0000-0000-0000-000000000001" };
+// Removed unused devUser constant (was for early testing) to satisfy lint
 
 const router = express.Router();
 

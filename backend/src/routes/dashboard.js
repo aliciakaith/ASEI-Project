@@ -347,7 +347,7 @@ router.post("/compliance/generate", express.json(), async (req, res) => {
 
     // Persist report to backend/data/compliance_reports
     const dataDir = path.join(process.cwd(), 'data', 'compliance_reports');
-    try { fs.mkdirSync(dataDir, { recursive: true }); } catch (_) {}
+  try { fs.mkdirSync(dataDir, { recursive: true }); } catch (e) { void e; }
     const filename = `${String(orgId).replace(/[^a-zA-Z0-9_-]/g,'')}_${Date.now()}.json`;
     const filepath = path.join(dataDir, filename);
     fs.writeFileSync(filepath, JSON.stringify(report, null, 2), 'utf8');

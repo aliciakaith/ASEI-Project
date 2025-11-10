@@ -6,12 +6,7 @@ import ExecutionService from "../execution/ExecutionService.js";
 
 const router = express.Router();
 
-/** Helper: get org_id for 'Demo Org' (or any org you choose) */
-async function getOrgId() {
-  const res = await query(`SELECT id FROM organizations WHERE name = 'Demo Org' LIMIT 1`);
-  if (res.rows.length === 0) throw new Error('Demo Org not found. Seed organizations first.');
-  return res.rows[0].id;
-}
+// Note: Removed unused getOrgId helper to satisfy linting
 
 /** GET /api/flows
  * List all non-deleted flows for the current user's organization (with latest version number if available)

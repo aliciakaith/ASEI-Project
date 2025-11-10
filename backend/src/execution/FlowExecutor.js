@@ -434,17 +434,21 @@ class FlowExecutor {
         return inputData;
       
       case 'merge':
-        // Merge all inputs into one object
-        return Object.assign({}, ...Object.values(inputData));
+        {
+          // Merge all inputs into one object
+          return Object.assign({}, ...Object.values(inputData));
+        }
       
       case 'extract':
-        // Extract specific fields
-        const fields = node.config?.fields || [];
-        const result = {};
-        fields.forEach(field => {
-          if (inputData[field]) result[field] = inputData[field];
-        });
-        return result;
+        {
+          // Extract specific fields
+          const fields = node.config?.fields || [];
+            const result = {};
+          fields.forEach(field => {
+            if (inputData[field]) result[field] = inputData[field];
+          });
+          return result;
+        }
       
       default:
         return inputData;

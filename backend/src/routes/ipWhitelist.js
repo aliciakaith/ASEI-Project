@@ -41,22 +41,37 @@ router.get("/current-ip", async (req, res) => {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ error: "Not authenticated" });
 
-    // Get client IP address
+    // Get client IP address - check multiple sources for robustness
+    // Priority: x-forwarded-for (proxy) > x-real-ip (nginx) > req.ip (express trust proxy) > direct connection
+    const forwardedFor = req.headers['x-forwarded-for'];
     const clientIp = (
-      req.headers['x-forwarded-for']?.split(',')[0].trim() ||
+      forwardedFor?.split(',')[0].trim() ||
       req.headers['x-real-ip'] ||
       req.ip ||
-      req.connection.remoteAddress
+      req.connection?.remoteAddress ||
+      req.socket?.remoteAddress ||
+      '0.0.0.0'
     );
 
-    // Normalize IPv6 localhost to IPv4
-    const normalizedIp = clientIp === '::1' || clientIp === '::ffff:127.0.0.1' 
-      ? '127.0.0.1' 
-      : clientIp.replace(/^::ffff:/, '');
+    // Normalize IPv6 localhost to IPv4 and remove IPv6 prefix
+    let normalizedIp = clientIp;
+    if (clientIp === '::1' || clientIp === '::ffff:127.0.0.1') {
+      normalizedIp = '127.0.0.1';
+    } else if (clientIp.startsWith('::ffff:')) {
+      normalizedIp = clientIp.replace(/^::ffff:/, '');
+    }
 
     res.json({
       ok: true,
-      currentIp: normalizedIp
+      currentIp: normalizedIp,
+      debug: process.env.NODE_ENV !== 'production' ? {
+        raw: clientIp,
+        sources: {
+          'x-forwarded-for': forwardedFor || null,
+          'x-real-ip': req.headers['x-real-ip'] || null,
+          'req.ip': req.ip || null
+        }
+      } : undefined
     });
   } catch (error) {
     console.error("Failed to get current IP:", error);

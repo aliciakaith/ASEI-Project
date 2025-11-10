@@ -57,11 +57,20 @@ const allowlist = [
   "http://localhost:8080"  // generic local test
 ];
 
+const EXTRA_ORIGINS = (process.env.CORS_EXTRA_ORIGINS || "")
+  .split(",")
+  .map(s => s.trim())
+  .filter(Boolean);
+
+// Permit common local-network hosts (e.g., a friend opening http://192.168.x.x:3001)
+const LOCAL_ORIGIN_RE = /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.[0-9]{1,3}\.[0-9]{1,3})(:[0-9]{2,5})?$/i;
+
 app.use(
   cors({
     origin(origin, cb) {
       if (!origin) return cb(null, true); // allow same-origin/curl
-      cb(null, allowlist.includes(origin));
+      const allowed = allowlist.includes(origin) || LOCAL_ORIGIN_RE.test(origin) || EXTRA_ORIGINS.includes(origin);
+      cb(null, allowed);
     },
     credentials: true,
   })
@@ -165,6 +174,7 @@ if (FRONTEND_DIR) {
   app.get("/settings", send("settings.html"));
   app.get("/terms", send("termsAndConditions.html"));
   app.get("/forgot", send("forgot.html"));
+  app.get("/debug-auth", send("debug-auth.html"));
 } else {
   // Safe default so CI still returns 200 on /
   app.get("/", (_req, res) => res.status(200).send("Backend OK"));
