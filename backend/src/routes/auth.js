@@ -73,11 +73,12 @@ const SECRET = process.env.JWT_SECRET || "supersecret";
 
 function cookieOpts(maxAgeMs) {
   const IS_PROD = process.env.NODE_ENV === "production";
+  // Use Lax in both dev and prod to ensure the cookie is sent on same-site navigations
+  // and OAuth redirect responses, while avoiding it being blocked for security.
+  // SameSite=None without Secure on HTTP (dev) is increasingly rejected by browsers.
   return {
     httpOnly: true,
-    // In dev, use 'none' to allow cross-origin (e.g., friend's different IP)
-    // In prod, use 'lax' for better security
-    sameSite: IS_PROD ? "lax" : "none",
+    sameSite: "lax",
     secure: IS_PROD, // Only secure in prod (HTTPS required)
     maxAge: maxAgeMs,
     path: "/",
@@ -444,7 +445,7 @@ router.post("/login", async (req, res) => {
     const IS_PROD = process.env.NODE_ENV === "production";
     res.cookie("token", token, {
       httpOnly: true,
-      sameSite: IS_PROD ? "lax" : "none",
+      sameSite: "lax",
       secure: IS_PROD,
       maxAge: cookieMaxAge,
       path: "/",
@@ -612,9 +613,10 @@ router.get("/google/callback", async (req, res) => {
 
     const IS_PROD = process.env.NODE_ENV === "production";
     const token = jwt.sign({ id: user.id, email, org: user.org_id }, SECRET, { expiresIn: "7d" });
+    // Use Lax universally (sameSite) to ensure cookie sent on subsequent internal navigations
     res.cookie("token", token, {
       httpOnly: true,
-      sameSite: IS_PROD ? "lax" : "none",
+      sameSite: "lax",
       secure: IS_PROD,
       maxAge: 7 * 24 * 60 * 60 * 1000,
       path: "/",
