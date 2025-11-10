@@ -467,23 +467,41 @@ router.post("/login", async (req, res) => {
   }
 });
 
+// helper to clear auth-related cookies in a robust way
+function clearAuthCookies(req, res) {
+  const IS_PROD = process.env.NODE_ENV === "production";
+  const baseNone = { httpOnly: true, sameSite: "none", secure: IS_PROD, path: "/" };
+  const baseLax  = { httpOnly: true, sameSite: "lax",  secure: IS_PROD, path: "/" };
+  const baseNoneApi = { ...baseNone, path: "/api" };
+  const baseLaxApi  = { ...baseLax,  path: "/api" };
+
+  // Clear token cookie in both SameSite modes to cover historical values
+  res.clearCookie("token", baseNone);
+  res.clearCookie("token", baseLax);
+  res.clearCookie("token", baseNoneApi);
+  res.clearCookie("token", baseLaxApi);
+  // Force-expire as extra safety
+  res.cookie("token", "", { ...baseNone,    expires: new Date(0) });
+  res.cookie("token", "", { ...baseLax,     expires: new Date(0) });
+  res.cookie("token", "", { ...baseNoneApi, expires: new Date(0) });
+  res.cookie("token", "", { ...baseLaxApi,  expires: new Date(0) });
+
+  // Clear any auxiliary cookies used during flows
+  ["pending_email", "g_state", "g_nonce"].forEach((name) => {
+    res.clearCookie(name, baseNone);
+    res.clearCookie(name, baseLax);
+    res.clearCookie(name, baseNoneApi);
+    res.clearCookie(name, baseLaxApi);
+    res.cookie(name, "", { ...baseNone,    expires: new Date(0) });
+    res.cookie(name, "", { ...baseLax,     expires: new Date(0) });
+    res.cookie(name, "", { ...baseNoneApi, expires: new Date(0) });
+    res.cookie(name, "", { ...baseLaxApi,  expires: new Date(0) });
+  });
+}
+
 // POST /api/auth/logout
 router.post("/logout", async (req, res) => {
-  const IS_PROD = process.env.NODE_ENV === "production";
-
-  res.clearCookie("token", {
-    httpOnly: true,
-    sameSite: IS_PROD ? "lax" : "none",
-    secure: IS_PROD,
-    path: "/",
-  });
-
-  res.clearCookie("pending_email", {
-    httpOnly: true,
-    sameSite: IS_PROD ? "lax" : "none",
-    secure: IS_PROD,
-    path: "/",
-  });
+  clearAuthCookies(req, res);
 
   await audit(req, {
     userId: req.user?.id || null,
@@ -493,6 +511,19 @@ router.post("/logout", async (req, res) => {
     statusCode: 204,
   });
 
+  return res.status(204).end();
+});
+
+// Also support GET for environments where forms/links are used
+router.get("/logout", async (req, res) => {
+  clearAuthCookies(req, res);
+  await audit(req, {
+    userId: req.user?.id || null,
+    action: "LOGOUT",
+    targetType: "user",
+    targetId: req.user?.id || null,
+    statusCode: 204,
+  });
   return res.status(204).end();
 });
 
