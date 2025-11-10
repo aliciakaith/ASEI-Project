@@ -361,64 +361,190 @@ router.post("/compliance/generate", express.json(), async (req, res) => {
         const out = fs.createWriteStream(pdfPath);
         doc.pipe(out);
 
-        doc.fontSize(18).text(`Compliance Report: ${reportType}`, { align: 'center' });
-        doc.moveDown();
-        doc.fontSize(10).text(`Generated: ${report.generatedAt}`);
-        doc.text(`Organization: ${orgId}`);
-        doc.moveDown();
+        // HEADER - Different colors for each report type
+        const headerColor = isSecurityAudit ? '#dc2626' : isDataPrivacy ? '#3b82f6' : '#10b981';
+        doc.fillColor(headerColor).fontSize(20).text(`${reportType}`, { align: 'center' });
+        doc.fillColor('#000000');
+        doc.moveDown(0.5);
+        doc.fontSize(10).fillColor('#6b7280').text(`Generated: ${new Date(report.generatedAt).toLocaleString('en-AU', { timeZone: 'Australia/Sydney' })}`, { align: 'center' });
+        doc.text(`Organization ID: ${orgId}`, { align: 'center' });
+        doc.moveDown(1.5);
 
-        doc.fontSize(12).text('KPIs (Last 7 Days)', { underline: true });
-        doc.fontSize(10);
-        doc.text(`Active Flows: ${kpis.activeFlows}`);
-        doc.text(`Transactions: ${kpis.transactions} (${kpis.errors} errors, ${report.summary.errorRate} error rate)`);
-        doc.text(`Avg Latency: ${kpis.avgLatencyMs}ms`);
-        doc.moveDown();
+        // REPORT TYPE SPECIFIC INTRO
+        if (isSecurityAudit) {
+          doc.fillColor(headerColor).fontSize(14).text('🔒 Security Assessment Overview', { underline: true });
+          doc.fillColor('#000000').fontSize(10).moveDown(0.3);
+          doc.text('This report identifies security risks, misconfigurations, and reliability issues in your integration platform.');
+          doc.moveDown(0.8);
+        } else if (isDataPrivacy) {
+          doc.fillColor(headerColor).fontSize(14).text('🛡️ Data Privacy & Compliance Assessment', { underline: true });
+          doc.fillColor('#000000').fontSize(10).moveDown(0.3);
+          doc.text('This report evaluates data protection practices, PII handling, and regulatory compliance (GDPR/CCPA).');
+          doc.text(`Organization: ${org.name || orgId} | Users: ${users.length} | Created: ${org.createdAt ? new Date(org.createdAt).toLocaleDateString() : 'N/A'}`);
+          doc.moveDown(0.8);
+        } else {
+          doc.fillColor(headerColor).fontSize(14).text('📊 Integration Summary', { underline: true });
+          doc.fillColor('#000000').fontSize(10).moveDown(0.3);
+          doc.text('This report provides a comprehensive overview of all integrations, their health status, and performance metrics.');
+          doc.moveDown(0.8);
+        }
 
-        doc.fontSize(12).text('Integrations Breakdown', { underline: true });
-        doc.fontSize(10);
-        doc.text(`Total: ${integrations.length} (🟢 Active: ${integrationsByStatus.active.length}, 🟡 Pending: ${integrationsByStatus.pending.length}, 🔴 Error: ${integrationsByStatus.error.length})`);
-        if (integrationsByStatus.active.length > 0) {
-          doc.text(`Active: ${integrationsByStatus.active.map(i => i.name).join(', ')}`);
-        }
-        if (integrationsByStatus.pending.length > 0) {
-          doc.text(`Pending: ${integrationsByStatus.pending.map(i => i.name).join(', ')}`);
-        }
-        if (integrationsByStatus.error.length > 0) {
-          doc.text(`Error: ${integrationsByStatus.error.map(i => i.name).join(', ')}`);
-        }
-        doc.moveDown();
+        // KPIs Section (common for all)
+        doc.fontSize(13).fillColor('#111827').text('Key Performance Indicators (Last 7 Days)', { underline: true });
+        doc.fontSize(10).fillColor('#000000').moveDown(0.3);
+        
+        const kpiY = doc.y;
+        doc.rect(50, kpiY, 495, 90).fillAndStroke('#f9fafb', '#d1d5db');
+        doc.fillColor('#000000').fontSize(10);
+        
+        doc.text(`Active Flows: ${kpis.activeFlows}`, 60, kpiY + 10);
+        doc.text(`Total Transactions: ${kpis.transactions}`, 60, kpiY + 30);
+        doc.text(`Failed Transactions: ${kpis.errors} (${report.summary.errorRate} error rate)`, 60, kpiY + 50);
+        doc.text(`Average Latency: ${kpis.avgLatencyMs}ms`, 60, kpiY + 70);
+        
+        doc.y = kpiY + 100;
+        doc.moveDown(0.5);
 
-        if (isDataPrivacy && privacyChecks.length > 0) {
-          // Add page break if privacy section is long (more than 5 checks)
-          if (privacyChecks.length > 5) {
-            doc.addPage();
+        // SECURITY AUDIT SPECIFIC CONTENT
+        if (isSecurityAudit) {
+          doc.addPage();
+          doc.fontSize(14).fillColor('#dc2626').text('🔍 Security Findings', { underline: true });
+          doc.fillColor('#000000').fontSize(10).moveDown(0.5);
+          
+          if (findings.length === 0) {
+            doc.fillColor('#10b981').text('✓ No critical security issues detected', { align: 'center' });
+            doc.fillColor('#000000').moveDown();
+          } else {
+            const criticalCount = findings.filter(f => f.severity === 'high' || f.severity === 'critical').length;
+            doc.text(`Total Findings: ${findings.length} (${criticalCount} high/critical)`);
+            doc.moveDown(0.5);
+            
+            findings.forEach((f, idx) => {
+              const sevColor = { high: '#dc2626', critical: '#b91c1c', medium: '#f59e0b', low: '#6b7280' }[f.severity] || '#6b7280';
+              doc.fillColor(sevColor).fontSize(11).text(`${idx + 1}. [${f.severity.toUpperCase()}] ${f.category}`, { continued: false });
+              doc.fillColor('#000000').fontSize(9);
+              doc.text(`   Issue: ${f.issue}`);
+              doc.fillColor('#3b82f6').text(`   → ${f.recommendation}`);
+              doc.fillColor('#000000').moveDown(0.3);
+            });
           }
           
-          doc.fontSize(12).text('Data Privacy Assessment', { underline: true });
-          doc.fontSize(10);
-          doc.text(`Organization: ${org.name || orgId} (created ${org.createdAt ? new Date(org.createdAt).toLocaleDateString() : 'N/A'})`);
-          doc.text(`Users: ${users.length} total`);
+          doc.moveDown(1);
+          doc.fontSize(13).text('Integration Health Status', { underline: true });
+          doc.fontSize(10).moveDown(0.3);
+          doc.fillColor('#10b981').text(`✓ Active: ${integrationsByStatus.active.length} - ${integrationsByStatus.active.map(i => i.name).join(', ') || 'None'}`);
+          doc.fillColor('#f59e0b').text(`⚠ Pending: ${integrationsByStatus.pending.length} - ${integrationsByStatus.pending.map(i => i.name).join(', ') || 'None'}`);
+          doc.fillColor('#dc2626').text(`✗ Error: ${integrationsByStatus.error.length} - ${integrationsByStatus.error.map(i => i.name).join(', ') || 'None'}`);
+          doc.fillColor('#000000');
+        }
+        
+        // DATA PRIVACY SPECIFIC CONTENT
+        else if (isDataPrivacy) {
+          doc.addPage();
+          doc.fontSize(14).fillColor('#3b82f6').text('🛡️ Privacy & Compliance Checks', { underline: true });
+          doc.fillColor('#000000').fontSize(10).moveDown(0.5);
+          
+          if (privacyChecks.length === 0) {
+            doc.fillColor('#10b981').text('✓ All privacy checks passed', { align: 'center' });
+            doc.fillColor('#000000').moveDown();
+          } else {
+            const criticalPrivacy = privacyChecks.filter(p => p.severity === 'critical' || p.severity === 'high').length;
+            doc.text(`Total Privacy Issues: ${privacyChecks.length} (${criticalPrivacy} critical/high)`);
+            doc.moveDown(0.5);
+            
+            privacyChecks.forEach((p, idx) => {
+              const sevColor = { critical: '#b91c1c', high: '#dc2626', medium: '#f59e0b', low: '#6b7280' }[p.severity] || '#6b7280';
+              doc.fillColor(sevColor).fontSize(11).text(`${idx + 1}. [${p.severity.toUpperCase()}] ${p.category}`, { continued: false });
+              doc.fillColor('#000000').fontSize(9);
+              doc.text(`   Issue: ${p.issue}`);
+              doc.fillColor('#3b82f6').text(`   → ${p.recommendation}`);
+              doc.fillColor('#000000').moveDown(0.3);
+            });
+          }
+          
+          doc.moveDown(1);
+          doc.fontSize(13).text('Data Protection Summary', { underline: true });
+          doc.fontSize(10).moveDown(0.3);
+          doc.text(`Total Users: ${users.length}`);
+          doc.text(`Users > 1 year old: ${users.filter(u => (Date.now() - new Date(u.createdAt)) > 365*24*60*60*1000).length}`);
+          doc.text(`SMTP Security: ${process.env.SMTP_PORT === '465' ? '✓ SSL Enabled' : '⚠ Not using SSL (465)'}`);
+          doc.text(`HTTPS Enforcement: ${integrations.filter(i => i.test_url && i.test_url.startsWith('http://') && !i.test_url.includes('localhost')).length === 0 ? '✓ All HTTPS' : '⚠ HTTP detected'}`);
+          doc.text(`JWT Secret Strength: ${(process.env.JWT_SECRET?.length || 0) >= 32 ? '✓ Strong (32+ chars)' : '⚠ Weak'}`);
+        }
+        
+        // INTEGRATION SUMMARY SPECIFIC CONTENT
+        else {
+          doc.fontSize(13).text('Integration Status Breakdown', { underline: true });
+          doc.fontSize(10).moveDown(0.5);
+          
+          // Active integrations
+          doc.fillColor('#10b981').fontSize(11).text(`🟢 Active Integrations (${integrationsByStatus.active.length})`, { underline: false });
+          doc.fillColor('#000000').fontSize(9);
+          if (integrationsByStatus.active.length > 0) {
+            integrationsByStatus.active.forEach(i => {
+              doc.text(`  • ${i.name} - Last checked: ${i.lastChecked ? new Date(i.lastChecked).toLocaleString() : 'Never'}`);
+              if (i.test_url) doc.fillColor('#6b7280').text(`    ${i.test_url}`, { indent: 20 });
+              doc.fillColor('#000000');
+            });
+          } else {
+            doc.fillColor('#6b7280').text('  (None)');
+            doc.fillColor('#000000');
+          }
           doc.moveDown(0.5);
-          doc.fontSize(11).text('Privacy Checks:', { underline: true });
-          privacyChecks.forEach(p => {
-            doc.fontSize(10).text(`[${p.severity.toUpperCase()}] ${p.category}: ${p.issue}`, { continued: false });
-            doc.fontSize(9).text(`  → ${p.recommendation}`);
-          });
-          doc.moveDown();
+          
+          // Pending integrations
+          doc.fillColor('#f59e0b').fontSize(11).text(`🟡 Pending Integrations (${integrationsByStatus.pending.length})`, { underline: false });
+          doc.fillColor('#000000').fontSize(9);
+          if (integrationsByStatus.pending.length > 0) {
+            integrationsByStatus.pending.forEach(i => {
+              doc.text(`  • ${i.name} - Last checked: ${i.lastChecked ? new Date(i.lastChecked).toLocaleString() : 'Never'}`);
+            });
+          } else {
+            doc.fillColor('#6b7280').text('  (None)');
+            doc.fillColor('#000000');
+          }
+          doc.moveDown(0.5);
+          
+          // Error integrations
+          doc.fillColor('#dc2626').fontSize(11).text(`🔴 Error Integrations (${integrationsByStatus.error.length})`, { underline: false });
+          doc.fillColor('#000000').fontSize(9);
+          if (integrationsByStatus.error.length > 0) {
+            integrationsByStatus.error.forEach(i => {
+              doc.text(`  • ${i.name} - Last checked: ${i.lastChecked ? new Date(i.lastChecked).toLocaleString() : 'Never'}`);
+            });
+          } else {
+            doc.fillColor('#6b7280').text('  (None)');
+            doc.fillColor('#000000');
+          }
+          doc.moveDown(1);
+          
+          // Transaction Performance
+          doc.addPage();
+          doc.fontSize(13).text('Transaction Performance Analysis', { underline: true });
+          doc.fontSize(10).moveDown(0.5);
+          doc.text(`Total Transactions (7 days): ${kpis.transactions}`);
+          doc.text(`Success Rate: ${kpis.transactions > 0 ? ((1 - kpis.errors / kpis.transactions) * 100).toFixed(1) : 100}%`);
+          doc.text(`Average Response Time: ${kpis.avgLatencyMs}ms`);
+          doc.text(`Performance Rating: ${kpis.avgLatencyMs < 200 ? '✓ Excellent' : kpis.avgLatencyMs < 500 ? '⚠ Good' : '✗ Needs Improvement'}`);
         }
 
-        if (isSecurityAudit && findings.length > 0) {
-          doc.fontSize(12).text('Security Findings', { underline: true });
-          findings.forEach(f => {
-            doc.fontSize(10).text(`[${f.severity.toUpperCase()}] ${f.category}: ${f.issue}`, { continued: false });
-            doc.fontSize(9).text(`  → ${f.recommendation}`);
+        // Recent Activity (all reports)
+        doc.addPage();
+        doc.fontSize(13).fillColor('#111827').text('Recent Notifications', { underline: true });
+        doc.fillColor('#000000').fontSize(9).moveDown(0.3);
+        
+        if (notifications.length === 0) {
+          doc.text('No recent notifications');
+        } else {
+          notifications.slice(0, 15).forEach(n => {
+            const typeColor = { error: '#dc2626', warn: '#f59e0b', info: '#3b82f6', success: '#10b981' }[n.type] || '#6b7280';
+            doc.fillColor(typeColor).text(`[${n.type.toUpperCase()}]`, { continued: true });
+            doc.fillColor('#000000').text(` ${new Date(Number(n.ts)).toLocaleString()} - ${n.title}`);
           });
-          doc.moveDown();
         }
 
-        doc.fontSize(12).text('Recent Notifications', { underline: true });
-        doc.fontSize(9);
-        notifications.slice(0, 20).forEach(n => doc.text(`${new Date(Number(n.ts)).toLocaleString()} [${n.type}] ${n.title}`));
+        doc.moveDown(2);
+        doc.fontSize(8).fillColor('#6b7280').text('End of Report', { align: 'center' });
 
         doc.end();
         out.on('finish', resolve);
