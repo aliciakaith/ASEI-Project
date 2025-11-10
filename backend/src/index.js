@@ -167,6 +167,49 @@ if (FRONTEND_DIR) {
 }
 
 // ------------------------------------------------------
+// Migrations: ensure required tables exist
+// ------------------------------------------------------
+async function runMigrations() {
+  if (!pool) return;
+  try {
+    const read = (p) => {
+      try { return fs.readFileSync(p, "utf8"); } catch { return null; }
+    };
+    const DB_DIR = path.resolve(__dirname, "./db");
+    const schemaMain = read(path.join(DB_DIR, "schema.sql"));
+    const schemaExec = read(path.join(DB_DIR, "execution_schema.sql"));
+    const auditDdl = `
+      CREATE TABLE IF NOT EXISTS audit_log (
+        id           BIGSERIAL PRIMARY KEY,
+        created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+        user_id      UUID,
+        action       TEXT NOT NULL,
+        target_type  TEXT,
+        target_id    TEXT,
+        route        TEXT,
+        method       TEXT,
+        ip           TEXT,
+        user_agent   TEXT,
+        status_code  INTEGER,
+        request_id   TEXT,
+        metadata     JSONB
+      );
+    `;
+    const client = await pool.connect();
+    try {
+      if (schemaMain) await client.query(schemaMain);
+      if (schemaExec) await client.query(schemaExec);
+      await client.query(auditDdl);
+      console.log("✅ Database schema ensured");
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    console.error("❌ Failed to run migrations:", err.message || err);
+  }
+}
+
+// ------------------------------------------------------
 // 404 handling
 // ------------------------------------------------------
 app.use("/api", (_req, res) => res.status(404).json({ error: "Not found" }));
@@ -183,6 +226,7 @@ app.use(
 // Start the server + Socket.IO
 // ------------------------------------------------------
 const PORT = process.env.PORT || 3001;
+await runMigrations();
 const server = createServer(app);
 
 const io = new Server(server, {

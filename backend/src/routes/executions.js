@@ -38,6 +38,58 @@ router.post('/start', async (req, res) => {
 });
 
 /**
+ * GET /api/executions/recent
+ * List recent executions for the current user's organization
+ * Query: limit? (default 20)
+ */
+router.get('/recent', async (req, res) => {
+  const orgId = req.user?.org;
+  if (!orgId) return res.status(401).json({ error: 'Organization not found' });
+
+  const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+  try {
+    const { rows } = await query(
+      `SELECT e.id,
+              e.flow_id           AS "flowId",
+              e.flow_version      AS version,
+              e.status,
+              e.trigger_type      AS "triggerType",
+              e.trigger_data      AS "triggerData",
+              e.started_at        AS "startedAt",
+              e.completed_at      AS "completedAt",
+              f.name              AS "flowName"
+       FROM flow_executions e
+       JOIN flows f ON f.id = e.flow_id
+       WHERE f.org_id = $1
+       ORDER BY e.started_at DESC
+       LIMIT $2`,
+      [orgId, limit]
+    );
+    res.json(rows);
+  } catch (error) {
+    console.error('Failed to list recent executions:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/executions/flow/:flowId
+ * Get all executions for a flow
+ */
+router.get('/flow/:flowId', async (req, res) => {
+  const { flowId } = req.params;
+  const limit = parseInt(req.query.limit) || 20;
+
+  try {
+    const executions = await ExecutionService.getFlowExecutions(flowId, limit);
+    res.json(executions);
+  } catch (error) {
+    console.error('Failed to get flow executions:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * GET /api/executions/:executionId
  * Get execution details
  */
@@ -82,23 +134,6 @@ router.get('/:executionId/logs', async (req, res) => {
     res.json(logs);
   } catch (error) {
     console.error('Failed to get execution logs:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * GET /api/executions/flow/:flowId
- * Get all executions for a flow
- */
-router.get('/flow/:flowId', async (req, res) => {
-  const { flowId } = req.params;
-  const limit = parseInt(req.query.limit) || 20;
-
-  try {
-    const executions = await ExecutionService.getFlowExecutions(flowId, limit);
-    res.json(executions);
-  } catch (error) {
-    console.error('Failed to get flow executions:', error);
     res.status(500).json({ error: error.message });
   }
 });

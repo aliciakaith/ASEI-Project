@@ -23,6 +23,17 @@
 </script>
 
 <link rel="icon" type="image/png" href="images/connectify_logo.png">
+
+<!-- Custom Animations -->
+<style>
+  @keyframes slideDown {
+    from { opacity: 0; transform: translate(-50%, -20px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+  }
+  .animate-slide-down {
+    animation: slideDown 0.3s ease-out;
+  }
+</style>
 </head>
 <body class="min-h-screen bg-neutral-50 text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100 transition-colors">
 
@@ -105,7 +116,7 @@
           
           <img id="mainPfp" class="js-main-pfp absolute inset-0 h-12 w-12 rounded-full object-cover hidden" alt="Pfp"/>
           </button>
-          <span class="font-bold mb-0">Insert User Name</span>
+          <span class="font-bold mb-0" id="profileUsername">Loading...</span>
           <input type="file" id="updatePfp" accept="image/*" class="hidden">
           
       </div>
@@ -124,19 +135,19 @@
       <div>
         <div>
           <label class="block text-sm font-medium">Given Names</label>
-          <p id="viewFName" class="rounded px-3 py-1 w-full mb-2">asd</p>
+          <p id="viewFName" class="rounded px-3 py-1 w-full mb-2"></p>
           <input id="editFName" type="text" class="hidden border rounded px-3 py-2 w-full lg:w-1/2 mb-4">
         </div>
 
         <div>
           <label class="block text-sm font-medium"> Surname</label>
-          <p id="viewLName" class="rounded px-3 py-1 w-full mb-2">asd</p>
+          <p id="viewLName" class="rounded px-3 py-1 w-full mb-2"></p>
           <input id="editLName" type="text" class="hidden border rounded px-3 py-2 w-full lg:w-1/2 mb-4">
         </div>
 
         <div>
           <label class="block text-sm font-medium">Email</label>
-          <p id="viewEmail" class="rounded px-3 py-1 w-full mb-2">asd</p>
+          <p id="viewEmail" class="rounded px-3 py-1 w-full mb-2"></p>
           <input id="editEmail" type="text" class="hidden border rounded px-3 py-2 w-full lg:w-1/2 mb-4">
         </div>
 
@@ -187,9 +198,36 @@
           </div>
 <div class="border-t border-gray-400 dark:border-gray-400 pt-3">
 
-    <div class="flex space-x-3">
+    <div class="flex space-x-3 mb-4">
       <button id="saveEdit" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded">Save Changes</button>
       <button id="resetEdit" class="px-4 py-2 bg-gray-400 hover:bg-gray-500 text-white rounded">Reset</button>
+    </div>
+
+    <!-- Deactivate Account Section -->
+    <div class="border-t border-red-400 dark:border-red-600 pt-4 mt-6">
+      <h3 class="font-semibold text-red-600 dark:text-red-400 mb-2">Danger Zone</h3>
+      <div id="activeAccountSection" class="mb-4">
+        <p class="text-sm text-neutral-600 dark:text-neutral-400 mb-3">
+          Deactivating your account will disable access for 30 days. You can reactivate by logging in again within this period. After 30 days, your account and all data will be permanently deleted.
+        </p>
+        <button id="deactivateBtn" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded">
+          Deactivate Account
+        </button>
+      </div>
+      <div id="deactivatedAccountSection" class="hidden">
+        <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded p-4 mb-3">
+          <p class="text-red-800 dark:text-red-300 font-semibold mb-2">⚠️ Account Deactivated</p>
+          <p class="text-sm text-red-700 dark:text-red-400 mb-2">
+            Your account was deactivated on <span id="deactivationDate" class="font-medium"></span>.
+          </p>
+          <p class="text-sm text-red-700 dark:text-red-400">
+            Days remaining: <span id="daysRemaining" class="font-bold text-lg"></span> days
+          </p>
+        </div>
+        <button id="reactivateBtn" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded">
+          Reactivate Account
+        </button>
+      </div>
     </div>
 
 </main>
@@ -343,6 +381,219 @@
       setTheme(checkbox.checked ? 'dark' : 'light');
     });
   }
+</script>
+
+<!-- Settings Functionality -->
+<script>
+  let currentUser = null;
+  let originalData = {};
+
+  // Show custom notification
+  function showNotification(message, type = 'success') {
+    const colors = {
+      success: 'bg-green-600',
+      error: 'bg-red-600',
+      info: 'bg-blue-600'
+    };
+    
+    const icons = {
+      success: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>',
+      error: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>',
+      info: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>'
+    };
+    
+    const notificationHTML = `
+      <div class="fixed top-4 left-1/2 -translate-x-1/2 z-[70] animate-slide-down" id="notification">
+        <div class="${colors[type]} text-white px-6 py-4 rounded-lg shadow-lg flex items-center gap-3 min-w-[300px]">
+          <svg class="h-6 w-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            ${icons[type]}
+          </svg>
+          <span class="flex-1">${message}</span>
+        </div>
+      </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', notificationHTML);
+    setTimeout(() => document.getElementById('notification')?.remove(), 5000);
+  }
+
+  // Load user data
+  async function loadUserData() {
+    try {
+      const res = await fetch('/api/auth/me', { credentials: 'include' });
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        
+        // If not logged in, redirect to login
+        if (res.status === 401) {
+          console.log('Not authenticated, redirecting to login...');
+          window.location.href = '/login.html';
+          return;
+        }
+        
+        throw new Error(errorData.error || 'Failed to load user data');
+      }
+      
+      const data = await res.json();
+      currentUser = data.user;
+      
+      // Update profile fields
+      document.getElementById('viewFName').textContent = currentUser.firstName || '';
+      document.getElementById('viewLName').textContent = currentUser.lastName || '';
+      document.getElementById('viewEmail').textContent = currentUser.email || '';
+      
+      // Update profile username display
+      const fullName = `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim();
+      document.getElementById('profileUsername').textContent = fullName || 'User';
+      
+      // Store original data
+      originalData = {
+        firstName: currentUser.firstName || '',
+        lastName: currentUser.lastName || '',
+        email: currentUser.email || ''
+      };
+      
+      // Check deactivation status
+      if (currentUser.deactivatedAt) {
+        showDeactivatedStatus(currentUser.deactivatedAt);
+      }
+    } catch (error) {
+      console.error('Failed to load user data:', error);
+      showNotification('Failed to load profile data: ' + error.message, 'error');
+    }
+  }
+
+  // Save profile changes
+  async function saveProfile() {
+    const firstName = document.getElementById('editFName').value.trim();
+    const lastName = document.getElementById('editLName').value.trim();
+    const email = document.getElementById('editEmail').value.trim();
+    
+    try {
+      const res = await fetch('/api/auth/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ firstName, lastName, email })
+      });
+      
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to update profile');
+      }
+      
+      showNotification('Profile updated successfully!', 'success');
+      await loadUserData();
+      return true;
+    } catch (error) {
+      console.error('Failed to save profile:', error);
+      showNotification(error.message, 'error');
+      return false;
+    }
+  }
+
+  // Deactivate account
+  async function deactivateAccount() {
+    if (!confirm('Are you sure you want to deactivate your account? You will have 30 days to reactivate by logging in again.')) {
+      return;
+    }
+    
+    try {
+      const res = await fetch('/api/auth/deactivate', {
+        method: 'POST',
+        credentials: 'include'
+      });
+      
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to deactivate account');
+      }
+      
+      const data = await res.json();
+      showNotification(data.message, 'info');
+      showDeactivatedStatus(data.deactivatedAt);
+    } catch (error) {
+      console.error('Failed to deactivate account:', error);
+      showNotification(error.message, 'error');
+    }
+  }
+
+  // Reactivate account
+  async function reactivateAccount() {
+    try {
+      const res = await fetch('/api/auth/reactivate', {
+        method: 'POST',
+        credentials: 'include'
+      });
+      
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to reactivate account');
+      }
+      
+      const data = await res.json();
+      showNotification(data.message, 'success');
+      hideDeactivatedStatus();
+    } catch (error) {
+      console.error('Failed to reactivate account:', error);
+      showNotification(error.message, 'error');
+    }
+  }
+
+  // Show deactivated status
+  function showDeactivatedStatus(deactivatedAt) {
+    const deactivationDate = new Date(deactivatedAt);
+    const now = new Date();
+    const daysPassed = Math.floor((now - deactivationDate) / (1000 * 60 * 60 * 24));
+    const daysRemaining = Math.max(0, 30 - daysPassed);
+    
+    document.getElementById('deactivationDate').textContent = deactivationDate.toLocaleDateString();
+    document.getElementById('daysRemaining').textContent = daysRemaining;
+    
+    document.getElementById('activeAccountSection').classList.add('hidden');
+    document.getElementById('deactivatedAccountSection').classList.remove('hidden');
+  }
+
+  // Hide deactivated status
+  function hideDeactivatedStatus() {
+    document.getElementById('activeAccountSection').classList.remove('hidden');
+    document.getElementById('deactivatedAccountSection').classList.add('hidden');
+  }
+
+  // Update save button handler
+  document.getElementById('saveEdit')?.addEventListener('click', async () => {
+    if (editing) {
+      const saved = await saveProfile();
+      if (saved) {
+        editNSave();
+      }
+    } else {
+      showNotification('Click Edit to modify your profile', 'info');
+    }
+  });
+
+  // Update reset button
+  document.getElementById('resetEdit')?.addEventListener('click', () => {
+    document.getElementById('viewFName').textContent = originalData.firstName;
+    document.getElementById('viewLName').textContent = originalData.lastName;
+    document.getElementById('viewEmail').textContent = originalData.email;
+    
+    document.getElementById('editFName').value = originalData.firstName;
+    document.getElementById('editLName').value = originalData.lastName;
+    document.getElementById('editEmail').value = originalData.email;
+    
+    showNotification('Changes reset', 'info');
+  });
+
+  // Deactivate account button
+  document.getElementById('deactivateBtn')?.addEventListener('click', deactivateAccount);
+
+  // Reactivate account button
+  document.getElementById('reactivateBtn')?.addEventListener('click', reactivateAccount);
+
+  // Initialize
+  document.addEventListener('DOMContentLoaded', loadUserData);
 </script>
 
 

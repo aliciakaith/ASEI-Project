@@ -150,11 +150,22 @@
   <div class="mx-auto bg-white dark:bg-neutral-800 rounded-lg shadow p-6 w-full max-w-lg">
     <h2 class="text-lg font-semibold mb-4">Add MTN Connection</h2>
     <div class="space-y-3">
-      <input id="mtn_label" class="w-full border p-2 rounded dark:bg-neutral-600 dark:border-neutral-700" placeholder="Label e.g. MTN Sandbox">
+      <input id="mtn_label" class="w-full border p-2 rounded dark:bg-neutral-600 dark:border-neutral-700" placeholder="Label e.g. MTN Production, MTN Test, etc.">
       <input id="mtn_subscriptionKey" class="w-full border p-2 rounded dark:bg-neutral-600 dark:border-neutral-700" placeholder="Subscription Key (Primary key)">
       <input id="mtn_apiUserId" class="w-full border p-2 rounded dark:bg-neutral-600 dark:border-neutral-700" placeholder="API User ID (UUID)">
       <input id="mtn_apiKey" class="w-full border p-2 rounded dark:bg-neutral-600 dark:border-neutral-700" placeholder="API Key (from /apikey)">
-      <input id="mtn_baseUrl" class="w-full border p-2 rounded dark:bg-neutral-600 dark:border-neutral-700" value="https://sandbox.momodeveloper.mtn.com">
+      <div>
+        <label class="block text-sm mb-1 text-neutral-600 dark:text-neutral-400">Target Environment</label>
+        <select id="mtn_targetEnvironment" class="w-full border p-2 rounded dark:bg-neutral-600 dark:border-neutral-700">
+          <option value="sandbox">Sandbox</option>
+          <option value="test">Test</option>
+          <option value="production">Production</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm mb-1 text-neutral-600 dark:text-neutral-400">Base URL (auto-filled)</label>
+        <input id="mtn_baseUrl" class="w-full border p-2 rounded dark:bg-neutral-600 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-700" value="https://sandbox.momodeveloper.mtn.com" readonly>
+      </div>
       <input id="mtn_callbackUrl" class="w-full border p-2 rounded dark:bg-neutral-600 dark:border-neutral-700" placeholder="Callback URL (optional)">
       <div id="mtn_test_result" class="text-sm pt-1"></div>
       <div class="flex gap-2 justify-end pt-3">
@@ -302,7 +313,31 @@ let pendingMtnPayload = null; // cache after successful test
    UI: open/close modals
    (support both function names for Flutterwave button)
 ================================= */
-function openMtnModal(){ document.getElementById('mtnConnModal')?.classList.remove('hidden'); }
+function openMtnModal(){ 
+  const modal = document.getElementById('mtnConnModal');
+  modal?.classList.remove('hidden');
+  
+  // Set up environment change handler to update baseUrl
+  const envSelect = document.getElementById('mtn_targetEnvironment');
+  const baseUrlInput = document.getElementById('mtn_baseUrl');
+  
+  const updateBaseUrl = () => {
+    const env = envSelect.value;
+    const urls = {
+      sandbox: 'https://sandbox.momodeveloper.mtn.com',
+      test: 'https://sandbox.momodeveloper.mtn.com', // MTN uses same sandbox URL for test
+      production: 'https://proxy.momoapi.mtn.com' // Production URL
+    };
+    baseUrlInput.value = urls[env] || urls.sandbox;
+  };
+  
+  // Update URL when environment changes
+  envSelect.removeEventListener('change', updateBaseUrl); // Remove old listener
+  envSelect.addEventListener('change', updateBaseUrl);
+  
+  // Set initial URL
+  updateBaseUrl();
+}
 function closeMtnModal(){ document.getElementById('mtnConnModal')?.classList.add('hidden'); }
 
 function openFlwModal(){ document.getElementById('flwConnModal')?.classList.remove('hidden'); }
@@ -628,6 +663,7 @@ async function saveMtnConnection() {
         subscriptionKey: (document.getElementById('mtn_subscriptionKey').value || '').trim(),
         apiUserId:       (document.getElementById('mtn_apiUserId').value || '').trim(),
         apiKey:          (document.getElementById('mtn_apiKey').value || '').trim(),
+        targetEnvironment: (document.getElementById('mtn_targetEnvironment').value || 'sandbox').trim(),
         baseUrl:         (document.getElementById('mtn_baseUrl').value || '').trim(),
         callbackUrl:     (document.getElementById('mtn_callbackUrl').value || '').trim()
       }

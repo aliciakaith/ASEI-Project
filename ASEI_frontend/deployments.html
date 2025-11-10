@@ -9,7 +9,25 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script> tailwind.config = { darkMode: 'class' } </script>
 
-    <!-- graph/chart -->
+  <!-- Custom Animations -->
+  <style>
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    @keyframes slideDown {
+      from { opacity: 0; transform: translate(-50%, -20px); }
+      to { opacity: 1; transform: translate(-50%, 0); }
+    }
+    .animate-fade-in {
+      animation: fadeIn 0.2s ease-out;
+    }
+    .animate-slide-down {
+      animation: slideDown 0.3s ease-out;
+    }
+  </style>
+
+  <!-- graph/chart -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
 
@@ -28,6 +46,8 @@
   </script>
 
   <link rel="icon" type="image/png" href="images/connectify_logo.png" />
+  <!-- Shared APIs -->
+  <script src="js/flowDesignerAPI.js"></script>
 </head>
 <body class="bg-neutral-50 text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100">
 
@@ -94,19 +114,19 @@
     <!-- KPI Cards -->
     <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4 shadow-sm">
-        <div class="text-2xl font-semibold text-green-600">6</div>
+        <div id="kpiActive" class="text-2xl font-semibold text-green-600">0</div>
         <div class="text-xs text-neutral-500 dark:text-neutral-400">Active Deployments</div>
       </div>
       <div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4 shadow-sm">
-        <div class="text-2xl font-semibold text-yellow-600">2</div>
+        <div id="kpiInProgress" class="text-2xl font-semibold text-yellow-600">0</div>
         <div class="text-xs text-neutral-500 dark:text-neutral-400">In Progress</div>
       </div>
       <div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4 shadow-sm">
-        <div class="text-2xl font-semibold text-red-600">1</div>
+        <div id="kpiFailed" class="text-2xl font-semibold text-red-600">0</div>
         <div class="text-xs text-neutral-500 dark:text-neutral-400">Failed</div>
       </div>
       <div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4 shadow-sm">
-        <div class="text-2xl font-semibold text-neutral-700 dark:text-neutral-200">9</div>
+        <div id="kpiTotal" class="text-2xl font-semibold text-neutral-700 dark:text-neutral-200">0</div>
         <div class="text-xs text-neutral-500 dark:text-neutral-400">Total Deployments</div>
       </div>
     </section>
@@ -132,11 +152,11 @@
     <section class="bg-white dark:bg-neutral-800 rounded shadow border border-neutral-200 dark:border-neutral-700">
       <div class="flex justify-between items-center p-4 border-b border-neutral-100 dark:border-neutral-700">
         <h3 class="font-semibold text-lg">Recent Deployments</h3>
-        <select class="border rounded px-3 py-2 text-sm bg-white dark:bg-neutral-700 border-neutral-300 dark:border-neutral-600">
-          <option>All Environments</option>
-          <option>Production</option>
-          <option>Test</option>
-          <option>Sandbox</option>
+        <select id="envFilter" class="border rounded px-3 py-2 text-sm bg-white dark:bg-neutral-700 border-neutral-300 dark:border-neutral-600">
+          <option value="">All Environments</option>
+          <option value="production">Production</option>
+          <option value="test">Test</option>
+          <option value="sandbox">Sandbox</option>
         </select>
       </div>
 
@@ -152,18 +172,8 @@
               <th class="p-3 text-left">Actions</th>
             </tr>
           </thead>
-          <tbody>
-            <tr class="border-t border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-700/50">
-              <td class="p-3">Payment Flow</td>
-              <td class="p-3">Production</td>
-              <td class="p-3">v3.2.1</td>
-              <td class="p-3"><span class="px-2 py-1 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 text-xs rounded">Active</span></td>
-              <td class="p-3 text-xs text-neutral-500 dark:text-neutral-400">2025-10-20 15:40</td>
-              <td class="p-3 space-x-2">
-                <button class="px-2 py-1 bg-neutral-200 dark:bg-neutral-700 rounded text-xs">Rollback</button>
-              </td>
-            </tr>
-            <!-- repeat rows with same classes -->
+          <tbody id="deploymentsTbody">
+            <!-- populated dynamically -->
           </tbody>
         </table>
       </div>
@@ -172,24 +182,41 @@
     <!-- Activity -->
     <section class="bg-white dark:bg-neutral-800 rounded-xl p-6 shadow-sm border border-neutral-200 dark:border-neutral-700">
       <h3 class="text-lg font-semibold mb-4">Recent Activity</h3>
-      <ul class="space-y-4 text-sm">
-        <li class="flex items-start gap-3">
-          <span class="h-3 w-3 mt-1 bg-green-500 rounded-full"></span>
-          <div>
-            <p><strong>Payment Flow</strong> successfully deployed to <span class="text-green-600 dark:text-green-400">Production</span>.</p>
-            <p class="text-neutral-500 dark:text-neutral-400 text-xs">Oct 20, 2025 - 3:40 PM</p>
-          </div>
-        </li>
-        <!-- more items -->
+      <ul id="recentActivityList" class="space-y-4 text-sm">
+        <li class="text-neutral-500 dark:text-neutral-400 text-center py-4">Loading activity...</li>
       </ul>
     </section>
 
     <!-- Info -->
     <section class="bg-white dark:bg-neutral-800 rounded-xl p-6 shadow-sm border border-neutral-200 dark:border-neutral-700">
-      <h3 class="text-lg font-semibold mb-2">About Deployments</h3>
-      <p class="text-sm text-neutral-600 dark:text-neutral-400">
-        Deployments are the process of pushing your configured data flows and integrations into specific environments.
-      </p>
+      <h3 class="text-lg font-semibold mb-3">About Deployments</h3>
+      <div class="space-y-3 text-sm text-neutral-600 dark:text-neutral-400">
+        <p>
+          Deployments allow you to execute your configured data flows across different environments, ensuring your integrations work as expected before going live.
+        </p>
+        
+        <div class="border-l-4 border-blue-500 pl-3 py-2 bg-blue-50 dark:bg-blue-900/20">
+          <p class="font-semibold text-neutral-900 dark:text-neutral-100 mb-1">Environments:</p>
+          <ul class="space-y-1 ml-2">
+            <li class="flex items-center gap-2">
+              <span class="h-2 w-2 bg-green-500 rounded-full"></span>
+              <strong class="text-green-600 dark:text-green-400">Sandbox</strong> - Testing environment with mock data
+            </li>
+            <li class="flex items-center gap-2">
+              <span class="h-2 w-2 bg-yellow-500 rounded-full"></span>
+              <strong class="text-yellow-600 dark:text-yellow-400">Test</strong> - Pre-production environment for validation
+            </li>
+            <li class="flex items-center gap-2">
+              <span class="h-2 w-2 bg-red-500 rounded-full"></span>
+              <strong class="text-red-600 dark:text-red-400">Production</strong> - Live environment with real data
+            </li>
+          </ul>
+        </div>
+
+        <p>
+          <strong>Tip:</strong> Always test your flows in Sandbox and Test environments before deploying to Production to avoid disruptions.
+        </p>
+      </div>
     </section>
   </main>
 
@@ -203,19 +230,21 @@
       <form id="deployForm">
         <div class="mb-3">
           <label class="block text-sm font-medium mb-1">Flow Name</label>
-          <input type="text" required class="w-full border border-neutral-300 dark:border-neutral-600 rounded px-3 py-2 bg-white dark:bg-neutral-600" placeholder="Enter flow name">
+          <select id="deployFlow" required class="w-full border border-neutral-300 dark:border-neutral-600 rounded px-3 py-2 bg-white dark:bg-neutral-600">
+            <option value="" disabled selected>Select a flow</option>
+          </select>
         </div>
         <div class="mb-3">
           <label class="block text-sm font-medium mb-1">Environment</label>
-          <select class="w-full border border-neutral-300 dark:border-neutral-600 rounded px-3 py-2 bg-white dark:bg-neutral-600">
-            <option>Production</option>
-            <option>Test</option>
-            <option>Sandbox</option>
+          <select id="deployEnvironment" class="w-full border border-neutral-300 dark:border-neutral-600 rounded px-3 py-2 bg-white dark:bg-neutral-600">
+            <option value="production">Production</option>
+            <option value="test">Test</option>
+            <option value="sandbox" selected>Sandbox</option>
           </select>
         </div>
         <div class="mb-3">
           <label class="block text-sm font-medium mb-1">Version</label>
-          <input type="text" required class="w-full border border-neutral-300 dark:border-neutral-600 rounded px-3 py-2 bg-white dark:bg-neutral-600" placeholder="e.g. v1.0.0">
+          <input id="deployVersion" type="text" class="w-full border border-neutral-300 dark:border-neutral-600 rounded px-3 py-2 bg-white dark:bg-neutral-600" placeholder="Optional (uses latest)">
         </div>
         <div class="flex justify-end gap-2 pt-2">
           <button type="button" id="cancelDeploy" class="px-4 py-2 rounded-lg bg-neutral-20 hover:bg-neutral-300 dark:bg-neutral-400 dark:hover:bg-neutral-500 border dark:border-neutral-500">Cancel</button>
@@ -227,7 +256,7 @@
 
   <!-- Scripts -->
   <script>
-    // Modal logic
+  // Modal logic
     const modal = document.getElementById("deployModal");
     const newBtn = document.getElementById("newDeploymentBtn");
     const closeBtn = document.getElementById("closeDeploy");
@@ -244,104 +273,583 @@
     document.getElementById("deployForm").addEventListener("submit", e => {
       e.preventDefault();
       closeModal();
-      alert("✅ Deployment initiated successfully!");
+      showNotification("Deployment initiated successfully!", "success");
     });
   </script>
 
-    <!-- Chart -->
-     <script>
+    <!-- Data wiring + Chart (real data) -->
+    <script>
   const $ = (id) => document.getElementById(id);
-
-  // Mock data
-  async function loadSeries() {
-    const out = [];
-    const now = new Date();
-    for (let i = 13; i >= 0; i--) {
-      const d = new Date(now);
-      d.setHours(0, 0, 0, 0);
-      d.setDate(now.getDate() - i);
-      // mock counts
-      const y = Math.floor(1 + Math.random() * 6);
-      out.push({ x: d.getTime(), y });
-    }
-    return out;
-  }
 
   function currentThemeIsDark() {
     return document.documentElement.classList.contains('dark');
   }
 
+  // Fetch current user and set name
+  async function loadUser() {
+    try {
+      const res = await fetch('/api/dashboard/me', { credentials: 'include' });
+      if (!res.ok) return;
+      const me = await res.json();
+      const name = [me.firstName, me.lastName].filter(Boolean).join(' ') || me.email || 'User';
+      const profileBtn = document.getElementById('profileBtn');
+      if (profileBtn) {
+        const span = profileBtn.querySelector('span');
+        if (span) span.textContent = name;
+      }
+    } catch (e) {
+      console.warn('Failed to load user', e);
+    }
+  }
+
+  // Store executions globally for filtering
+  let allExecutions = [];
+
+  // Map flow status to badge styling
+  function statusBadge(status) {
+    const s = String(status || '').toLowerCase();
+    const styles = {
+      active: 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300',
+      draft: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300',
+      inactive: 'bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200'
+    };
+    const cls = styles[s] || styles.inactive;
+    const label = s ? s.charAt(0).toUpperCase() + s.slice(1) : 'Inactive';
+    return `<span class="px-2 py-1 ${cls} text-xs rounded">${label}</span>`;
+  }
+
+  // Render flows into table and KPIs
+  async function loadDeployments() {
+    try {
+      const flows = await FlowAPI.getAllFlows();
+
+      // Populate flow dropdown in modal
+      const flowSelect = document.getElementById('deployFlow');
+      if (flowSelect) {
+        flowSelect.innerHTML = '<option value="" disabled selected>Select a flow</option>' +
+          flows.map(f => `<option value="${f.id}">${f.name || '(unnamed flow)'}${f.latest_version ? ` (v${f.latest_version})` : ''}</option>`).join('');
+      }
+
+      // Table rows: show recent executions (deployments)
+      const tbody = $('deploymentsTbody');
+      let execs = [];
+      try {
+        const res = await fetch('/api/executions/recent?limit=100', { credentials: 'include' });
+        if (res.ok) {
+          execs = await res.json();
+          allExecutions = execs; // Store globally for filtering
+          console.log('✅ Loaded executions:', execs.length, execs);
+        } else {
+          console.warn('⚠️ API returned status:', res.status);
+        }
+      } catch (err) {
+        console.error('❌ Failed to fetch executions:', err);
+      }
+
+      // Calculate KPIs from execution data
+      const total = execs.length;
+      const active = execs.filter(e => {
+        const status = (e.status || '').toLowerCase();
+        return status === 'completed';
+      }).length;
+      const inProgress = execs.filter(e => {
+        const status = (e.status || '').toLowerCase();
+        return status === 'running' || status === 'pending' || status === 'queued';
+      }).length;
+      const failed = execs.filter(e => {
+        const status = (e.status || '').toLowerCase();
+        return status === 'failed' || status === 'error';
+      }).length;
+      
+      $('kpiTotal').textContent = total;
+      $('kpiActive').textContent = active;
+      $('kpiInProgress').textContent = inProgress;
+      $('kpiFailed').textContent = failed;
+
+      console.log('📊 KPIs - Total:', total, 'Active:', active, 'In Progress:', inProgress, 'Failed:', failed);
+      console.log('📊 Rendering table with', execs.length, 'executions');
+      renderExecutions(execs);
+      renderRecentActivity(execs.slice(0, 5)); // Show top 5 most recent
+    } catch (e) {
+      console.error('Failed to load deployments', e);
+    }
+  }
+
+  // Render recent activity feed
+  function renderRecentActivity(execs) {
+    const activityList = $('recentActivityList');
+    if (!activityList) return;
+
+    if (!execs || execs.length === 0) {
+      activityList.innerHTML = '<li class="text-neutral-500 dark:text-neutral-400 text-center py-4">No recent activity</li>';
+      return;
+    }
+
+    activityList.innerHTML = execs.map(e => {
+      const environment = e.triggerData?.environment || 'sandbox';
+      const envDisplay = environment.charAt(0).toUpperCase() + environment.slice(1);
+      const status = (e.status || '').toLowerCase();
+      
+      // Determine status color and icon
+      let statusColor, statusIcon, statusText;
+      if (status === 'completed') {
+        statusColor = 'bg-green-500';
+        statusText = 'successfully deployed to';
+      } else if (status === 'running') {
+        statusColor = 'bg-yellow-500';
+        statusText = 'deployment in progress for';
+      } else if (status === 'failed') {
+        statusColor = 'bg-red-500';
+        statusText = 'deployment failed for';
+      } else {
+        statusColor = 'bg-neutral-500';
+        statusText = 'deployment status unknown for';
+      }
+
+      const envColor = {
+        production: 'text-red-600 dark:text-red-400 font-semibold',
+        test: 'text-yellow-600 dark:text-yellow-400',
+        sandbox: 'text-green-600 dark:text-green-400'
+      }[environment] || 'text-neutral-600 dark:text-neutral-400';
+
+      const timeStr = e.startedAt ? new Date(e.startedAt).toLocaleString('en-US', { 
+        month: 'short', 
+        day: 'numeric', 
+        year: 'numeric', 
+        hour: 'numeric', 
+        minute: '2-digit',
+        hour12: true 
+      }) : 'Unknown time';
+
+      return `
+        <li class="flex items-start gap-3">
+          <span class="h-3 w-3 mt-1 ${statusColor} rounded-full flex-shrink-0"></span>
+          <div class="flex-1 min-w-0">
+            <p class="break-words"><strong>${e.flowName || 'Unknown Flow'}</strong> ${statusText} <span class="${envColor}">${envDisplay}</span>.</p>
+            <p class="text-neutral-500 dark:text-neutral-400 text-xs">${timeStr}</p>
+          </div>
+        </li>
+      `;
+    }).join('');
+  }
+
+  // Helper function to render execution badge
+  function badgeForExec(s) {
+    const map = {
+      running: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300',
+      completed: 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300',
+      failed: 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300',
+      cancelled: 'bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200'
+    };
+    const k = (s||'').toLowerCase();
+    const cls = map[k] || map.cancelled;
+    const label = k ? k.charAt(0).toUpperCase() + k.slice(1) : 'Unknown';
+    return `<span class="px-2 py-1 ${cls} text-xs rounded">${label}</span>`;
+  }
+
+  // Render executions to table
+  function renderExecutions(execs) {
+    const tbody = $('deploymentsTbody');
+    if (!tbody) return;
+
+    if (!execs || execs.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-neutral-500">No deployments found</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = execs.map(e => {
+      // Extract environment from triggerData
+      const environment = e.triggerData?.environment || 'sandbox';
+      const envDisplay = environment.charAt(0).toUpperCase() + environment.slice(1);
+      const envColor = {
+        production: 'text-red-600 dark:text-red-400 font-semibold',
+        test: 'text-yellow-600 dark:text-yellow-400',
+        sandbox: 'text-green-600 dark:text-green-400'
+      }[environment] || 'text-neutral-600 dark:text-neutral-400';
+      
+      const ver = e.version ? `v${e.version}` : '-';
+      const when = e.startedAt ? new Date(e.startedAt).toLocaleString() : '-';
+      return `
+        <tr class="border-t border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-700/50" data-environment="${environment}">
+          <td class="p-3">${e.flowName || '(unnamed flow)'}</td>
+          <td class="p-3"><span class="${envColor}">${envDisplay}</span></td>
+          <td class="p-3">${ver}</td>
+          <td class="p-3">${badgeForExec(e.status)}</td>
+          <td class="p-3 text-xs text-neutral-500 dark:text-neutral-400">${when}</td>
+          <td class="p-3 space-x-2">
+            <button class="px-2 py-1 bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 rounded text-xs" data-exec-id="${e.id}" data-action="details">Details</button>
+          </td>
+        </tr>`;
+    }).join('');
+  }
+
+  // Filter executions by environment
+  function filterExecutions(environment) {
+    if (!environment) {
+      renderExecutions(allExecutions);
+      return;
+    }
+    const filtered = allExecutions.filter(e => {
+      const env = e.triggerData?.environment || 'sandbox';
+      return env === environment;
+    });
+    renderExecutions(filtered);
+  }
+
+  // Show execution details modal
+  async function showExecutionDetails(executionId) {
+    try {
+      const response = await fetch(`/api/executions/${executionId}`, { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to load execution details');
+      
+      const execution = await response.json();
+      const stepsResponse = await fetch(`/api/executions/${executionId}/steps`, { credentials: 'include' });
+      const steps = stepsResponse.ok ? await stepsResponse.json() : [];
+      
+      // Create modal content
+      const environment = execution.triggerData?.environment || 'sandbox';
+      const modalHTML = `
+        <div class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center" id="detailsModal">
+          <div class="bg-white dark:bg-neutral-800 rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-[80vh] overflow-auto">
+            <div class="flex justify-between items-center p-6 border-b border-neutral-200 dark:border-neutral-700">
+              <h2 class="text-xl font-semibold">Execution Details</h2>
+              <button onclick="document.getElementById('detailsModal').remove()" class="text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 text-2xl">&times;</button>
+            </div>
+            <div class="p-6 space-y-4">
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <p class="text-sm text-neutral-500 dark:text-neutral-400">Execution ID</p>
+                  <p class="font-mono text-sm">${execution.id}</p>
+                </div>
+                <div>
+                  <p class="text-sm text-neutral-500 dark:text-neutral-400">Flow</p>
+                  <p>${execution.flowName || 'Unknown'}</p>
+                </div>
+                <div>
+                  <p class="text-sm text-neutral-500 dark:text-neutral-400">Environment</p>
+                  <p class="capitalize">${environment}</p>
+                </div>
+                <div>
+                  <p class="text-sm text-neutral-500 dark:text-neutral-400">Status</p>
+                  <p>${badgeForExec(execution.status)}</p>
+                </div>
+                <div>
+                  <p class="text-sm text-neutral-500 dark:text-neutral-400">Started At</p>
+                  <p class="text-sm">${execution.startedAt ? new Date(execution.startedAt).toLocaleString() : '-'}</p>
+                </div>
+                <div>
+                  <p class="text-sm text-neutral-500 dark:text-neutral-400">Completed At</p>
+                  <p class="text-sm">${execution.completedAt ? new Date(execution.completedAt).toLocaleString() : '-'}</p>
+                </div>
+              </div>
+              ${steps.length > 0 ? `
+                <div class="mt-6">
+                  <h3 class="font-semibold mb-3">Execution Steps</h3>
+                  <div class="space-y-2">
+                    ${steps.map((step, index) => `
+                      <div class="border border-neutral-200 dark:border-neutral-700 rounded p-3">
+                        <div class="flex justify-between items-start gap-3">
+                          <div class="flex-1">
+                            <span class="font-medium">${step.node_id || 'Step ' + (index + 1)}</span>
+                            ${step.node_type ? `<span class="text-xs text-neutral-500 dark:text-neutral-400 ml-2">(${step.node_type}${step.node_kind ? ': ' + step.node_kind : ''})</span>` : ''}
+                            ${step.started_at ? `<p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Started: ${new Date(step.started_at).toLocaleTimeString()}</p>` : ''}
+                          </div>
+                          ${badgeForExec(step.status)}
+                        </div>
+                        ${step.error_message ? `<p class="text-xs text-red-600 dark:text-red-400 mt-2">Error: ${step.error_message}</p>` : ''}
+                        ${step.execution_time_ms ? `<p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Execution time: ${step.execution_time_ms}ms</p>` : ''}
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>
+              ` : '<p class="text-neutral-500 text-sm">No step details available</p>'}
+            </div>
+            <div class="flex justify-between p-6 border-t border-neutral-200 dark:border-neutral-700">
+              <button onclick="deleteExecution('${executionId}')" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded">Delete</button>
+              <button onclick="document.getElementById('detailsModal').remove()" class="px-4 py-2 bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 rounded">Close</button>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      document.body.insertAdjacentHTML('beforeend', modalHTML);
+    } catch (error) {
+      console.error('Failed to show execution details:', error);
+      showNotification('Failed to load execution details: ' + error.message, 'error');
+    }
+  }
+
+  // Show custom confirmation modal
+  function showConfirmModal(title, message, onConfirm) {
+    const modalHTML = `
+      <div class="fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center" id="confirmModal">
+        <div class="bg-white dark:bg-neutral-800 rounded-lg shadow-xl max-w-md w-full mx-4 animate-fade-in">
+          <div class="p-6">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                <svg class="h-6 w-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+              </div>
+              <div class="flex-1">
+                <h3 class="text-lg font-semibold text-neutral-900 dark:text-neutral-100">${title}</h3>
+              </div>
+            </div>
+            <p class="text-neutral-600 dark:text-neutral-400 mb-6">${message}</p>
+            <div class="flex gap-3 justify-end">
+              <button onclick="document.getElementById('confirmModal').remove()" class="px-4 py-2 bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 rounded transition-colors">
+                Cancel
+              </button>
+              <button id="confirmBtn" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded transition-colors">
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // Add click handler to confirm button
+    document.getElementById('confirmBtn')?.addEventListener('click', () => {
+      document.getElementById('confirmModal')?.remove();
+      onConfirm();
+    });
+  }
+
+  // Show custom notification
+  function showNotification(message, type = 'success') {
+    const colors = {
+      success: 'bg-green-600',
+      error: 'bg-red-600',
+      info: 'bg-blue-600'
+    };
+    
+    const icons = {
+      success: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>',
+      error: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>',
+      info: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>'
+    };
+    
+    const notificationHTML = `
+      <div class="fixed top-4 left-1/2 -translate-x-1/2 z-[70] animate-slide-down" id="notification">
+        <div class="${colors[type]} text-white px-6 py-4 rounded-lg shadow-lg flex items-center gap-3 min-w-[300px]">
+          <svg class="h-6 w-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            ${icons[type]}
+          </svg>
+          <span class="flex-1">${message}</span>
+        </div>
+      </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', notificationHTML);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+      document.getElementById('notification')?.remove();
+    }, 5000);
+  }
+
+  // Delete execution with custom modal
+  async function deleteExecution(executionId) {
+    showConfirmModal(
+      'Delete Execution',
+      'Are you sure you want to delete this execution? This action cannot be undone and will remove all execution logs and steps.',
+      async () => {
+        try {
+          const response = await fetch(`/api/executions/${executionId}`, {
+            method: 'DELETE',
+            credentials: 'include'
+          });
+
+          if (!response.ok) {
+            throw new Error(`Failed to delete execution: ${response.status}`);
+          }
+
+          // Close the details modal
+          document.getElementById('detailsModal')?.remove();
+
+          // Reload the deployments table
+          await loadDeployments();
+
+          // Show success notification
+          showNotification('Execution deleted successfully', 'success');
+          console.log('✅ Execution deleted successfully');
+        } catch (error) {
+          console.error('Failed to delete execution:', error);
+          showNotification('Failed to delete execution: ' + error.message, 'error');
+        }
+      }
+    );
+  }
+
+  // Chart – use real transactions series as proxy for deployment activity
   let deployChart;
   async function initDeployChart() {
-    const canvas = $('deployChart');
-    if (!canvas) return;
+    try {
+      const canvas = $('deployChart');
+      if (!canvas) {
+        console.error('❌ Canvas element "deployChart" not found');
+        return;
+      }
+      console.log('✅ Canvas found:', canvas);
 
-    // update
-    const stamp = $('deployDate');
-    if (stamp) {
-      const d = new Date();
-      stamp.textContent = `Updated: ${d.toLocaleDateString()} ${d.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}`;
+      // update timestamp
+      const stamp = $('deployDate');
+      if (stamp) {
+        const d = new Date();
+        stamp.textContent = `Updated: ${d.toLocaleDateString()} ${d.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}`;
+      }
 
-    }
-    const data = await loadSeries();
+      // fetch series
+      let points = [];
+      try {
+        const res = await fetch('/api/dashboard/transactions/series', { credentials: 'include' });
+        if (res.ok) {
+          const js = await res.json();
+          points = (js.points || []).map(p => ({ x: p.t, y: p.count }));
+          console.log('✅ Loaded series data:', points.length, 'points');
+        } else {
+          console.warn('⚠️ Series API returned status:', res.status);
+        }
+      } catch (e) {
+        console.warn('Failed to load series', e);
+      }
 
-    // dark mode
-    const lineColor = currentThemeIsDark() ? '#a8b3cf' : '#1f2937';
-    const gridColor = currentThemeIsDark() ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
-    const tickColor = currentThemeIsDark() ? '#cbd5e1' : '#475569';
+      // Ensure we have a continuous series (last 24h, hourly buckets)
+      const ONE_HOUR = 60 * 60 * 1000;
+      const end = Date.now();
+      const start = end - 23 * ONE_HOUR;
+      const byHour = new Map(points.map(p => [Math.floor(p.x / ONE_HOUR) * ONE_HOUR, p.y]));
+      const data = [];
+      for (let t = start; t <= end; t += ONE_HOUR) {
+        const key = Math.floor(t / ONE_HOUR) * ONE_HOUR;
+        data.push({ x: key, y: byHour.get(key) ?? 0 });
+      }
+      console.log('📊 Chart data prepared:', data.length, 'data points');
 
+      // dark mode
+      const lineColor = currentThemeIsDark() ? '#a8b3cf' : '#1f2937';
+      const gridColor = currentThemeIsDark() ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+      const tickColor = currentThemeIsDark() ? '#cbd5e1' : '#475569';
 
+      const smallSeries = data.filter(p => p.y !== undefined).length < 2;
 
-    deployChart = new Chart(canvas, {
+      deployChart = new Chart(canvas, {
       type: 'line',
-      data: {
-        datasets: [{
-          label: 'Deployments',
-          data,
-          borderWidth: 2,
-          tension: 0.35,
-          borderColor: lineColor,
-          fill: false,
-          pointRadius: 0,
-          pointHitRadius: 10
-        }]
-      },
+      data: { datasets: [{ label: 'Transactions', data, borderWidth: 2, tension: 0.35, borderColor: lineColor, fill: false, pointRadius: smallSeries ? 2 : 0, pointHitRadius: 10 }] },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        interaction: {mode: 'index', intersect: false},
-        plugins: {
-          legend: {display: false},
-          tooltip: {
-            displayColors: false,
-            callbacks: {
-              title(items){
-                const d = new Date(items[0].parsed.x);
-                return d.toLocaleDateString(undefined, {year: 'numeric', month: 'short', day: '2-digit'});
-              },
-              label(item) { return `Deployments: ${item.parsed.y}`;}
-            }
-          }
-        },
+        interaction: { mode: 'index', intersect: false },
+        plugins: { legend: { display: false }, tooltip: { displayColors: false, callbacks: { title(items){ const d = new Date(items[0].parsed.x); return d.toLocaleDateString(undefined, {year:'numeric', month:'short', day:'2-digit'}); }, label(item){ return `Count: ${item.parsed.y}`; } } } },
         scales: {
-          x: {
-            type: 'time',
-            time: {unit: 'hour', displayFormats: {hour: 'HH:mm'}, tooltipFormat: 'HH:mm'},
-            grid: {color: gridColor, drawOnChartArea: false},
-            ticks: {color: tickColor, maxTicksLimit: 7}
-          },
-          y: {
-            beginAtZero: true,
-            suggestedMax: Math.max(...data.map(p => p.y)) + 1,
-            ticks: {precision: 0, color: tickColor},
-            grid: {color: gridColor}
-          }
+          x: { type: 'time', time: { unit: 'hour', displayFormats: { hour: 'HH:mm' }, tooltipFormat: 'HH:mm' }, grid: { color: gridColor, drawOnChartArea: false }, ticks: { color: tickColor, maxTicksLimit: 7 } },
+          y: { beginAtZero: true, suggestedMax: Math.max(...data.map(p => p.y)) + 1, ticks: { precision: 0, color: tickColor }, grid: { color: gridColor } }
         }
       }
     });
+      console.log('✅ Chart initialized successfully');
+    } catch (err) {
+      console.error('❌ Failed to initialize chart:', err);
+    }
   }
-  document.addEventListener('DOMContentLoaded', initDeployChart);
-</script>
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    await loadUser();
+    await loadDeployments();
+    await initDeployChart();
+
+    // Environment filter dropdown
+    const envFilter = document.getElementById('envFilter');
+    envFilter?.addEventListener('change', (e) => {
+      filterExecutions(e.target.value);
+    });
+
+    // Details button click handler (event delegation)
+    const deploymentsTable = document.getElementById('deploymentsTbody');
+    deploymentsTable?.addEventListener('click', async (e) => {
+      const detailsBtn = e.target.closest('[data-action="details"]');
+      if (detailsBtn) {
+        const executionId = detailsBtn.getAttribute('data-exec-id');
+        if (executionId) {
+          await showExecutionDetails(executionId);
+        }
+      }
+    });
+
+    // Wire up deployment form to actually trigger a deploy (activate flow)
+    const form = document.getElementById('deployForm');
+    const flowSelect = document.getElementById('deployFlow');
+    const envSelect = document.getElementById('deployEnvironment');
+    const versionInput = document.getElementById('deployVersion');
+    
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const flowId = flowSelect?.value;
+      if (!flowId) return;
+      
+      const environment = envSelect?.value || 'sandbox';
+      const version = versionInput?.value?.trim() || null;
+      
+      try {
+        // First, activate the flow if it's not already active
+        await FlowAPI.updateFlowStatus(flowId, 'active');
+        
+        // Then start an execution with the selected environment
+        const response = await fetch('/api/executions/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            flowId,
+            triggerType: 'deploy',
+            triggerData: {
+              environment,
+              version,
+              deployedAt: new Date().toISOString()
+            }
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Deployment failed: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        console.log('✅ Deployment started:', result);
+        
+        closeModal();
+        showNotification('Deployment started successfully!', 'success');
+        // refresh table and KPIs
+        await loadDeployments();
+      } catch (err) {
+        console.error('❌ Deployment error:', err);
+        showNotification('Failed to deploy: ' + (err?.message || err), 'error');
+      }
+    });
+
+    // Inline deploy button in fallback flow table
+    const tbody = document.getElementById('deploymentsTbody');
+    tbody?.addEventListener('click', async (ev) => {
+      const btn = ev.target.closest('[data-action="deployFlow"]');
+      if (!btn) return;
+      const flowId = btn.getAttribute('data-flow-id');
+      if (!flowId) return;
+      btn.disabled = true;
+      try {
+        await FlowAPI.updateFlowStatus(flowId, 'active');
+        await loadDeployments();
+        showNotification('Flow deployed successfully!', 'success');
+      } catch (err) {
+        showNotification('Failed to deploy: ' + (err?.message || err), 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  });
+    </script>
 
 </body>
 </html>

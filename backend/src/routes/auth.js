@@ -596,23 +596,186 @@ router.get("/google/callback", async (req, res) => {
 router.get("/me", async (req, res) => {
   try {
     const token = req.cookies?.token;
+    console.log('[/api/auth/me] Token exists:', !!token);
+    console.log('[/api/auth/me] All cookies:', Object.keys(req.cookies || {}));
+    
     if (!token) return res.status(401).json({ error: "Not logged in" });
 
     const payload = jwt.verify(token, SECRET); // throws if expired/invalid
+    console.log('[/api/auth/me] Token payload:', payload);
 
     const { rows, rowCount } = await query(
-      "SELECT id, email, first_name, last_name, org_id FROM users WHERE id=$1",
+      "SELECT id, email, first_name, last_name, org_id, deactivated_at FROM users WHERE id=$1",
       [payload.id]
     );
     if (!rowCount) return res.status(401).json({ error: "Unknown user" });
 
     const u = rows[0];
+    console.log('[/api/auth/me] User found:', u.email);
     res.json({
       ok: true,
-      user: { id: u.id, email: u.email, firstName: u.first_name, lastName: u.last_name }
+      user: { 
+        id: u.id, 
+        email: u.email, 
+        firstName: u.first_name, 
+        lastName: u.last_name,
+        deactivatedAt: u.deactivated_at
+      }
     });
   } catch (e) {
+    console.error('[/api/auth/me] Error:', e.message);
     return res.status(401).json({ error: "Session expired" });
+  }
+});
+
+/**
+ * PUT /api/auth/profile
+ * Update user profile
+ */
+router.put("/profile", async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: "Not authenticated" });
+
+    const { firstName, lastName, email } = req.body;
+
+    // If email is being changed, check if it's already in use
+    if (email) {
+      const existing = await query(
+        "SELECT id FROM users WHERE email=$1 AND id!=$2",
+        [email, userId]
+      );
+      if (existing.rowCount > 0) {
+        return res.status(400).json({ error: "Email already in use" });
+      }
+    }
+
+    // Update user profile
+    const updates = [];
+    const values = [];
+    let paramCount = 1;
+
+    if (firstName !== undefined) {
+      updates.push(`first_name=$${paramCount++}`);
+      values.push(firstName);
+    }
+    if (lastName !== undefined) {
+      updates.push(`last_name=$${paramCount++}`);
+      values.push(lastName);
+    }
+    if (email !== undefined) {
+      updates.push(`email=$${paramCount++}`);
+      values.push(email);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: "No fields to update" });
+    }
+
+    values.push(userId);
+    await query(
+      `UPDATE users SET ${updates.join(", ")}, updated_at=now() WHERE id=$${paramCount}`,
+      values
+    );
+
+    await audit(req, {
+      userId,
+      action: "PROFILE_UPDATED",
+      targetType: "user",
+      targetId: userId,
+      statusCode: 200
+    });
+
+    res.json({ ok: true, message: "Profile updated successfully" });
+  } catch (error) {
+    console.error("Failed to update profile:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/auth/deactivate
+ * Deactivate user account (30-day grace period)
+ */
+router.post("/deactivate", async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: "Not authenticated" });
+
+    // Set deactivation timestamp
+    await query(
+      "UPDATE users SET deactivated_at=now(), updated_at=now() WHERE id=$1",
+      [userId]
+    );
+
+    await audit(req, {
+      userId,
+      action: "ACCOUNT_DEACTIVATED",
+      targetType: "user",
+      targetId: userId,
+      statusCode: 200,
+      metadata: { gracePeriodDays: 30 }
+    });
+
+    res.json({ 
+      ok: true, 
+      message: "Account deactivated. You have 30 days to reactivate by logging in again.",
+      deactivatedAt: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error("Failed to deactivate account:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/auth/reactivate
+ * Reactivate a deactivated account
+ */
+router.post("/reactivate", async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: "Not authenticated" });
+
+    // Check if account is deactivated
+    const user = await query(
+      "SELECT deactivated_at FROM users WHERE id=$1",
+      [userId]
+    );
+
+    if (user.rowCount === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const deactivatedAt = user.rows[0].deactivated_at;
+    if (!deactivatedAt) {
+      return res.status(400).json({ error: "Account is not deactivated" });
+    }
+
+    // Check if within 30-day grace period
+    const daysSinceDeactivation = (Date.now() - new Date(deactivatedAt).getTime()) / (1000 * 60 * 60 * 24);
+    if (daysSinceDeactivation > 30) {
+      return res.status(400).json({ error: "Grace period expired. Account cannot be reactivated." });
+    }
+
+    // Reactivate account
+    await query(
+      "UPDATE users SET deactivated_at=NULL, updated_at=now() WHERE id=$1",
+      [userId]
+    );
+
+    await audit(req, {
+      userId,
+      action: "ACCOUNT_REACTIVATED",
+      targetType: "user",
+      targetId: userId,
+      statusCode: 200
+    });
+
+    res.json({ ok: true, message: "Account reactivated successfully" });
+  } catch (error) {
+    console.error("Failed to reactivate account:", error);
+    res.status(500).json({ error: error.message });
   }
 });
 

@@ -25,6 +25,19 @@
   })();
 </script>
 <link rel="icon" type="image/png" href="images/connectify_logo.png">
+<!-- Shared APIs -->
+<script src="js/flowDesignerAPI.js"></script>
+
+<!-- Custom Animations -->
+<style>
+  @keyframes slideDown {
+    from { opacity: 0; transform: translate(-50%, -20px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+  }
+  .animate-slide-down {
+    animation: slideDown 0.3s ease-out;
+  }
+</style>
 </head>
 <body class="bg-neutral-50 text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100">
 
@@ -91,20 +104,20 @@
   <!-- KPI Cards -->
   <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
     <div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4 shadow-sm">
-      <div class="text-2xl font-semibold text-green-600">99.97%</div>
-      <div class="text-xs text-neutral-500 dark:text-neutral-400">System Uptime</div>
+      <div id="kpiUptime" class="text-2xl font-semibold text-green-600">--</div>
+      <div class="text-xs text-neutral-500 dark:text-neutral-400">Success Rate (24h)</div>
     </div>
     <div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4 shadow-sm">
-      <div class="text-2xl font-semibold text-blue-600">78%</div>
-      <div class="text-xs text-neutral-500 dark:text-neutral-400">CPU Utilization</div>
+      <div id="kpiTotal" class="text-2xl font-semibold text-blue-600">--</div>
+      <div class="text-xs text-neutral-500 dark:text-neutral-400">Total Executions (24h)</div>
     </div>
     <div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4 shadow-sm">
-      <div class="text-2xl font-semibold text-orange-600">64%</div>
-      <div class="text-xs text-neutral-500 dark:text-neutral-400">Memory Usage</div>
+      <div id="kpiRunning" class="text-2xl font-semibold text-orange-600">--</div>
+      <div class="text-xs text-neutral-500 dark:text-neutral-400">Currently Running</div>
     </div>
     <div class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4 shadow-sm">
-      <div class="text-2xl font-semibold text-indigo-600">1,482</div>
-      <div class="text-xs text-neutral-500 dark:text-neutral-400">API Calls (24h)</div>
+      <div id="kpiAvgTime" class="text-2xl font-semibold text-indigo-600">--</div>
+      <div class="text-xs text-neutral-500 dark:text-neutral-400">Avg. Execution Time</div>
     </div>
   </section>
 
@@ -128,19 +141,8 @@
   <!-- Health and Alerts -->
   <section class="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-neutral-200 dark:border-neutral-700 p-6">
     <h3 class="text-lg font-semibold mb-4">System Health & Alerts</h3>
-    <ul class="divide-y divide-neutral-200 text-sm">
-      <li class="py-3 flex items-center justify-between">
-        <span><strong>API Gateway</strong> responding normally.</span>
-        <span class="text-green-600 font-medium">Healthy</span>
-      </li>
-      <li class="py-3 flex items-center justify-between">
-        <span><strong>MTN Integration</strong> timeout threshold reached twice in the last hour.</span>
-        <span class="text-yellow-600 font-medium">Warning</span>
-      </li>
-      <li class="py-3 flex items-center justify-between">
-        <span><strong>Database Sync</strong> failed at 3:10 AM.</span>
-        <span class="text-red-600 font-medium">Error</span>
-      </li>
+    <ul id="healthAlerts" class="divide-y divide-neutral-200 dark:divide-neutral-700 text-sm">
+      <li class="py-3 text-neutral-500 dark:text-neutral-400 text-center">Loading health status...</li>
     </ul>
   </section>
 
@@ -148,50 +150,38 @@
   <section class="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-neutral-200 dark:border-neutral-700 p-6">
     <div class="flex justify-between items-center mb-4">
       <h3 class="text-lg font-semibold">Execution Logs</h3>
-      <button class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded">Download Logs</button>
+      <button id="downloadLogsBtn" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded">Download Logs</button>
     </div>
 
     <!-- Filters -->
     <div class="flex space-x-3 mb-4">
-      <select class="border dark:bg-neutral-700 dark:border-neutral-800 rounded px-3 py-2">
-        <option value="all">All Status</option>
-        <option value="success">Success</option>
-        <option value="error">Error</option>
+      <select id="statusFilter" class="border dark:bg-neutral-700 dark:border-neutral-800 rounded px-3 py-2">
+        <option value="">All Status</option>
+        <option value="completed">Success</option>
+        <option value="failed">Error</option>
+        <option value="running">Running</option>
       </select>
       <label class="flex items-center space-x-2">
-        <input type="checkbox" class="form-checkbox"> <span class="text-sm">Auto Refresh</span>
+        <input id="autoRefresh" type="checkbox" class="form-checkbox"> <span class="text-sm">Auto Refresh (30s)</span>
       </label>
     </div>
 
     <!-- Logs Table -->
-    <div class="overflow-x-auto bg-white rounded shadow">
+    <div class="overflow-x-auto bg-white dark:bg-neutral-700 rounded shadow">
       <table class="w-full text-sm">
         <thead class="bg-neutral-200 dark:bg-neutral-800/90">
           <tr>
             <th class="p-3 text-left">Flow</th>
+            <th class="p-3 text-left">Environment</th>
             <th class="p-3 text-left">Timestamp</th>
             <th class="p-3 text-left">Status</th>
+            <th class="p-3 text-left">Duration</th>
             <th class="p-3 text-left">Details</th>
           </tr>
         </thead>
-        <tbody>
-          <tr class="border-t hover:bg-neutral-50 dark:bg-neutral-600 dark:border-neutral-400">
-            <td class="p-3">Payment Flow</td>
-            <td class="p-3">2025-10-22 10:45</td>
-            <td class="p-3"><span class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">Success</span></td>
-            <td class="p-3"><button class="px-2 py-1  bg-blue-600/90 hover:bg-blue-700 text-white rounded text-xs">View</button></td>
-          </tr>
-          <tr class="border-t hover:bg-neutral-50 dark:bg-neutral-600 dark:border-neutral-400">
-            <td class="p-3">Settlement Flow</td>
-            <td class="p-3">2025-10-22 10:50</td>
-            <td class="p-3"><span class="px-2 py-1 bg-red-100 text-red-700 rounded text-xs">Error</span></td>
-            <td class="p-3"><button class="px-2 py-1  bg-blue-600/90 hover:bg-blue-700 text-white rounded text-xs">View</button></td>
-          </tr>
-          <tr class="border-t hover:bg-neutral-50 dark:bg-neutral-600 dark:border-neutral-400">
-            <td class="p-3">Customer Sync</td>
-            <td class="p-3">2025-10-22 10:55</td>
-            <td class="p-3"><span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs">Warning</span></td>
-            <td class="p-3"><button class="px-2 py-1  bg-blue-600/90 hover:bg-blue-700 text-white rounded text-xs">View</button></td>
+        <tbody id="logsTableBody" class="dark:bg-neutral-700">
+          <tr>
+            <td colspan="6" class="p-6 text-center text-neutral-500 dark:text-neutral-400">Loading execution logs...</td>
           </tr>
         </tbody>
       </table>
@@ -201,28 +191,8 @@
   <!-- Recent Activity -->
   <section class="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-neutral-200 dark:border-neutral-700 p-6">
     <h3 class="text-lg font-semibold mb-4">Recent Monitoring Events</h3>
-    <ul class="space-y-4 text-sm">
-      <li class="flex items-start gap-3">
-        <span class="h-3 w-3 mt-1 bg-green-500 rounded-full"></span>
-        <div>
-          <p><strong>API Gateway</strong> latency dropped back to normal levels.</p>
-          <p class="text-neutral-500 text-xs dark:text-neutral-400">Oct 22, 2025 - 10:45 AM</p>
-        </div>
-      </li>
-      <li class="flex items-start gap-3">
-        <span class="h-3 w-3 mt-1 bg-yellow-400 rounded-full"></span>
-        <div>
-          <p><strong>MTN API</strong> retry mechanism triggered (3 retries).</p>
-          <p class="text-neutral-500 text-xs dark:text-neutral-400">Oct 22, 2025 - 10:38 AM</p>
-        </div>
-      </li>
-      <li class="flex items-start gap-3">
-        <span class="h-3 w-3 mt-1 bg-red-500 rounded-full"></span>
-        <div>
-          <p><strong>Database Sync</strong> failed due to connection timeout.</p>
-          <p class="text-neutral-500 text-xs dark:text-neutral-400">Oct 22, 2025 - 10:25 AM</p>
-        </div>
-      </li>
+    <ul id="recentEvents" class="space-y-4 text-sm">
+      <li class="text-neutral-500 dark:text-neutral-400 text-center py-4">Loading recent events...</li>
     </ul>
   </section>
 
@@ -244,23 +214,390 @@
   });
 </script>
 
-    <!-- Chart -->
+<!-- Monitoring Data Script -->
 <script>
   const $ = (id) => document.getElementById(id);
+  let allExecutions = [];
+  let autoRefreshInterval;
 
-  // Mock data
-  async function loadSeries() {
-    const out = [];
-    const now = new Date();
-    for (let i = 13; i >= 0; i--) {
-      const d = new Date(now);
-      d.setHours(0, 0, 0, 0);
-      d.setDate(now.getDate() - i);
-      // mock counts
-      const y = Math.floor(1 + Math.random() * 6);
-      out.push({ x: d.getTime(), y });
+  // Show custom notification
+  function showNotification(message, type = 'success') {
+    const colors = {
+      success: 'bg-green-600',
+      error: 'bg-red-600',
+      info: 'bg-blue-600'
+    };
+    
+    const icons = {
+      success: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>',
+      error: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>',
+      info: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>'
+    };
+    
+    const notificationHTML = `
+      <div class="fixed top-4 left-1/2 -translate-x-1/2 z-[70] animate-slide-down" id="notification">
+        <div class="${colors[type]} text-white px-6 py-4 rounded-lg shadow-lg flex items-center gap-3 min-w-[300px]">
+          <svg class="h-6 w-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            ${icons[type]}
+          </svg>
+          <span class="flex-1">${message}</span>
+        </div>
+      </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', notificationHTML);
+    setTimeout(() => document.getElementById('notification')?.remove(), 5000);
+  }
+
+  // Helper function to render execution badge
+  function badgeForExec(s) {
+    const map = {
+      running: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300',
+      completed: 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300',
+      failed: 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300',
+      cancelled: 'bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200'
+    };
+    const k = (s||'').toLowerCase();
+    const cls = map[k] || map.cancelled;
+    const label = k ? k.charAt(0).toUpperCase() + k.slice(1) : 'Unknown';
+    return `<span class="px-2 py-1 ${cls} text-xs rounded">${label}</span>`;
+  }
+
+  // Load monitoring data
+  async function loadMonitoringData() {
+    try {
+      const res = await fetch('/api/executions/recent?limit=100', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch executions');
+      
+      allExecutions = await res.json();
+      console.log('✅ Loaded executions for monitoring:', allExecutions.length);
+      
+      updateKPIs(allExecutions);
+      renderLogsTable(allExecutions);
+      renderHealthAlerts(allExecutions);
+      renderRecentEvents(allExecutions.slice(0, 10));
+    } catch (error) {
+      console.error('Failed to load monitoring data:', error);
+      showNotification('Failed to load monitoring data', 'error');
     }
-    return out;
+  }
+
+  // Update KPIs
+  function updateKPIs(execs) {
+    const now = Date.now();
+    const dayAgo = now - (24 * 60 * 60 * 1000);
+    
+    // Filter last 24 hours
+    const last24h = execs.filter(e => {
+      const startedAt = e.startedAt ? new Date(e.startedAt).getTime() : 0;
+      return startedAt >= dayAgo;
+    });
+    
+    const total = last24h.length;
+    const completed = last24h.filter(e => (e.status || '').toLowerCase() === 'completed').length;
+    const running = execs.filter(e => (e.status || '').toLowerCase() === 'running').length;
+    
+    // Calculate success rate
+    const successRate = total > 0 ? ((completed / total) * 100).toFixed(2) + '%' : '100%';
+    
+    // Calculate average execution time
+    const executionsWithTime = last24h.filter(e => e.startedAt && e.completedAt);
+    let avgTime = '--';
+    if (executionsWithTime.length > 0) {
+      const totalMs = executionsWithTime.reduce((sum, e) => {
+        const start = new Date(e.startedAt).getTime();
+        const end = new Date(e.completedAt).getTime();
+        return sum + (end - start);
+      }, 0);
+      const avgMs = totalMs / executionsWithTime.length;
+      avgTime = avgMs < 1000 ? Math.round(avgMs) + 'ms' : (avgMs / 1000).toFixed(2) + 's';
+    }
+    
+    $('kpiUptime').textContent = successRate;
+    $('kpiTotal').textContent = total;
+    $('kpiRunning').textContent = running;
+    $('kpiAvgTime').textContent = avgTime;
+  }
+
+  // Render logs table
+  function renderLogsTable(execs) {
+    const tbody = $('logsTableBody');
+    if (!tbody) return;
+    
+    const statusFilter = $('statusFilter')?.value || '';
+    const filtered = statusFilter ? execs.filter(e => (e.status || '').toLowerCase() === statusFilter) : execs;
+    
+    if (filtered.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-neutral-500 dark:text-neutral-400">No execution logs found</td></tr>';
+      return;
+    }
+    
+    tbody.innerHTML = filtered.slice(0, 20).map(e => {
+      const environment = e.triggerData?.environment || 'sandbox';
+      const envDisplay = environment.charAt(0).toUpperCase() + environment.slice(1);
+      const envColor = {
+        production: 'text-red-600 dark:text-red-400',
+        test: 'text-yellow-600 dark:text-yellow-400',
+        sandbox: 'text-green-600 dark:text-green-400'
+      }[environment] || 'text-neutral-600 dark:text-neutral-400';
+      
+      const timeStr = e.startedAt ? new Date(e.startedAt).toLocaleString() : 'Unknown';
+      
+      let duration = '--';
+      if (e.startedAt && e.completedAt) {
+        const ms = new Date(e.completedAt).getTime() - new Date(e.startedAt).getTime();
+        duration = ms < 1000 ? ms + 'ms' : (ms / 1000).toFixed(2) + 's';
+      } else if ((e.status || '').toLowerCase() === 'running') {
+        duration = 'Running...';
+      }
+      
+      return `
+        <tr class="border-t border-neutral-200 dark:border-neutral-600 hover:bg-neutral-50 dark:hover:bg-neutral-600/50">
+          <td class="p-3">${e.flowName || 'Unknown Flow'}</td>
+          <td class="p-3"><span class="${envColor} font-medium">${envDisplay}</span></td>
+          <td class="p-3 text-xs">${timeStr}</td>
+          <td class="p-3">${badgeForExec(e.status)}</td>
+          <td class="p-3 text-xs">${duration}</td>
+          <td class="p-3"><button onclick="viewExecutionDetails('${e.id}')" class="px-2 py-1 bg-blue-600/90 hover:bg-blue-700 text-white rounded text-xs">View</button></td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  // Render health alerts
+  function renderHealthAlerts(execs) {
+    const alertsList = $('healthAlerts');
+    if (!alertsList) return;
+    
+    const alerts = [];
+    
+    // Check for failed executions in last hour
+    const hourAgo = Date.now() - (60 * 60 * 1000);
+    const recentFailed = execs.filter(e => {
+      const startedAt = e.startedAt ? new Date(e.startedAt).getTime() : 0;
+      const status = (e.status || '').toLowerCase();
+      return startedAt >= hourAgo && status === 'failed';
+    });
+    
+    if (recentFailed.length > 0) {
+      alerts.push({
+        severity: 'error',
+        message: `<strong>${recentFailed.length} execution(s)</strong> failed in the last hour.`,
+        color: 'text-red-600 dark:text-red-400'
+      });
+    }
+    
+    // Check for running executions
+    const running = execs.filter(e => (e.status || '').toLowerCase() === 'running');
+    if (running.length > 0) {
+      alerts.push({
+        severity: 'warning',
+        message: `<strong>${running.length} execution(s)</strong> currently in progress.`,
+        color: 'text-yellow-600 dark:text-yellow-400'
+      });
+    }
+    
+    // Check overall health
+    const completed = execs.filter(e => (e.status || '').toLowerCase() === 'completed');
+    if (completed.length > recentFailed.length) {
+      alerts.push({
+        severity: 'healthy',
+        message: `<strong>System</strong> responding normally with ${completed.length} successful executions.`,
+        color: 'text-green-600 dark:text-green-400'
+      });
+    }
+    
+    if (alerts.length === 0) {
+      alertsList.innerHTML = '<li class="py-3 text-neutral-500 dark:text-neutral-400 text-center">No health alerts</li>';
+      return;
+    }
+    
+    alertsList.innerHTML = alerts.map(alert => `
+      <li class="py-3 flex items-center justify-between">
+        <span>${alert.message}</span>
+        <span class="${alert.color} font-medium capitalize">${alert.severity}</span>
+      </li>
+    `).join('');
+  }
+
+  // Render recent events
+  function renderRecentEvents(execs) {
+    const eventsList = $('recentEvents');
+    if (!eventsList) return;
+    
+    if (execs.length === 0) {
+      eventsList.innerHTML = '<li class="text-neutral-500 dark:text-neutral-400 text-center py-4">No recent events</li>';
+      return;
+    }
+    
+    eventsList.innerHTML = execs.map(e => {
+      const status = (e.status || '').toLowerCase();
+      const environment = e.triggerData?.environment || 'sandbox';
+      const envDisplay = environment.charAt(0).toUpperCase() + environment.slice(1);
+      
+      let statusColor, eventText;
+      if (status === 'completed') {
+        statusColor = 'bg-green-500';
+        eventText = `<strong>${e.flowName || 'Flow'}</strong> completed successfully in ${envDisplay}.`;
+      } else if (status === 'failed') {
+        statusColor = 'bg-red-500';
+        eventText = `<strong>${e.flowName || 'Flow'}</strong> failed in ${envDisplay} environment.`;
+      } else if (status === 'running') {
+        statusColor = 'bg-yellow-400';
+        eventText = `<strong>${e.flowName || 'Flow'}</strong> execution started in ${envDisplay}.`;
+      } else {
+        statusColor = 'bg-neutral-400';
+        eventText = `<strong>${e.flowName || 'Flow'}</strong> status: ${status}.`;
+      }
+      
+      const timeStr = e.startedAt ? new Date(e.startedAt).toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      }) : 'Unknown time';
+      
+      return `
+        <li class="flex items-start gap-3">
+          <span class="h-3 w-3 mt-1 ${statusColor} rounded-full flex-shrink-0"></span>
+          <div class="flex-1">
+            <p>${eventText}</p>
+            <p class="text-neutral-500 dark:text-neutral-400 text-xs">${timeStr}</p>
+          </div>
+        </li>
+      `;
+    }).join('');
+  }
+
+  // View execution details (redirect to deployments page)
+  function viewExecutionDetails(executionId) {
+    window.location.href = `deployments.html?execution=${executionId}`;
+  }
+
+  // Download logs as CSV
+  function downloadLogs() {
+    if (allExecutions.length === 0) {
+      showNotification('No logs to download', 'error');
+      return;
+    }
+
+    // Get filtered executions
+    const statusFilter = $('statusFilter')?.value || '';
+    const filtered = statusFilter ? allExecutions.filter(e => (e.status || '').toLowerCase() === statusFilter) : allExecutions;
+
+    // Create CSV content
+    const headers = ['Flow Name', 'Environment', 'Status', 'Started At', 'Completed At', 'Duration (ms)', 'Execution ID'];
+    const rows = filtered.map(e => {
+      const environment = e.triggerData?.environment || 'sandbox';
+      const startedAt = e.startedAt ? new Date(e.startedAt).toISOString() : '';
+      const completedAt = e.completedAt ? new Date(e.completedAt).toISOString() : '';
+      
+      let duration = '';
+      if (e.startedAt && e.completedAt) {
+        duration = new Date(e.completedAt).getTime() - new Date(e.startedAt).getTime();
+      }
+      
+      return [
+        `"${(e.flowName || 'Unknown').replace(/"/g, '""')}"`,
+        environment,
+        e.status || 'unknown',
+        startedAt,
+        completedAt,
+        duration,
+        e.id
+      ].join(',');
+    });
+
+    const csv = [headers.join(','), ...rows].join('\n');
+    
+    // Create download
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `execution-logs-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    
+    showNotification(`Downloaded ${filtered.length} execution logs`, 'success');
+  }
+
+  // Setup filters and auto-refresh
+  function setupInteractions() {
+    // Status filter
+    $('statusFilter')?.addEventListener('change', () => {
+      renderLogsTable(allExecutions);
+    });
+    
+    // Download logs button
+    $('downloadLogsBtn')?.addEventListener('click', downloadLogs);
+    
+    // Auto refresh toggle
+    $('autoRefresh')?.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        autoRefreshInterval = setInterval(loadMonitoringData, 30000); // 30 seconds
+        showNotification('Auto-refresh enabled (30s)', 'info');
+      } else {
+        clearInterval(autoRefreshInterval);
+        showNotification('Auto-refresh disabled', 'info');
+      }
+    });
+  }
+
+  // Initialize
+  document.addEventListener('DOMContentLoaded', () => {
+    loadMonitoringData();
+    setupInteractions();
+  });
+</script>
+
+    <!-- Chart -->
+<script>
+  // Load real execution data for chart
+  async function loadSeries() {
+    try {
+      const res = await fetch('/api/executions/recent?limit=500', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch data');
+      
+      const executions = await res.json();
+      
+      // Group executions by hour for the last 24 hours
+      const now = new Date();
+      const dataMap = new Map();
+      
+      // Initialize all hours in the last 24 hours with 0
+      for (let i = 23; i >= 0; i--) {
+        const d = new Date(now);
+        d.setHours(now.getHours() - i, 0, 0, 0);
+        dataMap.set(d.getTime(), 0);
+      }
+      
+      // Count executions per hour
+      executions.forEach(exec => {
+        if (!exec.startedAt) return;
+        const execDate = new Date(exec.startedAt);
+        const hourKey = new Date(execDate);
+        hourKey.setMinutes(0, 0, 0);
+        
+        const key = hourKey.getTime();
+        if (dataMap.has(key)) {
+          dataMap.set(key, dataMap.get(key) + 1);
+        }
+      });
+      
+      // Convert to array format for Chart.js
+      return Array.from(dataMap.entries())
+        .map(([x, y]) => ({ x, y }))
+        .sort((a, b) => a.x - b.x);
+    } catch (error) {
+      console.error('Failed to load chart data:', error);
+      // Return empty array on error
+      return [];
+    }
   }
 
   function currentThemeIsDark() {
@@ -272,16 +609,16 @@
     const canvas = $('monitorChart');
     if (!canvas) return;
 
-    // update
+    // update timestamp
     const stamp = $('monitorDate');
     if (stamp) {
       const d = new Date();
       stamp.textContent = `Updated: ${d.toLocaleDateString()} ${d.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}`;
-
     }
+    
     const data = await loadSeries();
 
-    // dark mode
+    // dark mode colors
     const lineColor = currentThemeIsDark() ? '#a8b3cf' : '#1f2937';
     const gridColor = currentThemeIsDark() ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
     const tickColor = currentThemeIsDark() ? '#cbd5e1' : '#475569';
@@ -292,7 +629,7 @@
       type: 'line',
       data: {
         datasets: [{
-          label: 'Monitoring',
+          label: 'Executions per Hour',
           data,
           borderWidth: 2,
           tension: 0.35,
@@ -313,9 +650,9 @@
             callbacks: {
               title(items){
                 const d = new Date(items[0].parsed.x);
-                return d.toLocaleDateString(undefined, {year: 'numeric', month: 'short', day: '2-digit'});
+                return d.toLocaleString(undefined, {month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit'});
               },
-              label(item) { return `Monitoring: ${item.parsed.y}`;}
+              label(item) { return `Executions: ${item.parsed.y}`;}
             }
           }
         },
@@ -324,11 +661,10 @@
             type: 'time',
             time: {unit: 'hour', displayFormats: {hour: 'HH:mm'}, tooltipFormat: 'HH:mm'},
             grid: {color: gridColor, drawOnChartArea: false},
-            ticks: {color: tickColor, maxTicksLimit: 7}
+            ticks: {color: tickColor, maxTicksLimit: 12}
           },
           y: {
             beginAtZero: true,
-            suggestedMax: Math.max(...data.map(p => p.y)) + 1,
             ticks: {precision: 0, color: tickColor},
             grid: {color: gridColor}
           }
