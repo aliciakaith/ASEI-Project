@@ -34,7 +34,7 @@
     background-image:
       linear-gradient(to right, #e5e7eb 1px, transparent 1px),
       linear-gradient(to bottom, #e5e7eb 1px, transparent 1px);
-    background-size: 40px 40px;
+    background-size: 30px 30px;
     border-radius: 0.5rem;
     overflow: hidden;
   }
@@ -42,7 +42,7 @@
     background-image:
       linear-gradient(to right, #626976 1px, transparent 1px),
       linear-gradient(to bottom, #626976 1px, transparent 1px);
-    background-size: 40px 40px;
+    background-size: 30px 30px;
   }
 
   .node {
@@ -77,28 +77,6 @@
   }
   .dot-left { margin-right: 8px; }
   .dot-right { margin-left: 8px; }
-
-  /* Custom Modal Animation */
-  .modal-backdrop {
-    animation: fadeIn 0.2s ease-out;
-  }
-  .modal-content {
-    animation: slideUp 0.3s ease-out;
-  }
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-  @keyframes slideUp {
-    from { 
-      opacity: 0;
-      transform: translateY(20px) scale(0.95);
-    }
-    to { 
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
-  }
 </style>
 </head>
 
@@ -161,7 +139,6 @@
     <h2 class="text-xl font-semibold">Flow Designer</h2>
   </div>
 
-
   <!-- Toolbar -->
   <div class="flex flex-col mb-2">
     <div class="text-neutral-500 text-sm text-left mb-5">Drag nodes onto the grid and connect them by dragging from the right dot to another node's left dot.</div>
@@ -177,8 +154,6 @@
       <button class="ml-auto px-3 py-2 bg-gray-300 hover:bg-gray-400 dark:bg-gray-500 dark:hover:bg-gray-600 border dark:border-neutral-600 rounded justify-end" onclick="exportFlow()">Export</button>
       <button class="px-3 py-2 bg-gray-500 hover:bg-gray-600 dark:bg-gray-700 dark:hover:bg-gray-800 border dark:border-neutral-800 text-white rounded justify-end" onclick="saveFlow('draft')">Save Draft</button>
       <button class="px-3 py-2 bg-blue-500 hover:bg-blue-600 dark:bg-blue-700 dark:hover:bg-blue-800 boder dark:border-blue-800 text-white rounded justify-end" onclick="saveFlow('active')">Deploy Flow</button>
-      <button id="viewExecutionsBtn" class="px-3 py-2 bg-purple-500 hover:bg-purple-600 dark:bg-purple-700 dark:hover:bg-purple-800 border dark:border-purple-800 text-white rounded hidden" onclick="viewExecutions()">Executions</button>
-
     </div>
   </div>
 
@@ -355,6 +330,23 @@ async function deleteExecution(executionId) {
 }
 
 
+function attachNodeInteractions(el, id, name) {
+  jsPlumbInstance.draggable(el, {
+    grid: [10, 10],
+    start: () => { el.dataset.dragging = "1"; },
+    stop:  () => { setTimeout(() => { delete el.dataset.dragging; }, 0); }
+  });
+
+  el.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (el.dataset.dragging) return; 
+    openProps(id, name);
+  });
+
+  jsPlumbInstance.makeSource(document.getElementById(id + '_right'), { parent: el, anchor:'Right' });
+  jsPlumbInstance.makeTarget(document.getElementById(id + '_left'),  { parent: el, anchor:'Left'  });
+}
+
 function createNode(type, kindOverride, nameOverride) {
   const id = 'node_' + Math.random().toString(36).substr(2, 9);
   const kind = kindOverride || (type.startsWith('mtn.') || type.startsWith('fW.') ? 'api' : type);
@@ -372,32 +364,89 @@ function createNode(type, kindOverride, nameOverride) {
   `;
   canvas.appendChild(el);
 
-  jsPlumbInstance.draggable(el, { grid:[10,10] });
   jsPlumbInstance.makeSource(document.getElementById(id+'_right'), { parent: el, anchor:'Right' });
   jsPlumbInstance.makeTarget(document.getElementById(id+'_left'), { parent: el, anchor:'Left' });
 
-  el.addEventListener('click', (e)=>{
-    e.stopPropagation();
-    openProps(id, name);
-  });
+  canvas.appendChild(el);
+  attachNodeInteractions(el, id, name);
 
   nodes.push({id, type, kind, name, x:el.offsetLeft, y:el.offsetTop});
 }
 
+//properties modal
 function openProps(id, name) {
-  const panel = document.getElementById('propertiesPanel');
-  const inner = document.getElementById('propInner');
-  panel.classList.remove('hidden');
-  inner.innerHTML = `
-    <label class="block text-sm font-medium mb-1">Node Label</label>
-    <input id="prop_name" class="w-full dark:bg-neutral-600 border dark:border-neutral-700 rounded px-2 py-1 mb-3" value="${name}">
-    <button class="px-3 py-2 bg-blue-500 border border-blue-600 hover:bg-blue-600 text-white rounded" onclick="saveNodeLabel('${id}')">Save</button>
-    <button class="px-3 py-2 bg-red-500 border border-red-600 hover:bg-red-600 text-white rounded" onclick=removeNode('${id}')>Remove</button>
-  `;
+  const node = nodes.find(n => n.id === id);
+  const currentLabel = node?.name || name;
 
-  window.scrollTo({
-    top: document.body.scrollHeight, behavior: "smooth"
+  const modal = document.createElement('div');
+  modal.className = 'modal-backdrop fixed inset-0 bg-black/50 flex items-center justify-center z-50';
+  modal.innerHTML = `
+    <div class="modal-content bg-white dark:bg-neutral-800 rounded-lg shadow-xl w-full max-w-md mx-4 overflow-hidden">
+      <div class="p-6">
+        <h3 class="text-lg font-semibold mb-3 text-neutral-900 dark:text-neutral-100">Node Properties</h3>
+
+        <label class="block text-sm font-medium mb-1">Node Label</label>
+        <input id="prop_name_input"
+               class="w-full dark:bg-neutral-600 border dark:border-neutral-700 rounded px-3 py-2 mb-6"
+               value="${currentLabel}"/>
+
+        <div class="flex items-center justify-between">
+          <button id="remove_btn"
+                  class="px-3 py-2 bg-red-500 border border-red-600 hover:bg-red-600 text-white rounded">
+            Remove
+          </button>
+          <div class="flex gap-2">
+            <button id="cancel_btn"
+                    class="px-3 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600">
+              Cancel
+            </button>
+            <button id="save_btn"
+                    class="px-3 py-2 bg-blue-500 border border-blue-600 hover:bg-blue-600 text-white rounded">
+              Save
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  const input = modal.querySelector('#prop_name_input');
+  const saveBtn = modal.querySelector('#save_btn');
+  const cancelBtn = modal.querySelector('#cancel_btn');
+  const removeBtn = modal.querySelector('#remove_btn');
+
+  // focus
+  setTimeout(() => { input.focus(); input.select(); }, 50);
+
+  const close = () => {
+    modal.style.opacity = '0';
+    modal.querySelector('.modal-content').style.transform = 'translateY(10px) scale(0.98)';
+    setTimeout(() => modal.remove(), 180);
+  };
+
+  // Save label
+  saveBtn.addEventListener('click', () => {
+    const newName = input.value.trim();
+    const el = document.getElementById(id);
+    if (el && newName) {
+      el.querySelector('span').textContent = newName;
+      const n = nodes.find(n => n.id === id);
+      if (n) n.name = newName;
+    }
+    close();
   });
+
+removeBtn.addEventListener('click', () => {
+  removeNode(id);  
+  close();         
+});
+
+  cancelBtn.addEventListener('click', close);
+  const onEsc = (e) => { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', onEsc);} };
+  document.addEventListener('keydown', onEsc);
+
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') saveBtn.click(); });
 }
 
 function saveNodeLabel(id) {
@@ -1120,22 +1169,7 @@ async function viewExecutionDetails(executionId) {
     });
     document.querySelectorAll(".js-initial-pfp").forEach(el => el.classList.add("hidden"));
   }
-  document.addEventListener('DOMContentLoaded', async ()=>{
-    // Load from backend first
-    try {
-      const res = await fetch('/api/auth/me', { credentials: 'include' });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.user?.profilePicture) {
-          applyPfpToDOM(data.user.profilePicture);
-          return;
-        }
-      }
-    } catch (e) {
-      console.warn("Could not load profile picture from backend:", e);
-    }
-    
-    // Fallback to localStorage
+  document.addEventListener('DOMContentLoaded', ()=>{
     const saveImg = localStorage.getItem(imageStore);
     if(saveImg) applyPfpToDOM(saveImg);
   });
@@ -1155,7 +1189,7 @@ async function viewExecutionDetails(executionId) {
       console.warn("no template", e);
       return;
     }
-    clearCanvasSilent();
+    clearCanvas();
     renderTemplate(temp);
     localStorage.removeItem("connectify.selectedTemplate")
   }
@@ -1197,8 +1231,7 @@ async function viewExecutionDetails(executionId) {
       <span>${name}</span>
       <div class="connector-dot dot-right" id="${id}_right"></div>
     `;
-    canvas.appendChild(element);
-    jsPlumbInstance.draggable(element, {grid: [10, 10]});
+
     jsPlumbInstance.makeSource(document.getElementById(id + "_right"), {
       parent: element,
       anchor: "Right"
@@ -1208,10 +1241,8 @@ async function viewExecutionDetails(executionId) {
       anchor: "Left"
     });
 
-    element.addEventListener('click', (e) =>{
-      e.stopPropagation();
-      openProps(id, name);
-    });
+    canvas.appendChild(element);
+    attachNodeInteractions(element, id, name);
 
     nodes.push({
       id, type: nodeDef.type || kind, kind, name, x:element.offsetLeft, y:element.offsetTop
