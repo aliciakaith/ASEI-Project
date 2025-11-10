@@ -594,10 +594,13 @@
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
         
-        // If not logged in, redirect to login
+        // If not logged in, show banner and gently redirect to login
         if (res.status === 401) {
-          console.log('Not authenticated, redirecting to login...');
-          window.location.href = '/login.html';
+          const banner = document.createElement('div');
+          banner.className = 'fixed top-0 left-0 right-0 bg-red-600 text-white text-sm px-4 py-2 z-50 shadow';
+          banner.innerHTML = '<strong>Not authenticated.</strong> Redirecting to login…';
+          document.body.appendChild(banner);
+          setTimeout(() => { window.location.href = '/login.html'; }, 1500);
           return;
         }
         

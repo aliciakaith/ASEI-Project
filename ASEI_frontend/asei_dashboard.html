@@ -916,8 +916,43 @@ function startSSE() {
   return false; // disable SSE; Socket.IO handles real-time
 }
 
+// --- Auth preflight: check session before loading heavy widgets ---
+async function preflightAuth() {
+  try {
+    const res = await fetch('/api/auth/me', { credentials: 'include' });
+    if (res.ok) {
+      const data = await res.json().catch(() => ({}));
+      // normalize to simple shape used elsewhere
+      window.__me = {
+        id: data.user?.id,
+        email: data.user?.email,
+        firstName: data.user?.firstName,
+        lastName: data.user?.lastName,
+        org: data.user?.org,
+        profilePicture: data.user?.profilePicture || null
+      };
+      return true;
+    }
+    // 401 → show banner + delayed redirect
+    const banner = document.createElement('div');
+    banner.className = 'fixed top-0 left-0 right-0 bg-red-600 text-white text-sm px-4 py-2 z-50 shadow';
+    banner.innerHTML = '<strong>Not authenticated.</strong> Redirecting to login…';
+    document.body.appendChild(banner);
+    setTimeout(() => { window.location.href = 'login.html'; }, 1500);
+    return false;
+  } catch (e) {
+    const banner = document.createElement('div');
+    banner.className = 'fixed top-0 left-0 right-0 bg-red-600 text-white text-sm px-4 py-2 z-50 shadow';
+    banner.textContent = 'Unable to verify session. Redirecting to login…';
+    document.body.appendChild(banner);
+    setTimeout(() => { window.location.href = 'login.html'; }, 1500);
+    return false;
+  }
+}
+
 async function initAll() {
   setText('txDate', new Date().toLocaleDateString());
+  // Profile now uses window.__me when available; still calls api.me fallback inside
   await initProfile();
   await Promise.all([loadKpis(), initChart(), initServices(), loadNotifs()]);
   setInterval(() => window.__refreshDashboard(), 30000);
@@ -925,7 +960,10 @@ async function initAll() {
   startSSE();
 }
 
-document.addEventListener('DOMContentLoaded', initAll);
+document.addEventListener('DOMContentLoaded', async () => {
+  const ok = await preflightAuth();
+  if (ok) await initAll();
+});
 })();
 
 </script>

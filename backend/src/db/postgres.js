@@ -21,9 +21,16 @@ if (skipDB) {
     (connStr && !/localhost|127\.0\.0\.1|::1/.test(connStr)) ||
     process.env.PGSSL === 'true';
 
+    // SSL configuration: Only disable rejectUnauthorized in development for self-signed certs
+    // In production, always verify certificates for security
+    const IS_PROD = process.env.NODE_ENV === 'production';
+    const sslConfig = needsSSL 
+      ? { rejectUnauthorized: IS_PROD } 
+      : false;
+
   pool = new Pool({
     connectionString: connStr || undefined,
-    ssl: needsSSL ? { rejectUnauthorized: false } : false,
+      ssl: sslConfig,
     keepAlive: true,
     max: 10,
     idleTimeoutMillis: 30000,

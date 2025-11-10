@@ -444,7 +444,17 @@ router.post("/login", async (req, res) => {
     );
 
     // Use consistent cookie policy via cookieOpts helper
-    res.cookie("token", token, cookieOpts(cookieMaxAge));
+    const primaryOpts = cookieOpts(cookieMaxAge);
+    res.cookie("token", token, primaryOpts);
+
+    // Dev fallback: some browsers may silently drop SameSite=None without Secure over HTTP.
+    // Issue an additional Lax cookie so local flows still work while we debug.
+    if (process.env.NODE_ENV !== 'production') {
+      const laxFallback = { ...primaryOpts, sameSite: 'lax' };
+      res.cookie('token_lax', token, laxFallback);
+    }
+
+    console.log(`[auth] LOGIN_SUCCESS for ${user.email} – issued token cookie sameSite=${primaryOpts.sameSite}` + (process.env.NODE_ENV !== 'production' ? ' + fallback token_lax (lax)' : '')); 
 
     await audit(req, {
       userId: user.id,
@@ -476,11 +486,20 @@ function clearAuthCookies(req, res) {
   res.clearCookie("token", baseLax);
   res.clearCookie("token", baseNoneApi);
   res.clearCookie("token", baseLaxApi);
+  // Also clear fallback dev cookie if present
+  res.clearCookie("token_lax", baseNone);
+  res.clearCookie("token_lax", baseLax);
+  res.clearCookie("token_lax", baseNoneApi);
+  res.clearCookie("token_lax", baseLaxApi);
   // Force-expire as extra safety
   res.cookie("token", "", { ...baseNone,    expires: new Date(0) });
   res.cookie("token", "", { ...baseLax,     expires: new Date(0) });
   res.cookie("token", "", { ...baseNoneApi, expires: new Date(0) });
   res.cookie("token", "", { ...baseLaxApi,  expires: new Date(0) });
+  res.cookie("token_lax", "", { ...baseNone,    expires: new Date(0) });
+  res.cookie("token_lax", "", { ...baseLax,     expires: new Date(0) });
+  res.cookie("token_lax", "", { ...baseNoneApi, expires: new Date(0) });
+  res.cookie("token_lax", "", { ...baseLaxApi,  expires: new Date(0) });
 
   // Clear any auxiliary cookies used during flows
   ["pending_email", "g_state", "g_nonce"].forEach((name) => {
@@ -609,7 +628,13 @@ router.get("/google/callback", async (req, res) => {
     const IS_PROD = process.env.NODE_ENV === "production";
     const token = jwt.sign({ id: user.id, email, org: user.org_id }, SECRET, { expiresIn: "7d" });
     // Use consistent cookie policy via cookieOpts helper
-    res.cookie("token", token, cookieOpts(7 * 24 * 60 * 60 * 1000));
+    const primaryOpts = cookieOpts(7 * 24 * 60 * 60 * 1000);
+    res.cookie("token", token, primaryOpts);
+    if (!IS_PROD) {
+      const laxFallback = { ...primaryOpts, sameSite: 'lax' };
+      res.cookie('token_lax', token, laxFallback);
+    }
+    console.log(`[auth] OAUTH_LOGIN_SUCCESS for ${email} – issued token cookie sameSite=${primaryOpts.sameSite}` + (!IS_PROD ? ' + fallback token_lax (lax)' : ''));
 
     res.clearCookie("g_state", { httpOnly: true, sameSite: IS_PROD ? "lax" : "none", secure: IS_PROD });
     res.clearCookie("g_nonce", { httpOnly: true, sameSite: IS_PROD ? "lax" : "none", secure: IS_PROD });
@@ -636,7 +661,7 @@ router.get("/google/callback", async (req, res) => {
 // GET /api/auth/me
 router.get("/me", async (req, res) => {
   try {
-    const token = req.cookies?.token;
+    const token = req.cookies?.token || req.cookies?.token_lax;
     console.log('[/api/auth/me] Token exists:', !!token);
     console.log('[/api/auth/me] All cookies:', Object.keys(req.cookies || {}));
     
@@ -671,6 +696,39 @@ router.get("/me", async (req, res) => {
     console.error('[/api/auth/me] Error:', e.message);
     return res.status(401).json({ error: "Session expired" });
   }
+});
+
+// GET /api/auth/debug
+// Lightweight debug endpoint to inspect cookie/session status (dev use)
+router.get('/debug', (req, res) => {
+  const hasPrimary = !!req.cookies?.token;
+  const hasLax = !!req.cookies?.token_lax;
+  const token = req.cookies?.token || req.cookies?.token_lax;
+  const source = req.cookies?.token ? 'token' : (req.cookies?.token_lax ? 'token_lax' : null);
+  let tokenValid = false;
+  let payload = null;
+  try {
+    if (token) {
+      payload = jwt.verify(token, SECRET);
+      tokenValid = true;
+    }
+  } catch (_) {
+    tokenValid = false;
+    payload = null;
+  }
+
+  res.json({
+    ok: true,
+    cookies: Object.keys(req.cookies || {}),
+    hasToken: !!token,
+    hasTokenPrimary: hasPrimary,
+    hasTokenLax: hasLax,
+    tokenSource: source,
+    tokenValid,
+    tokenPayload: tokenValid ? payload : null,
+    nodeEnv: process.env.NODE_ENV,
+    origin: req.headers.origin || null,
+  });
 });
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
