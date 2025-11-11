@@ -84,11 +84,6 @@ app.use(requestContext);
 // attach correlation IDs BEFORE any logging
 app.use(requestContext);
 
-// … after you create `app`
-app.use('/api', requireAuth, flutterwaveRoutes);  // /api/connectors, /api/flutterwave/* (protected)
-app.use('/', flutterwaveRoutes);     // /webhooks/flutterwave (webhooks don't need auth)
-
-
 // request logs (skip noisy health checks)
 app.use(
   expressWinston.logger({
@@ -118,6 +113,11 @@ app.get("/health", (req, res) => {
 // Protected API routes (with rate limiting and IP whitelist)
 // ------------------------------------------------------
 app.use("/api/auth", authRouter);
+
+// Flutterwave routes (includes both protected API routes and public webhooks)
+app.use('/api', requireAuth, flutterwaveRoutes);  // /api/connectors, /api/flutterwave/* (protected)
+app.use('/', flutterwaveRoutes);     // /webhooks/flutterwave (webhooks don't need auth)
+
 app.use("/api/ip-whitelist", requireAuth, ipWhitelistRouter);
 app.use("/api/flows", requireAuth, ipWhitelistMiddleware, rateLimitMiddleware, flowsRouter);
 app.use("/api/roles", requireAuth, ipWhitelistMiddleware, rateLimitMiddleware, rolesRouter);
