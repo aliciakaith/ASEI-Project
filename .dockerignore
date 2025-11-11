@@ -1,11 +1,8 @@
-node_modules
-npm-debug.log
-coverage
-dist
-.dockerignore
-Dockerfile
-.env
+**/node_modules
+**/coverage
+**/dist
+**/.env
 .git
 .gitignore
-logs
-data/*.tmp
+Dockerfile*
+.dockerignore
