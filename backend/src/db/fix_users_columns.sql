@@ -5,8 +5,9 @@ ALTER TABLE users
   ADD COLUMN IF NOT EXISTS rate_limit INTEGER DEFAULT 100,
   ADD COLUMN IF NOT EXISTS send_error_alerts BOOLEAN DEFAULT true;
 
--- Create api_rate_tracking table for rate limiting middleware
-CREATE TABLE IF NOT EXISTS api_rate_tracking (
+-- Drop and recreate api_rate_tracking table with correct schema
+DROP TABLE IF EXISTS api_rate_tracking;
+CREATE TABLE api_rate_tracking (
   id SERIAL PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   endpoint VARCHAR(255) NOT NULL,
