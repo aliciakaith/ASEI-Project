@@ -561,36 +561,47 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   async function initChart() {
     const canvas = $('txChart');
-    if (!canvas) return;
-    const data = await loadSeries();
-    const ds = [{ data, borderWidth: 2, tension: 0.3, borderColor: '#000', pointRadius: 0 }];
-    chart = new Chart(canvas, {
-      type: 'line',
-      data: { datasets: ds },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            displayColors: false,
-            callbacks: {
-              title(items){
-                const d = new Date(items[0].parsed.x);
-                const hoverDate = d.toLocaleDateString(undefined, { year:'numeric', month:'short', day:'2-digit' });
-                const t = d.getHours(), suffix = t >= 12 ? 'pm' : 'am', hour12 = (t % 12) || 12;
-                return `${hoverDate}      ${hour12}:00 ${suffix}`;
-              },
-              label(item){ return `Transactions: ${item.parsed.y}`; }
+    if (!canvas) {
+      console.error('Canvas element not found');
+      return;
+    }
+    
+    try {
+      const data = await loadSeries();
+      console.log('Chart data loaded:', data.length, 'points');
+      
+      const ds = [{ data, borderWidth: 2, tension: 0.3, borderColor: '#000', pointRadius: 0 }];
+      chart = new Chart(canvas, {
+        type: 'line',
+        data: { datasets: ds },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              displayColors: false,
+              callbacks: {
+                title(items){
+                  const d = new Date(items[0].parsed.x);
+                  const hoverDate = d.toLocaleDateString(undefined, { year:'numeric', month:'short', day:'2-digit' });
+                  const t = d.getHours(), suffix = t >= 12 ? 'pm' : 'am', hour12 = (t % 12) || 12;
+                  return `${hoverDate}      ${hour12}:00 ${suffix}`;
+                },
+                label(item){ return `Transactions: ${item.parsed.y}`; }
+              }
             }
+          },
+          interaction: { mode: 'index', intersect: false },
+          scales: {
+            x: { type: 'time', time: { unit: 'hour', displayFormats: { hour: 'HH:mm' }}, ticks: { autoSkip: true, maxTicksLimit: 6 }, grid: { display: false }},
+            y: { beginAtZero: true, suggestedMax: Math.max(5, Math.max(...data.map(p => p.y)) + 1), ticks: { precision: 0 } }
           }
-        },
-        interaction: { mode: 'index', intersect: false },
-        scales: {
-          x: { type: 'time', time: { unit: 'hour', displayFormats: { hour: 'HH:mm' }}, ticks: { autoSkip: true, maxTicksLimit: 6 }, grid: { display: false }},
-          y: { beginAtZero: true, suggestedMax: Math.max(5, Math.max(...data.map(p => p.y)) + 1), ticks: { precision: 0 } }
         }
-      }
-    });
+      });
+      console.log('Chart initialized successfully');
+    } catch (error) {
+      console.error('Chart initialization failed:', error);
+    }
   }
 
   // public refresh for seed-demo
@@ -604,37 +615,50 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ---------- Service Integrations list ----------
   async function initServices() {
-    const rows = await fetchJson(api.integrationsStatus);
-    const wrap = document.getElementById('services-list');
-    if (!wrap) return;
-    
-    if (rows.length === 0) {
-      wrap.innerHTML = '<div class="text-center text-neutral-500 py-8">No integrations yet. Click "Add new integration" to get started.</div>';
-      return;
-    }
-    
-    wrap.innerHTML = rows.map(r => {
-      const status = r.status || 'pending';
-      const badge = (s) => {
-        const S = String(s).toLowerCase();
-        const map = {
-          active:  ['bg-green-100','text-green-700'],
-          pending: ['bg-yellow-100','text-yellow-700', 'animate-pulse'],
-          error:   ['bg-red-100','text-red-700']
+    try {
+      const rows = await fetchJson(api.integrationsStatus);
+      const wrap = document.getElementById('services-list');
+      if (!wrap) {
+        console.error('services-list element not found');
+        return;
+      }
+      
+      console.log('Integrations loaded:', rows.length);
+      
+      if (rows.length === 0) {
+        wrap.innerHTML = '<div class="text-center text-neutral-500 py-8">No integrations yet. Click "Add new integration" to get started.</div>';
+        return;
+      }
+      
+      wrap.innerHTML = rows.map(r => {
+        const status = r.status || 'pending';
+        const badge = (s) => {
+          const S = String(s).toLowerCase();
+          const map = {
+            active:  ['bg-green-100','text-green-700'],
+            pending: ['bg-yellow-100','text-yellow-700', 'animate-pulse'],
+            error:   ['bg-red-100','text-red-700']
+          };
+          const cls = (map[S] || ['bg-neutral-100','text-neutral-700']).join(' ');
+          return `<span class="px-2 py-1 text-xs font-medium rounded-full ${cls}">${s[0].toUpperCase()+s.slice(1)}</span>`;
         };
-        const cls = (map[S] || ['bg-neutral-100','text-neutral-700']).join(' ');
-        return `<span class="px-2 py-1 text-xs font-medium rounded-full ${cls}">${s[0].toUpperCase()+s.slice(1)}</span>`;
-      };
-      const syncTime = r.lastChecked ? timeAgo(new Date(r.lastChecked).getTime()) : '—';
-      return `
-        <div class="flex items-center justify-between p-3 border border-neutral-200 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-700 dark:border-neutral-700 transition">
-          <div>
-            <div class="font-medium">${r.name}</div>
-            <div class="text-xs text-neutral-500">Integration • Last sync: ${syncTime}</div>
-          </div>
-          ${badge(status)}
-        </div>`;
-    }).join('');
+        const syncTime = r.lastChecked ? timeAgo(new Date(r.lastChecked).getTime()) : '—';
+        return `
+          <div class="flex items-center justify-between p-3 border border-neutral-200 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-700 dark:border-neutral-700 transition">
+            <div>
+              <div class="font-medium">${r.name}</div>
+              <div class="text-xs text-neutral-500">Integration • Last sync: ${syncTime}</div>
+            </div>
+            ${badge(status)}
+          </div>`;
+      }).join('');
+    } catch (error) {
+      console.error('Failed to load integrations:', error);
+      const wrap = document.getElementById('services-list');
+      if (wrap) {
+        wrap.innerHTML = '<div class="text-center text-red-500 py-8">Failed to load integrations. Please refresh the page.</div>';
+      }
+    }
 
   }
 
