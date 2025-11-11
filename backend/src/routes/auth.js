@@ -243,11 +243,14 @@ router.post("/signup", async (req, res) => {
     }
 
     const { text, html } = verificationEmail(code);
-    await sendMail({
+    // Send email in background - don't block signup if SMTP fails
+    sendMail({
       to: lowerEmail,
       subject: "Verify your Connectify account",
       text,
       html,
+    }).catch(err => {
+      console.error("Failed to send verification email:", err.message);
     });
 
     // save pending email in cookie for 15 min
