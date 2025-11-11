@@ -326,7 +326,12 @@ function showConfirm(message) {
 /* ===============================
    CONFIG
 ================================= */
-const BACKEND_URL = "http://localhost:3001";
+// Dynamic backend URL - works for both local and production
+const BACKEND_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://localhost:3001'
+  : window.location.origin;
+
+console.log('[Connectors] Using backend URL:', BACKEND_URL);
 
 const ENDPOINTS = {
   // Dashboard integrations (source of truth for display)

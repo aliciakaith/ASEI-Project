@@ -52,8 +52,9 @@ function validatePassword(password, { email, firstName, lastName } = {}) {
 const GOOGLE_REDIRECT =
   process.env.GOOGLE_REDIRECT_URI || "http://localhost:3001/api/auth/google/callback";
 
+// Remove trailing slash to prevent double slashes in redirects
 const FRONTEND_BASE =
-  process.env.FRONTEND_ORIGIN || "http://localhost:3000";
+  (process.env.FRONTEND_ORIGIN || "http://localhost:3000").replace(/\/$/, '');
 
 let googleClient;
 async function getGoogleClient() {
