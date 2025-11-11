@@ -72,6 +72,15 @@ async function getGoogleClient() {
 const router = express.Router();
 const SECRET = process.env.JWT_SECRET || "supersecret";
 
+// Helper function to capitalize names properly
+function capitalizeName(name) {
+  if (!name || typeof name !== 'string') return name;
+  return name.trim()
+    .split(/\s+/)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+}
+
 function cookieOpts(maxAgeMs) {
   const IS_PROD = process.env.NODE_ENV === "production";
   // In dev: use None to allow cross-origin (different IPs on LAN)
@@ -209,7 +218,11 @@ router.post("/signup", async (req, res) => {
     return res.status(400).json({ error: "Email and password are required." });
   }
 
-  const { ok, failures } = validatePassword(password, { email, firstName, lastName });
+  // Capitalize names properly
+  const capitalizedFirstName = capitalizeName(firstName);
+  const capitalizedLastName = capitalizeName(lastName);
+
+  const { ok, failures } = validatePassword(password, { email, firstName: capitalizedFirstName, lastName: capitalizedLastName });
   if (!ok) {
     const message = failures.length
       ? `${failures.join("; ")}`
@@ -232,13 +245,13 @@ router.post("/signup", async (req, res) => {
     if (pending.rowCount) {
       await query(
         "UPDATE pending_users SET verification_code=$2, first_name=COALESCE($3, first_name), last_name=COALESCE($4, last_name) WHERE email=$1",
-        [lowerEmail, code, firstName || null, lastName || null]
+        [lowerEmail, code, capitalizedFirstName || null, capitalizedLastName || null]
       );
     } else {
       await query(
         `INSERT INTO pending_users (email, first_name, last_name, password_hash, verification_code)
          VALUES ($1,$2,$3,$4,$5)`,
-        [lowerEmail, firstName || null, lastName || null, hashed, code]
+        [lowerEmail, capitalizedFirstName || null, capitalizedLastName || null, hashed, code]
       );
     }
 
@@ -615,14 +628,15 @@ router.get("/google/callback", async (req, res) => {
         ? orgRes.rows[0].id
         : (await query("INSERT INTO organizations (name) VALUES ($1) RETURNING id", ["DefaultOrg"])).rows[0].id;
 
-      const firstName = claims.given_name || null;
-      const lastName  = claims.family_name || null;
+      // Capitalize names from Google OAuth
+      const firstName = capitalizeName(claims.given_name);
+      const lastName  = capitalizeName(claims.family_name);
 
       const inserted = await query(
         `INSERT INTO users (org_id, email, first_name, last_name)
          VALUES ($1,$2,$3,$4)
          RETURNING id, email, org_id`,
-        [orgId, email, firstName, lastName]
+        [orgId, email, firstName || null, lastName || null]
       );
       user = inserted.rows[0];
     } else {
