@@ -18,7 +18,17 @@ jobs:
         with:
           args: detect --source . --report-format sarif --report-path gitleaks.sarif
         continue-on-error: true
+      
+      - name: Check if SARIF file exists
+        id: sarif_check
+        run: |
+          if [ -f gitleaks.sarif ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+      
       - uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: steps.sarif_check.outputs.exists == 'true'
         with:
           sarif_file: gitleaks.sarif
