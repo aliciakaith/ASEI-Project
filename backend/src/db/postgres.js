@@ -24,8 +24,8 @@ if (skipDB) {
     // SSL configuration: Only disable rejectUnauthorized in development for self-signed certs
     // In production, always verify certificates for security
     const IS_PROD = process.env.NODE_ENV === 'production';
-    const sslConfig = needsSSL 
-      ? { rejectUnauthorized: IS_PROD } 
+    const sslConfig = needsSSL
+      ? { rejectUnauthorized: false }
       : false;
 
   pool = new Pool({
