@@ -1,8 +1,8 @@
 # ---- deps ----
 FROM node:20-alpine AS deps
 WORKDIR /app
-# copy backend package files to install dependencies
-COPY backend/package*.json ./
+# install backend deps (only production)
+COPY package*.json ./
 RUN if [ -f package-lock.json ]; then npm ci --omit=dev; else npm install --omit=dev; fi
 
 # ---- runner ----
@@ -14,21 +14,26 @@ RUN apk add --no-cache dumb-init curl
 # bring production node_modules
 COPY --from=deps /app/node_modules ./node_modules
 
-# copy app code (backend + frontend)
-COPY backend ./backend
-COPY ASEI_frontend ./ASEI_frontend
+# copy backend source (context is /backend)
+COPY . .
 
-# logs dir for non-root user
-RUN mkdir -p logs backend/data backend/data/compliance_reports && chown -R node:node /app
+# absolute path to static site in the image (we moved it under backend/)
+ENV STATIC_ROOT=/app/ASEI_frontend
+
+# optional: entrypoint to run migrations before starting (see step 2)
+# RUN chmod +x /app/entrypoint.sh
+
+# non-root user and writable dirs
+RUN mkdir -p logs data data/compliance_reports && chown -R node:node /app
 USER node
 
-# Render uses PORT environment variable
-EXPOSE ${PORT:-3001}
+# Render sets PORT at runtime; default 3001 locally
+ENV PORT=3001
+EXPOSE 3001
 
-# If you don't have /health, this checks "/"
 HEALTHCHECK --interval=30s --timeout=3s --start-period=20s --retries=3 \
   CMD curl -fsS http://localhost:3001/ || exit 1
 
 ENTRYPOINT ["dumb-init","--"]
-# matches actual server entry
-CMD ["node","backend/src/index.js"]
+# If you create entrypoint.sh, switch to: CMD ["/app/entrypoint.sh"]
+CMD ["node","src/index.js"]
