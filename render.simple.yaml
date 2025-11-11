@@ -1,0 +1,29 @@
+# Alternative Render.yaml - Simpler configuration
+# Use this if you want to set up the database separately
+
+services:
+  # Backend Web Service Only
+  - type: web
+    name: asei-backend
+    env: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      # Add DATABASE_URL manually from your Render PostgreSQL instance
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        sync: false
+      - key: BACKEND_URL
+        sync: false

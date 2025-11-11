@@ -1,0 +1,39 @@
+services:
+  # PostgreSQL Database
+  - type: pserv
+    name: asei-database
+    env: docker
+    plan: free
+    autoDeploy: false
+    disk:
+      name: asei-db-data
+      mountPath: /var/lib/postgresql/data
+      sizeGB: 1
+
+  # Backend Web Service
+  - type: web
+    name: asei-backend
+    env: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: DATABASE_URL
+        fromDatabase:
+          name: asei-database
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SESSION_SECRET
+        generateValue: true
+      # Add other environment variables as needed
+      - key: FRONTEND_URL
+        sync: false
+      - key: BACKEND_URL
+        sync: false

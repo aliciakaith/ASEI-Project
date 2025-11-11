@@ -19,10 +19,11 @@ COPY backend ./backend
 COPY ASEI_frontend ./ASEI_frontend
 
 # logs dir for non-root user
-RUN mkdir -p logs && chown -R node:node /app
+RUN mkdir -p logs backend/data backend/data/compliance_reports && chown -R node:node /app
 USER node
 
-EXPOSE 3001
+# Render uses PORT environment variable
+EXPOSE ${PORT:-3001}
 
 # If you don't have /health, this checks "/"
 HEALTHCHECK --interval=30s --timeout=3s --start-period=20s --retries=3 \
