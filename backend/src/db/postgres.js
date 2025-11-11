@@ -3,7 +3,6 @@ import 'dotenv/config';
 import pg from 'pg';
 const { Pool } = pg;
 
-// Detect if we’re in CI or explicitly skipping the DB
 const skipDB = process.env.DISABLE_DB === '1' || process.env.CI === 'true';
 
 let pool = null;
@@ -13,26 +12,24 @@ if (skipDB) {
 } else {
   const connStr = process.env.DATABASE_URL;
   if (!connStr) {
-    console.error('❌ DATABASE_URL is not set (Render → Environment).');
+    console.error('❌ DATABASE_URL is not set.');
   }
 
-  // When to use SSL
-  const needsSSL =
-    (connStr && !/localhost|127\.0\.0\.1|::1/.test(connStr)) ||
-    process.env.PGSSL === 'true' ||
-    process.env.PGSSLMODE === 'require' ||
-    process.env.PGSSL_NO_VERIFY === '1';
+  const forceNoVerify = process.env.PGSSL_NO_VERIFY === '1';
+  const sslmode = (process.env.PGSSLMODE || '').toLowerCase();
 
-  // Decide whether to verify the server cert
-  // If PGSSL_NO_VERIFY=1, we keep SSL but skip certificate verification.
-  const noVerify = process.env.PGSSL_NO_VERIFY === '1';
+  // If DATABASE_URL has ?sslmode=..., node-postgres will enable TLS;
+  // we still control cert verification here:
+  const sslNeeded =
+    /sslmode=require|verify|prefer/.test(connStr || '') ||
+    ['require', 'verify-ca', 'verify-full', 'prefer'].includes(sslmode);
 
-  // Default: in production verify certs; in dev allow self-signed
   const IS_PROD = process.env.NODE_ENV === 'production';
-  const sslConfig = needsSSL
-    ? (noVerify
+
+  const sslConfig = sslNeeded
+    ? (forceNoVerify
         ? { rejectUnauthorized: false }
-        : { rejectUnauthorized: IS_PROD ? true : false })
+        : { rejectUnauthorized: IS_PROD }) // verify in prod when not overridden
     : false;
 
   pool = new Pool({
@@ -49,7 +46,7 @@ if (skipDB) {
   (async () => {
     try {
       const client = await pool.connect();
-      console.log('✅ Connected to PostgreSQL (ssl:', !!sslConfig, 'verify:', !(sslConfig && sslConfig.rejectUnauthorized === false), ')');
+      console.log('✅ Connected to PostgreSQL');
       client.release();
     } catch (err) {
       console.error('❌ PostgreSQL connection error:', err.message);
@@ -57,7 +54,6 @@ if (skipDB) {
   })();
 }
 
-// Unified query helper (no-op if pool is null)
 export const query = async (text, params) => {
   if (!pool) return { rows: [], rowCount: 0 };
   return pool.query(text, params);
