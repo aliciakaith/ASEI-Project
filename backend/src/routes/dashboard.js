@@ -35,58 +35,6 @@ async function createNotification(req, { type = 'info', title = '', message = ''
   }
 }
 
-// ---------- DEV SEED (remove before prod) ----------
-router.post("/dev/seed-demo", async (req, res) => {
-  const orgId = req.user.org;
-
-  // Remove demo flows - users should create their own flows
-  // Flows are now created via the Flow Designer UI
-
-  // recent tx events
-await query(
-  `
-  INSERT INTO tx_events (org_id, success, latency_ms, created_at) VALUES
-    ($1, true ,120, now() - interval '3 hour'),
-    ($1, false,260, now() - interval '2 hour'),
-    ($1, true , 95, now() - interval '1 hour'),
-    ($1, true , 80, now() - interval '10 minutes')
-  ;
-  `,
-  [orgId]
-);
-
-
-  // notifications
-  // Insert demo notifications only if an identical notification doesn't already exist
-  await query(
-    `
-    INSERT INTO notifications (org_id, type, title, message)
-    SELECT $1, 'info', 'Welcome', 'Your workspace is ready.'
-    WHERE NOT EXISTS (
-      SELECT 1 FROM notifications WHERE org_id=$1 AND title='Welcome' AND message='Your workspace is ready.'
-    );
-
-    INSERT INTO notifications (org_id, type, title, message)
-    SELECT $1, 'warn', 'High latency', 'Average latency exceeded 200ms in the last hour.'
-    WHERE NOT EXISTS (
-      SELECT 1 FROM notifications WHERE org_id=$1 AND title='High latency' AND message='Average latency exceeded 200ms in the last hour.'
-    );
-
-    INSERT INTO notifications (org_id, type, title, message)
-    SELECT $1, 'error', 'Sandbox failure', 'Payment to sandbox gateway failed (HTTP 500).'
-    WHERE NOT EXISTS (
-      SELECT 1 FROM notifications WHERE org_id=$1 AND title='Sandbox failure' AND message='Payment to sandbox gateway failed (HTTP 500).'
-    );
-  `,
-    [orgId]
-  );
-
-  emitToOrg(req, "notifications:update");
-  noStore(res);
-  res.sendStatus(204);
-});
-
-
 // ---------- Compliance report generation ----------
 router.post("/compliance/generate", express.json(), async (req, res) => {
   const orgId = req.user.org;
