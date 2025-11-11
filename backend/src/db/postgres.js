@@ -8,7 +8,6 @@ const skipDB = process.env.DISABLE_DB === '1' || process.env.CI === 'true';
 
 let pool = null;
 
-// If DB is disabled (CI, smoke tests, etc.), don’t even try to connect
 if (skipDB) {
   console.log('⏭️  Skipping PostgreSQL connection (CI/disabled mode)');
 } else {
@@ -17,20 +16,28 @@ if (skipDB) {
     console.error('❌ DATABASE_URL is not set (Render → Environment).');
   }
 
+  // When to use SSL
   const needsSSL =
     (connStr && !/localhost|127\.0\.0\.1|::1/.test(connStr)) ||
-    process.env.PGSSL === 'true';
+    process.env.PGSSL === 'true' ||
+    process.env.PGSSLMODE === 'require' ||
+    process.env.PGSSL_NO_VERIFY === '1';
 
-  // SSL configuration: Only disable rejectUnauthorized in development for self-signed certs
-  // In production, always verify certificates for security
+  // Decide whether to verify the server cert
+  // If PGSSL_NO_VERIFY=1, we keep SSL but skip certificate verification.
+  const noVerify = process.env.PGSSL_NO_VERIFY === '1';
+
+  // Default: in production verify certs; in dev allow self-signed
   const IS_PROD = process.env.NODE_ENV === 'production';
   const sslConfig = needsSSL
-    ? { rejectUnauthorized: IS_PROD ? true : false }
+    ? (noVerify
+        ? { rejectUnauthorized: false }
+        : { rejectUnauthorized: IS_PROD ? true : false })
     : false;
 
   pool = new Pool({
     connectionString: connStr || undefined,
-      ssl: sslConfig,
+    ssl: sslConfig,
     keepAlive: true,
     max: 10,
     idleTimeoutMillis: 30000,
@@ -39,14 +46,13 @@ if (skipDB) {
 
   pool.on('error', (err) => console.error('❌ PG idle client error:', err));
 
-  // Try one connection at startup (optional)
   (async () => {
     try {
       const client = await pool.connect();
-      console.log('✅ Connected to PostgreSQL');
+      console.log('✅ Connected to PostgreSQL (ssl:', !!sslConfig, 'verify:', !(sslConfig && sslConfig.rejectUnauthorized === false), ')');
       client.release();
     } catch (err) {
-      console.error('❌ PostgreSQL connection error', err.message);
+      console.error('❌ PostgreSQL connection error:', err.message);
     }
   })();
 }
@@ -57,6 +63,5 @@ export const query = async (text, params) => {
   return pool.query(text, params);
 };
 
-// Export both ways for flexibility
 export { pool };
 export default { pool, query };
