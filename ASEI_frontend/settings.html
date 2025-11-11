@@ -38,6 +38,41 @@
     animation: slideDown 0.3s ease-out;
   }
 </style>
+
+<!-- Circle crop -->
+<style>
+  @keyframes slideDown {
+    from { opacity: 0; transform: translate(-50%, -20px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+  }
+  .animate-slide-down {
+    animation: slideDown 0.3s ease-out;
+  }
+
+  /* 👇 add this block right here */
+  #cropModal .cropper-crop-box,
+  #cropModal .cropper-view-box,
+  #cropModal .cropper-face {
+    border-radius: 50%;
+  }
+
+  #cropModal .cropper-crop-box {
+    overflow: hidden;
+  }
+
+  #cropModal .cropper-dashed,
+  #cropModal .cropper-dashed.dashed-h,
+  #cropModal .cropper-dashed.dashed-v {
+    border-radius: 50%;
+    overflow: hidden;
+  }
+
+  #cropModal .cropper-view-box {
+    box-shadow: 0 0 0 9999px rgba(0,0,0,.45);
+  }
+</style>
+
+
 </head>
 <body class="min-h-screen bg-neutral-50 text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100 transition-colors">
 
@@ -53,8 +88,9 @@
       </button>
     </div>
     <div class="p-4">
-      <div class="max-h-[60vh] overflow-hidden">
+      <div class="max-h-[60vh] overflow-hidden relative">
         <img id="cropImage" class="max-w-full">
+        <div class="circle-mask"></div>
       </div>
     </div>
     <div class="p-4 border-t border-neutral-300 dark:border-neutral-600 flex justify-end gap-2">
@@ -265,7 +301,7 @@
 
     <!-- Deactivate Account Section -->
     <div class="border-t border-red-400 dark:border-red-600 pt-4 mt-6">
-      <h3 class="font-semibold text-red-600 dark:text-red-400 mb-2">Danger Zone</h3>
+      <h3 class="font-semibold text-red-600 dark:text-red-400 mb-2">Account Deactivation</h3>
       <div id="activeAccountSection" class="mb-4">
         <p class="text-sm text-neutral-600 dark:text-neutral-400 mb-3">
           Deactivating your account will disable access for 30 days. You can reactivate by logging in again within this period. After 30 days, your account and all data will be permanently deleted.
@@ -412,7 +448,7 @@
           dragMode: 'move',
           autoCropArea: 1,
           restore: false,
-          guides: true,
+          guides: true,    
           center: true,
           highlight: false,
           cropBoxMovable: true,
@@ -428,60 +464,69 @@
   document.getElementById('closeCropModal')?.addEventListener('click', closeCropModal);
   document.getElementById('cancelCrop')?.addEventListener('click', closeCropModal);
   
-  document.getElementById('applyCrop')?.addEventListener('click', async () => {
-    if (!cropper) return;
-    
-    // Get cropped canvas
-    const canvas = cropper.getCroppedCanvas({
-      width: 400,
-      height: 400,
-      imageSmoothingQuality: 'high'
-    });
-    
-    // Convert to blob
-    canvas.toBlob(async (blob) => {
-      if (!blob) {
-        alert('Failed to crop image');
-        return;
-      }
-      
-      // Create a File object from the blob
-      const croppedFile = new File([blob], selectedFile.name, {
-        type: 'image/jpeg',
-        lastModified: Date.now()
-      });
-      
-      // Convert to data URL for preview
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
-      
-      try {
-        localStorage.setItem(imageStore, dataUrl);
-        
-        // Upload to backend
-        try {
-          const form = new FormData();
-          form.append('avatar', croppedFile);
+document.getElementById('applyCrop')?.addEventListener('click', async () => {
+  if (!cropper) return;
 
-          const res = await fetch('/api/auth/profile/avatar', {
-            method: 'POST',
-            credentials: 'include',
-            body: form
-          });
-
-          if (!res.ok) {
-            console.warn('Could not save avatar to backend.');
-          }
-        } catch (err) {
-          console.warn('Could not save avatar to backend.', err);
-        }
-        
-        applyPfpToDOM(dataUrl);
-        closeCropModal();
-      } catch (e) {
-        console.warn("Could not save avatar. Try again.", e);
-      }
-    }, 'image/jpeg', 0.9);
+  // 1) get the square crop from Cropper.js
+  const src = cropper.getCroppedCanvas({
+    width: 400,
+    height: 400,
+    imageSmoothingQuality: 'high'
   });
+
+  // 2) draw it onto an offscreen canvas and mask to a circle (transparent outside)
+  const off = document.createElement('canvas');
+  off.width = 400;
+  off.height = 400;
+  const ctx = off.getContext('2d');
+  ctx.imageSmoothingQuality = 'high';
+
+  // draw the cropped image
+  ctx.drawImage(src, 0, 0, 400, 400);
+
+  // punch a circular alpha mask
+  ctx.globalCompositeOperation = 'destination-in';
+  ctx.beginPath();
+  ctx.arc(200, 200, 200, 0, Math.PI * 2);
+  ctx.closePath();
+  ctx.fill();
+
+  // 3) export as PNG (keeps transparency), store, upload, update UI
+  off.toBlob(async (blob) => {
+    if (!blob) { alert('Failed to crop image'); return; }
+
+    const safeName =
+      (window.selectedFile?.name?.replace(/\.\w+$/, '') || 'avatar') + '.png';
+    const file = new File([blob], safeName, { type: 'image/png', lastModified: Date.now() });
+
+    // data URL for instant preview + local persistence
+    const dataUrl = await new Promise((resolve) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(fr.result);
+      fr.readAsDataURL(file);
+    });
+
+    try { localStorage.setItem('connectify.pfpUrl', dataUrl); } catch {}
+
+    // optional backend upload
+    try {
+      const form = new FormData();
+      form.append('avatar', file);
+      const res = await fetch('/api/auth/profile/avatar', {
+        method: 'POST',
+        credentials: 'include',
+        body: form
+      });
+      if (!res.ok) console.warn('Could not save avatar to backend.');
+    } catch (err) {
+      console.warn('Could not save avatar to backend.', err);
+    }
+
+    // update all avatar <img> tags and close modal
+    applyPfpToDOM(dataUrl);
+    closeCropModal();
+  }, 'image/png', 0.92);
+});
   
   function closeCropModal() {
     const cropModal = document.getElementById('cropModal');

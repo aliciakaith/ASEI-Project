@@ -411,36 +411,53 @@ const api = {
   }
 
   // ---------- Profile (name + avatar) ----------
-  async function initProfile() {
-    try {
-      // backend /api/dashboard/me returns a plain user object: { id, email, org, firstName, lastName, profilePicture }
-      const me = await fetchJson(api.me);
+  const PFP_KEY = 'connectify.pfpUrl';
 
-      // Build a friendly display name: prefer first+last, fall back to email localpart, then generic 'User'
-      const fullName = [me?.firstName, me?.lastName].filter(Boolean).join(' ').trim();
-      const emailLocal = (me?.email || '').split('@')[0];
-      const displayName = fullName || emailLocal || 'User';
+  function setProfileUI({ name, pfp }) {
+    document.querySelectorAll('.js-profile-name').forEach(n => n.textContent = name || 'User');
 
-      // Update sidebar + top profile name elements
-      qsa('.js-profile-name').forEach(el => el.textContent = displayName);
-
-      // Prefer real avatar if provided, otherwise show the initial-avatar image
-      if (me?.profilePicture) {
-        qsa('.js-main-pfp').forEach(img => { img.src = me.profilePicture; img.classList.remove('hidden'); });
-        qsa('.js-initial-pfp').forEach(img => img.classList.add('hidden'));
-        // Sync to localStorage for consistency
-        try { localStorage.setItem('connectify.pfpUrl', me.profilePicture); } catch(e) {}
-      } else {
-        qsa('.js-initial-pfp').forEach(img => img.classList.remove('hidden'));
-        qsa('.js-main-pfp').forEach(img => img.classList.add('hidden'));
-      }
-
-      // expose current user for other scripts (socket join)
-      window.__me = me;
-      // if socket already exists and is connected, join the org room
-      try { if (window.__socket && window.__socket.connected && me?.org) window.__socket.emit('join-org', me.org); } catch(_){ }
-    } catch (e) { console.warn('Profile load failed', e); }
+    // update image 
+    const showReal = !!pfp;
+    document.querySelectorAll('.js-main-pfp').forEach(img => {
+      if (showReal) { img.src = pfp; img.classList.remove('hidden'); }
+      else { img.classList.add('hidden'); }
+    });
+    document.querySelectorAll('.js-initial-pfp').forEach(img => {
+      img.classList.toggle('hidden', showReal);
+    });
   }
+
+  async function getMeSafe() {
+    try {
+      const r = await fetch('/api/dashboard/me', { credentials:'include' });
+      if (!r.ok) return null;
+      return r.json();
+    } catch { return null; }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const stored = localStorage.getItem(PFP_KEY);
+    setProfileUI({ name: 'User', pfp: stored || null });
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const me = window.__me;
+    if (me) {
+      const pfp = me.profilePicture || localStorage.getItem(PFP_KEY) || null;
+      const full = [me.firstName, me.lastName].filter(Boolean).join(' ') || (me.email||'').split('@')[0] || 'User';
+      setProfileUI({ name: full, pfp });
+      if (pfp) try { localStorage.setItem(PFP_KEY, pfp); } catch {}
+    }
+  });
+
+  (async () => {
+    const me = await getMeSafe();
+    if (!me) return;
+    const full = [me.firstName, me.lastName].filter(Boolean).join(' ') || (me.email||'').split('@')[0] || 'User';
+    const pfp = me.profilePicture || localStorage.getItem(PFP_KEY) || null;
+    setProfileUI({ name: full, pfp });
+    if (me.profilePicture) try { localStorage.setItem(PFP_KEY, me.profilePicture); } catch {}
+  })();
 
   // ---------- Notifications ----------
 function timeAgo(tsMs){
