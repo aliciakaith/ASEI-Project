@@ -142,8 +142,13 @@ if (fs.existsSync(BACKEND_STATIC)) {
   console.log('Serving backend static from:', BACKEND_STATIC);
 }
 
+// Ensure STATIC_ROOT (if provided) is absolute
+const envStatic = process.env.STATIC_ROOT
+  ? path.resolve(__dirname, process.env.STATIC_ROOT)
+  : null;
+
 const candidates = [
-  process.env.STATIC_ROOT,
+  envStatic,
   path.resolve(__dirname, "../../../ASEI_frontend"),
   path.resolve(__dirname, "../../ASEI_frontend"),
 ].filter(Boolean);
@@ -159,7 +164,7 @@ console.log("Serving static from:", FRONTEND_DIR || "(disabled)");
 // Only enable static if we actually have a directory
 if (FRONTEND_DIR) {
   app.use(express.static(FRONTEND_DIR, { index: false }));
-  const send = (f) => (_req, res) => res.sendFile(path.join(FRONTEND_DIR, f));
+  const send = (f) => (_req, res) => res.sendFile(f, { root: FRONTEND_DIR });
 
   // Frontend routes
   app.get("/", send("login.html"));
@@ -179,6 +184,7 @@ if (FRONTEND_DIR) {
   // Safe default so CI still returns 200 on /
   app.get("/", (_req, res) => res.status(200).send("Backend OK"));
 }
+app.head("/", (_req, res) => res.sendStatus(200));
 
 // ------------------------------------------------------
 // Migrations: ensure required tables exist
