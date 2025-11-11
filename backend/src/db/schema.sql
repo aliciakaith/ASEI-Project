@@ -5,7 +5,7 @@ CREATE EXTENSION IF NOT EXISTS citext;
 -- ---------- Organizations ----------
 CREATE TABLE IF NOT EXISTS organizations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL UNIQUE,  -- 👈 prevents duplicate org names
+  name TEXT NOT NULL UNIQUE,  -- prevents duplicate org names
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -22,6 +22,10 @@ CREATE TABLE IF NOT EXISTS users (
   deactivated_at TIMESTAMPTZ
 );
 
+-- Make sure older DBs get the new column
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS deactivated_at TIMESTAMPTZ NULL;
+
 -- ---------- Roles ----------
 CREATE TABLE IF NOT EXISTS roles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -31,7 +35,7 @@ CREATE TABLE IF NOT EXISTS roles (
 -- ---------- Pending Users ----------
 CREATE TABLE IF NOT EXISTS pending_users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  email CITEXT UNIQUE NOT NULL,  -- 👈 each email can only be pending once
+  email CITEXT UNIQUE NOT NULL,  -- each email can only be pending once
   first_name TEXT,
   last_name TEXT,
   password_hash TEXT,
@@ -52,6 +56,9 @@ CREATE TABLE IF NOT EXISTS notifications (
   created_at   TIMESTAMPTZ DEFAULT now()
 );
 
+CREATE INDEX IF NOT EXISTS idx_notifications_org_created
+  ON notifications (org_id, created_at DESC);
+
 -- ---------- Transaction Events ----------
 CREATE TABLE IF NOT EXISTS tx_events (
   id           BIGSERIAL PRIMARY KEY,
@@ -64,25 +71,33 @@ CREATE TABLE IF NOT EXISTS tx_events (
 CREATE INDEX IF NOT EXISTS idx_tx_events_org_created
   ON tx_events (org_id, created_at DESC);
 
-
 -- ---------- Integrations ----------
 CREATE TABLE IF NOT EXISTS integrations (
   id            BIGSERIAL PRIMARY KEY,
   org_id        UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   name          TEXT NOT NULL,
   status        TEXT NOT NULL DEFAULT 'pending',   -- 'pending' | 'active' | 'error'
-  test_url      TEXT,                               -- probe URL your backend calls
-  last_checked  TIMESTAMPTZ,                        -- when verification last ran
+  test_url      TEXT,                              -- probe URL your backend calls
+  last_checked  TIMESTAMPTZ,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Optional: avoid duplicate names per org
+-- Avoid duplicate names per org
 CREATE UNIQUE INDEX IF NOT EXISTS uq_integrations_org_name
   ON integrations (org_id, LOWER(name));
 
+-- Helpful indexes
+CREATE INDEX IF NOT EXISTS idx_integrations_org_created
+  ON integrations (org_id, created_at DESC);
 
-CREATE INDEX IF NOT EXISTS idx_notifications_org_created
-  ON notifications (org_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_integrations_org_status
+  ON integrations (org_id, status);
+
+-- Ensure older DBs have the newer columns on integrations
+ALTER TABLE integrations
+  ADD COLUMN IF NOT EXISTS test_url TEXT,
+  ADD COLUMN IF NOT EXISTS last_checked TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending';
 
 -- ---------- Notifications on failed tx_events ----------
 CREATE OR REPLACE FUNCTION notify_on_tx_failure() RETURNS trigger AS $$
@@ -107,22 +122,3 @@ DROP TRIGGER IF EXISTS trig_notify_on_tx_failure ON tx_events;
 CREATE TRIGGER trig_notify_on_tx_failure
 AFTER INSERT ON tx_events
 FOR EACH ROW EXECUTE PROCEDURE notify_on_tx_failure();
-
--- 🔧 Helpful for dashboard queries
-CREATE INDEX IF NOT EXISTS idx_integrations_org_created
-  ON integrations (org_id, created_at DESC);
-
-CREATE INDEX IF NOT EXISTS idx_integrations_org_status
-  ON integrations (org_id, status);
-
--- run these once in psql (or your migration tool)
-ALTER TABLE integrations
-  ADD COLUMN IF NOT EXISTS test_url TEXT,
-  ADD COLUMN IF NOT EXISTS last_checked TIMESTAMPTZ,
-  ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending';
-
--- helpful indexes
-CREATE INDEX IF NOT EXISTS idx_integrations_org_created
-  ON integrations (org_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_integrations_org_status
-  ON integrations (org_id, status);

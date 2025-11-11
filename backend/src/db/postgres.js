@@ -3,34 +3,43 @@ import 'dotenv/config';
 import pg from 'pg';
 const { Pool } = pg;
 
-// Detect if we’re in CI or explicitly skipping the DB
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+
 const skipDB = process.env.DISABLE_DB === '1' || process.env.CI === 'true';
 
 let pool = null;
 
-// If DB is disabled (CI, smoke tests, etc.), don’t even try to connect
 if (skipDB) {
   console.log('⏭️  Skipping PostgreSQL connection (CI/disabled mode)');
 } else {
   const connStr = process.env.DATABASE_URL;
   if (!connStr) {
-    console.error('❌ DATABASE_URL is not set (Render → Environment).');
+    console.error('❌ DATABASE_URL is not set.');
   }
 
-  const needsSSL =
-    (connStr && !/localhost|127\.0\.0\.1|::1/.test(connStr)) ||
-    process.env.PGSSL === 'true';
+  const forceNoVerify = process.env.PGSSL_NO_VERIFY === '1';
+  const sslmode = (process.env.PGSSLMODE || '').toLowerCase();
 
-  // SSL configuration: Only disable rejectUnauthorized in development for self-signed certs
-  // In production, always verify certificates for security
-  const IS_PROD = process.env.NODE_ENV === 'production';
-  const sslConfig = needsSSL
-    ? { rejectUnauthorized: IS_PROD ? true : false }
+  // TLS is needed for remote DBs or when sslmode says so
+  const isLocal = /localhost|127\.0\.0\.1|::1/.test(connStr || '');
+  const tlsByUrl = /[?&]sslmode=(require|verify-ca|verify-full|prefer)/i.test(connStr || '');
+  const tlsByEnv = ['require','verify-ca','verify-full','prefer'].includes(sslmode);
+
+  const needTLS = !isLocal || tlsByUrl || tlsByEnv || forceNoVerify;
+
+  // On Render, be extra permissive unless you’ve supplied a CA
+  const onRender = !!process.env.RENDER;
+
+  const sslConfig = needTLS
+    ? { rejectUnauthorized: !(forceNoVerify || onRender) }
     : false;
+
+  // Optional: log once so you can see what it's doing
+  console.log('PG TLS -> needTLS:', needTLS, 'rejectUnauthorized:', sslConfig ? sslConfig.rejectUnauthorized : false);
 
   pool = new Pool({
     connectionString: connStr || undefined,
-      ssl: sslConfig,
+    ssl: sslConfig,
     keepAlive: true,
     max: 10,
     idleTimeoutMillis: 30000,
@@ -39,24 +48,21 @@ if (skipDB) {
 
   pool.on('error', (err) => console.error('❌ PG idle client error:', err));
 
-  // Try one connection at startup (optional)
   (async () => {
     try {
       const client = await pool.connect();
       console.log('✅ Connected to PostgreSQL');
       client.release();
     } catch (err) {
-      console.error('❌ PostgreSQL connection error', err.message);
+      console.error('❌ PostgreSQL connection error:', err.message);
     }
   })();
 }
 
-// Unified query helper (no-op if pool is null)
 export const query = async (text, params) => {
   if (!pool) return { rows: [], rowCount: 0 };
   return pool.query(text, params);
 };
 
-// Export both ways for flexibility
 export { pool };
 export default { pool, query };
