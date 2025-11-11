@@ -16,7 +16,6 @@ COPY --from=deps /app/node_modules ./node_modules
 
 # copy app code (backend source files)
 COPY backend/src ./src
-COPY backend/nodemon.json ./
 COPY backend/data ./data
 
 # copy frontend
