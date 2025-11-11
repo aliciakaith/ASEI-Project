@@ -10,8 +10,6 @@ CREATE TABLE IF NOT EXISTS api_rate_tracking (
   id SERIAL PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   endpoint VARCHAR(255) NOT NULL,
-  request_count INTEGER DEFAULT 1,
-  window_start TIMESTAMP NOT NULL DEFAULT NOW(),
-  created_at TIMESTAMP DEFAULT NOW(),
-  UNIQUE(user_id, endpoint, window_start)
+  ip_address VARCHAR(100),
+  timestamp TIMESTAMP NOT NULL DEFAULT NOW()
 );
