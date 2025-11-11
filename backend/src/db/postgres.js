@@ -3,6 +3,8 @@ import 'dotenv/config';
 import pg from 'pg';
 const { Pool } = pg;
 
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+
 const skipDB = process.env.DISABLE_DB === '1' || process.env.CI === 'true';
 
 let pool = null;
