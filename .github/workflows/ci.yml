@@ -24,7 +24,7 @@ jobs:
       - name: Build (load for smoke test)
         uses: docker/build-push-action@v6
         with:
-          context: ./backend
+          context: .
           file: ./backend/Dockerfile
           load: true
           tags: asei-backend:ci
@@ -94,7 +94,7 @@ jobs:
       - name: Build and push (GHCR)
         uses: docker/build-push-action@v6
         with:
-          context: ./backend
+          context: .
           file: ./backend/Dockerfile
           push: true
           platforms: linux/amd64
