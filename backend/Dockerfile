@@ -1,8 +1,8 @@
 # ---- deps ----
 FROM node:20-alpine AS deps
 WORKDIR /app
-# copy manifests from repo root (build context will be repo root)
-COPY package*.json ./
+# copy backend package files to install dependencies
+COPY backend/package*.json ./
 RUN if [ -f package-lock.json ]; then npm ci --omit=dev; else npm install --omit=dev; fi
 
 # ---- runner ----
@@ -14,10 +14,9 @@ RUN apk add --no-cache dumb-init curl
 # bring production node_modules
 COPY --from=deps /app/node_modules ./node_modules
 
-# copy app code (backend + frontend + package files)
+# copy app code (backend + frontend)
 COPY backend ./backend
 COPY ASEI_frontend ./ASEI_frontend
-COPY package*.json ./
 
 # logs dir for non-root user
 RUN mkdir -p logs && chown -R node:node /app
