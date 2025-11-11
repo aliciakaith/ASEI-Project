@@ -1,15 +1,11 @@
-services:
-  # PostgreSQL Database
-  - type: pserv
-    name: asei-database
-    env: docker
+databases:
+  # PostgreSQL Database (Native Render PostgreSQL)
+  - name: asei-database
+    databaseName: asei_dev
+    user: asei_app
     plan: free
-    autoDeploy: false
-    disk:
-      name: asei-db-data
-      mountPath: /var/lib/postgresql/data
-      sizeGB: 1
 
+services:
   # Backend Web Service
   - type: web
     name: asei-backend
