@@ -21,8 +21,10 @@ if (skipDB) {
   // If DATABASE_URL has ?sslmode=..., node-postgres will enable TLS;
   // we still control cert verification here:
   const sslNeeded =
+    forceNoVerify || // if we're told not to verify, we still need TLS enabled
     /sslmode=require|verify|prefer/.test(connStr || '') ||
-    ['require', 'verify-ca', 'verify-full', 'prefer'].includes(sslmode);
+    ['require', 'verify-ca', 'verify-full', 'prefer'].includes(sslmode) ||
+    (!!connStr && !/localhost|127\.0\.0\.1|::1/.test(connStr)); // any remote host => TLS
 
   const IS_PROD = process.env.NODE_ENV === 'production';
 
