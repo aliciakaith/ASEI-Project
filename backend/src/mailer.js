@@ -36,7 +36,7 @@ if (useSendGrid) {
 // --- Verify email connection at startup (helpful for debugging) ---
 // Set a timeout to prevent blocking if email service is slow/unavailable
 const verifyTimeout = setTimeout(() => {
-  console.warn("⚠️  Email verification timed out - emails may not work");
+  console.warn("⚠️  Email verification timed out - emails may still work");
 }, 5000);
 
 transporter.verify()
@@ -47,7 +47,7 @@ transporter.verify()
   .catch((err) => {
     clearTimeout(verifyTimeout);
     console.warn("⚠️  Email transporter verify failed:", err && err.message ? err.message : err);
-    console.warn("⚠️  Email functionality may not work. Check email settings.");
+    console.warn("⚠️  Will attempt to send emails anyway. Check email settings if emails don't arrive.");
   });
 
 export async function sendMail({ to, subject, text, html, attachments } = {}) {
@@ -59,7 +59,20 @@ export async function sendMail({ to, subject, text, html, attachments } = {}) {
     html,
   };
   if (attachments) mailOptions.attachments = attachments;
-  return transporter.sendMail(mailOptions);
+  
+  console.log(`📧 Attempting to send email to ${to} with subject: ${subject}`);
+  console.log(`📧 Using SendGrid: ${useSendGrid ? 'YES' : 'NO'}`);
+  console.log(`📧 From address: ${mailOptions.from}`);
+  
+  try {
+    const result = await transporter.sendMail(mailOptions);
+    console.log(`✅ Email sent successfully to ${to}:`, result.messageId);
+    return result;
+  } catch (error) {
+    console.error(`❌ Failed to send email to ${to}:`, error.message);
+    console.error('Full error:', error);
+    throw error;
+  }
 }
 
 export function verificationEmail(code) {
