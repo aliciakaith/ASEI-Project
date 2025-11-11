@@ -400,29 +400,24 @@ const api = {
     } catch { return null; }
   }
 
-  document.addEventListener('DOMContentLoaded', () => {
-    const stored = localStorage.getItem(PFP_KEY);
-    setProfileUI({ name: 'User', pfp: stored || null });
-  });
-
-  document.addEventListener('DOMContentLoaded', () => {
-    const me = window.__me;
-    if (me) {
-      const pfp = me.profilePicture || localStorage.getItem(PFP_KEY) || null;
-      const full = [me.firstName, me.lastName].filter(Boolean).join(' ') || (me.email||'').split('@')[0] || 'User';
-      setProfileUI({ name: full, pfp });
-      if (pfp) try { localStorage.setItem(PFP_KEY, pfp); } catch {}
+  async function initProfile() {
+    try {
+      const stored = localStorage.getItem(PFP_KEY);
+      setProfileUI({ name: 'User', pfp: stored || null });
+      
+      const me = window.__me || await getMeSafe();
+      if (me) {
+        const pfp = me.profilePicture || stored || null;
+        const full = [me.firstName, me.lastName].filter(Boolean).join(' ') || (me.email||'').split('@')[0] || 'User';
+        setProfileUI({ name: full, pfp });
+        if (pfp) try { localStorage.setItem(PFP_KEY, pfp); } catch {}
+      }
+    } catch (error) {
+      console.error('Failed to initialize profile:', error);
     }
-  });
+  }
 
-  (async () => {
-    const me = await getMeSafe();
-    if (!me) return;
-    const full = [me.firstName, me.lastName].filter(Boolean).join(' ') || (me.email||'').split('@')[0] || 'User';
-    const pfp = me.profilePicture || localStorage.getItem(PFP_KEY) || null;
-    setProfileUI({ name: full, pfp });
-    if (me.profilePicture) try { localStorage.setItem(PFP_KEY, me.profilePicture); } catch {}
-  })();
+  // Keep legacy DOMContentLoaded for backward compatibility
 
   // ---------- Notifications ----------
 function timeAgo(tsMs){
