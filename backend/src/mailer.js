@@ -1,39 +1,58 @@
 // src/mailer.js
 import nodemailer from "nodemailer";
 
-const port = Number(process.env.SMTP_PORT || 587);
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: port,
-  secure: port === 465, // true for 465 (SSL), false for 587 (STARTTLS)
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-  connectionTimeout: 10000, // 10 second timeout
-  greetingTimeout: 10000,
-});
+// Use SendGrid if SENDGRID_API_KEY is set, otherwise fall back to SMTP
+const useSendGrid = !!process.env.SENDGRID_API_KEY;
 
-// --- Verify SMTP connection at startup (helpful for debugging) ---
-// Set a timeout to prevent blocking if SMTP is slow/unavailable
+let transporter;
+
+if (useSendGrid) {
+  console.log("📧 Using SendGrid for email delivery");
+  transporter = nodemailer.createTransport({
+    host: "smtp.sendgrid.net",
+    port: 587,
+    secure: false,
+    auth: {
+      user: "apikey",
+      pass: process.env.SENDGRID_API_KEY,
+    },
+  });
+} else {
+  console.log("📧 Using SMTP for email delivery");
+  const port = Number(process.env.SMTP_PORT || 587);
+  transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: port,
+    secure: port === 465, // true for 465 (SSL), false for 587 (STARTTLS)
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+    connectionTimeout: 10000, // 10 second timeout
+    greetingTimeout: 10000,
+  });
+}
+
+// --- Verify email connection at startup (helpful for debugging) ---
+// Set a timeout to prevent blocking if email service is slow/unavailable
 const verifyTimeout = setTimeout(() => {
-  console.warn("⚠️  SMTP verification timed out - emails may not work");
+  console.warn("⚠️  Email verification timed out - emails may not work");
 }, 5000);
 
 transporter.verify()
   .then(() => {
     clearTimeout(verifyTimeout);
-    console.log("✅ SMTP transporter ready — mail will be sent using", process.env.SMTP_HOST);
+    console.log("✅ Email transporter ready");
   })
   .catch((err) => {
     clearTimeout(verifyTimeout);
-    console.warn("⚠️  SMTP transporter verify failed:", err && err.message ? err.message : err);
-    console.warn("⚠️  Email functionality may not work. Check SMTP settings.");
+    console.warn("⚠️  Email transporter verify failed:", err && err.message ? err.message : err);
+    console.warn("⚠️  Email functionality may not work. Check email settings.");
   });
 
 export async function sendMail({ to, subject, text, html, attachments } = {}) {
   const mailOptions = {
-    from: process.env.MAIL_FROM || process.env.SMTP_USER,
+    from: process.env.MAIL_FROM || process.env.SMTP_USER || "noreply@asei.app",
     to,
     subject,
     text,
