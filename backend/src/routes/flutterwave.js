@@ -21,7 +21,7 @@ router.get('/api/connectors', (req, res) => {
 router.post('/api/connectors/flutterwave', express.json(), async (req, res) => {
   const userId = getUserId(req);
   const orgId = req.user?.org;
-  const { publicKey, secretKey, encryptionKey, accountAlias } = req.body || {};
+  const { publicKey, secretKey, encryptionKey, accountAlias, label } = req.body || {};
   if (!publicKey || !secretKey || !encryptionKey) {
     return res.status(400).json({ error: 'publicKey, secretKey, encryptionKey are required' });
   }
@@ -29,19 +29,51 @@ router.post('/api/connectors/flutterwave', express.json(), async (req, res) => {
     const fw = flutterwaveClient({ secretKey, baseUrl: FLW_BASE_URL });
     await fw.ping();
     
-    // Mark Flutterwave integration as active if it exists
+    // Create or update Flutterwave integration in the database
     if (orgId) {
-      await query(
-        `UPDATE integrations SET status = 'active', last_checked = now() WHERE org_id = $1 AND LOWER(name) = 'flutterwave'`,
-        [orgId]
-      ).catch(err => console.error('Failed to update Flutterwave integration status:', err));
+      const integrationName = label || accountAlias || 'Flutterwave';
+      console.log('[FLUTTERWAVE SAVE] Creating integration with name:', integrationName, 'for org:', orgId);
+      
+      try {
+        // Check if integration already exists
+        const { rows: existing } = await query(
+          `SELECT id FROM integrations WHERE org_id = $1 AND LOWER(name) = LOWER($2)`,
+          [orgId, integrationName]
+        );
+        
+        console.log('[FLUTTERWAVE SAVE] Existing integrations found:', existing.length);
+        
+        if (existing.length > 0) {
+          // Update existing integration
+          console.log('[FLUTTERWAVE SAVE] Updating existing integration');
+          await query(
+            `UPDATE integrations SET status = 'active', last_checked = now() WHERE org_id = $1 AND LOWER(name) = LOWER($2)`,
+            [orgId, integrationName]
+          );
+          console.log('[FLUTTERWAVE SAVE] Successfully updated integration');
+        } else {
+          // Create new integration
+          console.log('[FLUTTERWAVE SAVE] Creating new integration');
+          const { rows: inserted } = await query(
+            `INSERT INTO integrations (org_id, name, status, created_at, last_checked) VALUES ($1, $2, 'active', now(), now()) RETURNING id, name, status`,
+            [orgId, integrationName]
+          );
+          console.log('[FLUTTERWAVE SAVE] Successfully created integration:', inserted[0]);
+        }
+      } catch (dbErr) {
+        console.error('[FLUTTERWAVE SAVE] Database error:', dbErr);
+        // Don't throw - we still want to save the connector credentials
+      }
+    } else {
+      console.log('[FLUTTERWAVE SAVE] No orgId found, skipping database integration creation');
     }
   } catch (e) {
     // Mark as error if verification fails
     if (orgId) {
+      const integrationName = label || accountAlias || 'Flutterwave';
       await query(
-        `UPDATE integrations SET status = 'error', last_checked = now() WHERE org_id = $1 AND LOWER(name) = 'flutterwave'`,
-        [orgId]
+        `UPDATE integrations SET status = 'error', last_checked = now() WHERE org_id = $1 AND LOWER(name) = LOWER($2)`,
+        [orgId, integrationName]
       ).catch(err => console.error('Failed to update Flutterwave integration status:', err));
     }
     return res.status(400).json({ error: `Key verification failed: ${e.message}` });
@@ -49,7 +81,7 @@ router.post('/api/connectors/flutterwave', express.json(), async (req, res) => {
   const saved = saveConnector(
     userId,
     'flutterwave',
-    { accountAlias: accountAlias || 'Flutterwave' },
+    { accountAlias: accountAlias || label || 'Flutterwave' },
     { publicKey, secretKey, encryptionKey }
   );
   return res.json(saved);

@@ -85,8 +85,8 @@ app.use(requestContext);
 app.use(requestContext);
 
 // … after you create `app`
-app.use('/api', flutterwaveRoutes);  // /api/connectors, /api/flutterwave/*
-app.use('/', flutterwaveRoutes);     // /webhooks/flutterwave
+app.use('/api', requireAuth, flutterwaveRoutes);  // /api/connectors, /api/flutterwave/* (protected)
+app.use('/', flutterwaveRoutes);     // /webhooks/flutterwave (webhooks don't need auth)
 
 
 // request logs (skip noisy health checks)

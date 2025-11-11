@@ -808,7 +808,14 @@ router.post("/integrations", express.json(), async (req, res) => {
 // Update integration (name and/or test_url)
 router.patch("/integrations/:id", express.json(), async (req, res) => {
   const orgId = req.user.org;
-  const id = Number(req.params.id);
+  const id = req.params.id; // ID is a UUID, not an integer
+  
+  // Validate UUID format
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(id)) {
+    return res.status(400).json({ error: 'Invalid integration ID format' });
+  }
+  
   const { name, testUrl } = req.body || {};
 
   const fields = [];
@@ -835,7 +842,22 @@ router.patch("/integrations/:id", express.json(), async (req, res) => {
 // Delete integration
 router.delete("/integrations/:id", async (req, res) => {
   const orgId = req.user.org;
-  const id = Number(req.params.id);
+  const id = req.params.id; // ID is a UUID, not an integer
+  
+  console.log('Delete integration - orgId:', orgId, 'type:', typeof orgId, 'id:', id);
+  
+  // Validate that both IDs are valid UUID format
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  
+  if (!uuidRegex.test(id)) {
+    return res.status(400).json({ error: 'Invalid integration ID format' });
+  }
+  
+  if (!uuidRegex.test(orgId)) {
+    console.error('Invalid org_id format:', orgId);
+    return res.status(401).json({ error: 'Invalid organization ID. Please log in again.' });
+  }
+  
   const { rowCount } = await query("DELETE FROM integrations WHERE id=$1 AND org_id=$2", [id, orgId]);
   if (!rowCount) return res.status(404).json({ error: 'not_found' });
   emitToOrg(req, "integrations:update");
@@ -921,7 +943,13 @@ async function verifyAfterDelay({ req, orgId, integrationId, name, apiKey, testU
 
 router.post("/integrations/:id/verify", express.json(), async (req, res) => {
   const orgId = req.user.org;
-  const id = Number(req.params.id);
+  const id = req.params.id; // ID is a UUID, not an integer
+  
+  // Validate UUID format
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(id)) {
+    return res.status(400).json({ error: 'Invalid integration ID format' });
+  }
 
   const { rows } = await query(
     "SELECT id, name, test_url FROM integrations WHERE id=$1 AND org_id=$2",

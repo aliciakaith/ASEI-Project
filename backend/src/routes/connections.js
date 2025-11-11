@@ -83,20 +83,53 @@ router.post("/",
         baseUrl
       });
       
-      // Mark MTN integration as active if validation succeeds
+      // Create or update MTN integration in the database
       if (orgId) {
-        await query(
-          `UPDATE integrations SET status = 'active', last_checked = now() WHERE org_id = $1 AND LOWER(name) = 'mtn mobile money'`,
-          [orgId]
-        ).catch(err => console.error('Failed to update MTN integration status:', err));
+        const integrationName = req.body.label || 'MTN Mobile Money';
+        console.log('[MTN SAVE] Creating integration with name:', integrationName, 'for org:', orgId);
+        
+        try {
+          // Check if integration already exists
+          const { rows: existing } = await query(
+            `SELECT id FROM integrations WHERE org_id = $1 AND LOWER(name) = LOWER($2)`,
+            [orgId, integrationName]
+          );
+          
+          console.log('[MTN SAVE] Existing integrations found:', existing.length);
+          
+          if (existing.length > 0) {
+            // Update existing integration
+            console.log('[MTN SAVE] Updating existing integration');
+            await query(
+              `UPDATE integrations SET status = 'active', last_checked = now() WHERE org_id = $1 AND LOWER(name) = LOWER($2)`,
+              [orgId, integrationName]
+            );
+            console.log('[MTN SAVE] Successfully updated integration');
+          } else {
+            // Create new integration
+            console.log('[MTN SAVE] Creating new integration');
+            const { rows: inserted } = await query(
+              `INSERT INTO integrations (org_id, name, status, created_at, last_checked) VALUES ($1, $2, 'active', now(), now()) RETURNING id, name, status`,
+              [orgId, integrationName]
+            );
+            console.log('[MTN SAVE] Successfully created integration:', inserted[0]);
+          }
+        } catch (dbErr) {
+          console.error('[MTN SAVE] Database error:', dbErr);
+          // Don't throw - we still want to save the connection credentials
+        }
+      } else {
+        console.log('[MTN SAVE] No orgId found, skipping database integration creation');
       }
     } catch (e) {
       // Mark as error if verification fails
       if (orgId) {
+        const integrationName = req.body.label || 'MTN Mobile Money';
+        console.log('[MTN SAVE] Connection test failed, marking integration as error');
         await query(
-          `UPDATE integrations SET status = 'error', last_checked = now() WHERE org_id = $1 AND LOWER(name) = 'mtn mobile money'`,
-          [orgId]
-        ).catch(err => console.error('Failed to update MTN integration status:', err));
+          `UPDATE integrations SET status = 'error', last_checked = now() WHERE org_id = $1 AND LOWER(name) = LOWER($2)`,
+          [orgId, integrationName]
+        ).catch(err => console.error('Failed to update MTN integration error status:', err));
       }
       return res.status(400).json({ ok: false, error: e.response?.data || e.message });
     }
