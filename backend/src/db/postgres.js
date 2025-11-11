@@ -18,21 +18,22 @@ if (skipDB) {
   const forceNoVerify = process.env.PGSSL_NO_VERIFY === '1';
   const sslmode = (process.env.PGSSLMODE || '').toLowerCase();
 
-  // If DATABASE_URL has ?sslmode=..., node-postgres will enable TLS;
-  // we still control cert verification here:
-  const sslNeeded =
-    forceNoVerify || // if we're told not to verify, we still need TLS enabled
-    /sslmode=require|verify|prefer/.test(connStr || '') ||
-    ['require', 'verify-ca', 'verify-full', 'prefer'].includes(sslmode) ||
-    (!!connStr && !/localhost|127\.0\.0\.1|::1/.test(connStr)); // any remote host => TLS
+  // TLS is needed for remote DBs or when sslmode says so
+  const isLocal = /localhost|127\.0\.0\.1|::1/.test(connStr || '');
+  const tlsByUrl = /[?&]sslmode=(require|verify-ca|verify-full|prefer)/i.test(connStr || '');
+  const tlsByEnv = ['require','verify-ca','verify-full','prefer'].includes(sslmode);
 
-  const IS_PROD = process.env.NODE_ENV === 'production';
+  const needTLS = !isLocal || tlsByUrl || tlsByEnv || forceNoVerify;
 
-  const sslConfig = sslNeeded
-    ? (forceNoVerify
-        ? { rejectUnauthorized: false }
-        : { rejectUnauthorized: IS_PROD }) // verify in prod when not overridden
+  // On Render, be extra permissive unless you’ve supplied a CA
+  const onRender = !!process.env.RENDER;
+
+  const sslConfig = needTLS
+    ? { rejectUnauthorized: !(forceNoVerify || onRender) }
     : false;
+
+  // Optional: log once so you can see what it's doing
+  console.log('PG TLS -> needTLS:', needTLS, 'rejectUnauthorized:', sslConfig ? sslConfig.rejectUnauthorized : false);
 
   pool = new Pool({
     connectionString: connStr || undefined,
