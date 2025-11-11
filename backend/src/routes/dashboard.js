@@ -728,22 +728,44 @@ router.post("/integrations", express.json(), async (req, res) => {
   const { name, apiKey, testUrl } = req.body || {};
   if (!name || !apiKey) return res.status(400).json({ error: "name and apiKey required" });
 
-  // Insert as PENDING with current timestamp and return immediately
-  const { rows: insertRows } = await query(
-    `INSERT INTO integrations (org_id, name, status, test_url, created_at, last_checked)
-     VALUES ($1, $2, 'pending', $3, now(), now())
-     RETURNING id, name, status, test_url, last_checked`,
-    [orgId, name, testUrl || null]
+  // Check if integration with same name already exists for this org
+  const { rows: existing } = await query(
+    `SELECT id, name FROM integrations WHERE org_id=$1 AND LOWER(name)=LOWER($2)`,
+    [orgId, name]
   );
-  const created = insertRows[0];
+
+  let integrationId, created;
+
+  if (existing.length > 0) {
+    // Update existing integration - set to pending and update timestamp
+    integrationId = existing[0].id;
+    const { rows: updateRows } = await query(
+      `UPDATE integrations 
+       SET status='pending', test_url=$1, last_checked=now()
+       WHERE id=$2 AND org_id=$3
+       RETURNING id, name, status, test_url, last_checked`,
+      [testUrl || null, integrationId, orgId]
+    );
+    created = updateRows[0];
+  } else {
+    // Insert as PENDING with current timestamp
+    const { rows: insertRows } = await query(
+      `INSERT INTO integrations (org_id, name, status, test_url, created_at, last_checked)
+       VALUES ($1, $2, 'pending', $3, now(), now())
+       RETURNING id, name, status, test_url, last_checked`,
+      [orgId, name, testUrl || null]
+    );
+    created = insertRows[0];
+    integrationId = created.id;
+  }
 
   noStore(res);
-  res.status(201).json(created);
+  res.status(existing.length > 0 ? 200 : 201).json(created);
 
   // Kick off delayed verification (no await)
   verifyAfterDelay({
     req, orgId,
-    integrationId: created.id,
+    integrationId,
     name,
     apiKey,
     testUrl: created.test_url
