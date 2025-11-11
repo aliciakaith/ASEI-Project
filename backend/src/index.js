@@ -150,8 +150,9 @@ const envStatic = process.env.STATIC_ROOT
 
 const candidates = [
   envStatic,
-  path.resolve(__dirname, "../../../ASEI_frontend"),
-  path.resolve(__dirname, "../../ASEI_frontend"),
+  path.resolve(__dirname, "../ASEI_frontend"),      // Docker: /app/src/../ASEI_frontend -> /app/ASEI_frontend
+  path.resolve(__dirname, "../../../ASEI_frontend"), // Local dev: backend/src/../../../ASEI_frontend
+  path.resolve(__dirname, "../../ASEI_frontend"),    // Local dev alt
 ].filter(Boolean);
 
 let FRONTEND_DIR =
