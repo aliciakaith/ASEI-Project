@@ -198,6 +198,7 @@ async function runMigrations() {
     const DB_DIR = path.resolve(__dirname, "./db");
     const schemaMain = read(path.join(DB_DIR, "schema.sql"));
     const schemaExec = read(path.join(DB_DIR, "execution_schema.sql"));
+    const schemaFlows = read(path.join(DB_DIR, "flows_schema.sql"));
     const auditDdl = `
       CREATE TABLE IF NOT EXISTS audit_log (
         id           BIGSERIAL PRIMARY KEY,
@@ -218,6 +219,7 @@ async function runMigrations() {
     const client = await pool.connect();
     try {
       if (schemaMain) await client.query(schemaMain);
+      if (schemaFlows) await client.query(schemaFlows);
       if (schemaExec) await client.query(schemaExec);
       await client.query(auditDdl);
       console.log("✅ Database schema ensured");
