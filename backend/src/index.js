@@ -54,7 +54,8 @@ const allowlist = [
   "http://localhost:3001", // same origin (backend)
   "http://localhost:5173", // Vite dev
   "http://127.0.0.1:5500", // Live Server
-  "http://localhost:8080"  // generic local test
+  "http://localhost:8080", // generic local test
+  "https://asei-backend.onrender.com" // Render production
 ];
 
 const EXTRA_ORIGINS = (process.env.CORS_EXTRA_ORIGINS || "")
