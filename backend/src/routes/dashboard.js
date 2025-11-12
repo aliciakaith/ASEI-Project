@@ -606,7 +606,7 @@ router.post("/compliance/generate", express.json(), async (req, res) => {
         ${findingsTable}
         ${privacyChecksTable}
 
-        <p style="margin-top:20px;font-size:12px;color:#6b7280">Full report attached as JSON and PDF.</p>
+        <p style="margin-top:20px;font-size:12px;color:#6b7280">Full report attached as JSON and PDF. If you don't see this email, please check your spam folder.</p>
       </div>
     `;
 
@@ -622,7 +622,7 @@ router.post("/compliance/generate", express.json(), async (req, res) => {
       await sendMail({
         to: recipientEmail,
         subject: `Compliance report (${reportType}) - ${sydneyDate}`,
-        text: `Attached is the compliance report (${reportType}). ${isSecurityAudit ? `Findings: ${findings.length}` : isDataPrivacy ? `Privacy Checks: ${privacyChecks.length}` : ''}`,
+        text: `Attached is the compliance report (${reportType}). ${isSecurityAudit ? `Findings: ${findings.length}` : isDataPrivacy ? `Privacy Checks: ${privacyChecks.length}` : ''} Check your spam folder if you don't see this email.`,
         html: emailHtml,
         attachments
       });
@@ -637,7 +637,7 @@ router.post("/compliance/generate", express.json(), async (req, res) => {
     }
 
     // Notification for org
-    await query(`INSERT INTO notifications (org_id, type, title, message) VALUES ($1, 'info', 'Compliance generated', $2)`, [orgId, `Compliance report (${reportType}) generated and emailed to ${recipientEmail}`]).catch(()=>{});
+    await query(`INSERT INTO notifications (org_id, type, title, message) VALUES ($1, 'info', 'Compliance generated', $2)`, [orgId, `Compliance report (${reportType}) generated and emailed to ${recipientEmail}. Check spam folder if not received.`]).catch(()=>{});
     emitToOrg(req, 'notifications:update');
 
     noStore(res);

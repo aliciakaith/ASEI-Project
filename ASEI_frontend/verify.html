@@ -78,7 +78,7 @@
   if (email) {
     persistEmail(email);
     document.getElementById("verify-msg").textContent =
-      `We’ve sent a 6-digit code to ${email}.`;
+      `We've sent a 6-digit code to ${email}. Check your spam folder if you don't see it.`;
   }
 
   // --- VERIFY submit: ALWAYS send email in body ---

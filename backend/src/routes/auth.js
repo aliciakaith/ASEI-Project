@@ -278,7 +278,7 @@ router.post("/signup", async (req, res) => {
     });
 
     return res.status(201).json({
-      message: "Check your email for a verification code",
+      message: "Check your email for a verification code (check spam folder if you don't see it)",
       email: lowerEmail,
     });
   } catch (err) {
