@@ -304,3 +304,45 @@ router.delete('/:id', async (req, res) => {
 });
 
 export default router;
+
+// --- DEBUG: helper endpoint (authenticated) -------------------------------------------------
+// GET /api/flows/debug/my-flows
+// Returns full flow rows for the current user (including latest version graph) to aid debugging.
+// This is safe: it uses the same org/user auth as other endpoints.
+router.get('/debug/my-flows', async (req, res) => {
+  try {
+    const orgId = req.user?.org;
+    const userId = req.user?.id;
+    if (!orgId || !userId) return res.status(401).json({ error: 'Organization or user not found' });
+
+    const rows = await query(
+      `SELECT f.id, f.name, f.description, f.status, f.created_at, f.updated_at, f.created_by,
+              COALESCE(MAX(v.version), 0) AS latest_version
+       FROM flows f
+       LEFT JOIN flow_versions v ON v.flow_id = f.id
+       WHERE f.is_deleted = FALSE AND f.org_id = $1 AND f.created_by = $2
+       GROUP BY f.id ORDER BY f.created_at DESC`,
+      [orgId, userId]
+    );
+
+    // Attach latestVersion payload (graph) if exists
+    const out = [];
+    for (const f of rows.rows) {
+      const ver = await query(
+        `SELECT id, version, graph, variables, created_at, created_by
+         FROM flow_versions WHERE flow_id = $1 ORDER BY version DESC LIMIT 1`,
+        [f.id]
+      );
+      const latest = ver.rows[0] || null;
+      if (latest && latest.graph && typeof latest.graph === 'string') {
+        try { latest.graph = JSON.parse(latest.graph); } catch (e) { /* ignore */ }
+      }
+      out.push({ flow: f, latestVersion: latest });
+    }
+
+    res.json(out);
+  } catch (e) {
+    console.error('Debug my-flows failed', e);
+    res.status(500).json({ error: 'Debug query failed' });
+  }
+});
