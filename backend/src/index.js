@@ -365,6 +365,3 @@ io.on("connection", (socket) => {
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`App running at http://localhost:${PORT}`);
 });
-
-import connectorsRouter from "./routes/connectors.js";
-app.use("/api/connectors", connectorsRouter);
