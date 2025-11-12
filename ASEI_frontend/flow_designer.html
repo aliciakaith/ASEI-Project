@@ -706,6 +706,12 @@ async function showLoadFlowModal() {
             </div>
             <div class="flex items-center gap-2">
               <span class="px-2 py-1 text-xs rounded ${f.status === 'active' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'}">${f.status || 'draft'}</span>
+              <button 
+                onclick="event.stopPropagation(); deleteFlowFromModal('${f.id}', '${f.name.replace(/'/g, "\\'")}');" 
+                class="px-3 py-1 text-sm text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                title="Delete flow">
+                Delete
+              </button>
             </div>
           </div>
         `).join('') : `
@@ -786,12 +792,26 @@ async function deleteFlowFromModal(flowId, flowName) {
   try {
     await FlowAPI.deleteFlow(flowId);
     
+    showNotification('Flow deleted successfully', 'success');
+    
     // Remove the flow item from the modal
     const flowItem = document.querySelector(`.flow-item[data-flow-id="${flowId}"]`);
     if (flowItem) {
       flowItem.style.opacity = '0';
       flowItem.style.transform = 'translateX(-20px)';
-      setTimeout(() => flowItem.remove(), 200);
+      setTimeout(() => {
+        flowItem.remove();
+        
+        // Check if list is now empty
+        const flowsList = document.getElementById('flowsList');
+        if (flowsList && flowsList.querySelectorAll('.flow-item').length === 0) {
+          flowsList.innerHTML = `
+            <div class="p-3 border dark:border-neutral-700 rounded text-neutral-600 dark:text-neutral-300">
+              You don't have any flows yet.
+            </div>
+          `;
+        }
+      }, 200);
     }
     
     // If we deleted the currently loaded flow, reset
@@ -803,6 +823,9 @@ async function deleteFlowFromModal(flowId, flowName) {
     }
   } catch (error) {
     console.error('Failed to delete flow:', error);
+    showNotification('Failed to delete flow', 'error');
+  }
+}
     showNotification('Failed to delete flow', 'error');
   }
 }
