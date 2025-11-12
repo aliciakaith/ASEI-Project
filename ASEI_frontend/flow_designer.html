@@ -733,43 +733,14 @@ async function loadFlowById(flowId) {
     const data = await FlowAPI.getFlow(flowId);
     console.log('Flow data received:', data);
     
-    if (!data.latestVersion || !data.latestVersion.graph) {
-      // Flow exists but has no graph data - start with empty canvas
-      const confirmed = await showConfirmModal(
-        'Start Designing Flow',
-        `"${data.flow.name}" has no saved design yet. Would you like to start designing this flow now?`,
-        'Start Designing',
-        'Cancel'
-      );
-      
-      if (confirmed) {
-        clearCanvasSilent();
-        currentFlowId = data.flow.id;
-        currentFlowName = data.flow.name;
-        document.getElementById('flowNameInput').value = data.flow.name;
-        document.getElementById('viewExecutionsBtn')?.classList.remove('hidden');
-        
-        // Close modal
-        document.querySelector('.fixed.inset-0')?.remove();
-      }
-      return;
-    }
-
+    // Always load with empty canvas - just set the flow ID and name
     clearCanvasSilent();
-    
     currentFlowId = data.flow.id;
     currentFlowName = data.flow.name;
     document.getElementById('flowNameInput').value = data.flow.name;
     document.getElementById('viewExecutionsBtn')?.classList.remove('hidden');
     
-    console.log('Rendering graph:', data.latestVersion.graph);
-    try {
-      renderTemplate(data.latestVersion.graph);
-      showNotification('Flow loaded successfully', 'success');
-    } catch (e) {
-      console.error('Error rendering loaded flow:', e);
-      showNotification('The saved design could not be rendered', 'error');
-    }
+    showNotification('Flow loaded successfully', 'success');
     
     // Close modal
     document.querySelector('.fixed.inset-0')?.remove();
@@ -1264,6 +1235,13 @@ async function viewExecutionDetails(executionId) {
       return;
     }
     clearCanvas();
+    
+    // Set the template name in the flow name input
+    if (temp.name) {
+      currentFlowName = temp.name;
+      document.getElementById('flowNameInput').value = temp.name;
+    }
+    
     renderTemplate(temp);
     localStorage.removeItem("connectify.selectedTemplate")
   }
