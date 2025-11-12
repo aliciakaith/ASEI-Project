@@ -229,9 +229,10 @@ let nodes = [];
 let connections = [];
 let currentFlowId = null;
 let currentFlowName = 'New Flow';
-const canvas = document.getElementById('canvas');
+let canvas;
 
 document.addEventListener('DOMContentLoaded', () => {
+  canvas = document.getElementById('canvas');
   const isDark = document.documentElement.classList.contains('dark');
   jsPlumbInstance = jsPlumb.getInstance({
     Container: canvas,
