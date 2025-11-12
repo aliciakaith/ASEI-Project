@@ -610,7 +610,7 @@ document.addEventListener('DOMContentLoaded', () => {
           interaction: { mode: 'index', intersect: false },
           scales: {
             x: {type: 'time', time: {unit: 'hour', displayFormats: {hour: 'HH:mm'}}, ticks: {autoSkip: true, maxTicksLimit: 6, color: tickColor}, grid: {display: false, color: gridColor}, border: {color: axisBorder}},
-            y: { beginAtZero: true, suggestedMax: Math.max(5, Math.max(...data.map(p => p.y)) + 1), ticks: {precision: 0, color: tickColor}, grid: {color: gridColor}, border: {color: axisBorder}}
+            y: { beginAtZero: true, suggestedMax: Math.max(1, Math.max(...data.map(p => p.y)) + 1), ticks: {precision: 0, color: tickColor}, grid: {color: gridColor}, border: {color: axisBorder}}
           }
         }
       });
