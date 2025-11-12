@@ -250,8 +250,8 @@ document.addEventListener('DOMContentLoaded', () => {
   checkAuth();
 
   // Setup load flow button
-    // Setup load flow button
   document.getElementById('loadFlowBtn').addEventListener('click', () => {
+    console.log('Load Flow button clicked');
     // show the executions button as soon as Load Flow is clicked
     document.getElementById('viewExecutionsBtn')?.classList.remove('hidden');
     showLoadFlowModal();
@@ -371,10 +371,6 @@ function createNode(type, kindOverride, nameOverride) {
   `;
   canvas.appendChild(el);
 
-  jsPlumbInstance.makeSource(document.getElementById(id+'_right'), { parent: el, anchor:'Right' });
-  jsPlumbInstance.makeTarget(document.getElementById(id+'_left'), { parent: el, anchor:'Left' });
-
-  canvas.appendChild(el);
   attachNodeInteractions(el, id, name);
 
   nodes.push({id, type, kind, name, x:el.offsetLeft, y:el.offsetTop});
