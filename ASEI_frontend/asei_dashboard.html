@@ -651,7 +651,10 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error('Failed to load integrations:', error);
       const wrap = document.getElementById('services-list');
       if (wrap) {
-        wrap.innerHTML = '<div class="text-center text-red-500 py-8">Failed to load integrations. Please refresh the page.</div>';
+        // Only show error if it's not a 401 (auth is handled globally)
+        if (error.message !== '401') {
+          wrap.innerHTML = '<div class="text-center text-neutral-500 py-8">Unable to load integrations. <button onclick="initServices()" class="text-blue-500 hover:underline ml-1">Retry</button></div>';
+        }
       }
     }
 
