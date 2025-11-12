@@ -1,6 +1,8 @@
 // src/routes/flows.js
 import express from "express";
-import { query } from "../db/postgres.js";
+import { query, pool } from "../db/postgres.js";
+import { saveFlow as fileSaveFlow, getFlow as fileGetFlow, listFlows as fileListFlows } from "../db/fileStore.js";
+import crypto from 'crypto';
 import { audit } from "../logging/audit.js";
 import ExecutionService from "../execution/ExecutionService.js";
 
@@ -36,6 +38,28 @@ router.get('/', async (req, res) => {
 
     sql += ` GROUP BY f.id ORDER BY f.created_at DESC `;
 
+    // If DB connection is disabled, fall back to file store
+    if (!pool) {
+      try {
+        const fsFlows = await fileListFlows();
+        // Transform to expected shape
+        const transformed = fsFlows.map(f => ({
+          id: f.id,
+          name: f.name || f.id,
+          description: f.description || null,
+          status: f.status || 'draft',
+          created_at: f.createdAt || f.created_at || null,
+          updated_at: f.updatedAt || f.updated_at || null,
+          created_by: f.createdBy || null,
+          latest_version: f.latest_version || (f.nodes || f.graph ? 1 : 0)
+        }));
+        return res.json(transformed);
+      } catch (e) {
+        console.error('fileListFlows error', e);
+        return res.status(500).json({ error: 'Failed to list flows (file store)' });
+      }
+    }
+
     const rows = await query(sql, params);
     res.json(rows.rows);
   } catch (e) {
@@ -59,6 +83,31 @@ router.post('/', async (req, res) => {
     }
 
     const createdBy = req.user?.id || null;
+    // If DB disabled, write to file store fallback
+    if (!pool) {
+      try {
+        const id = 'flow_' + crypto.randomUUID?.() || ('flow_' + Date.now() + '_' + Math.floor(Math.random()*10000));
+        const flowObj = {
+          id,
+          org_id: orgId,
+          name,
+          description: description || null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          is_deleted: false,
+          createdBy: createdBy,
+          nodes: [],
+          edges: []
+        };
+        await fileSaveFlow(flowObj);
+        // Audit omitted for file store
+        return res.status(201).json(flowObj);
+      } catch (err) {
+        console.error('fileSaveFlow error', err);
+        return res.status(500).json({ error: 'Failed to create flow (file store)' });
+      }
+    }
+
     const result = await query(
       `
       INSERT INTO flows (org_id, name, description, created_by)
@@ -104,6 +153,27 @@ router.get('/:id', async (req, res) => {
     );
     if (flowRes.rows.length === 0) return res.status(404).json({ error: 'Flow not found' });
 
+    // If DB unavailable, use file store fallback
+    if (!pool) {
+      try {
+        const f = await fileGetFlow(id);
+        if (!f) return res.status(404).json({ error: 'Flow not found' });
+        // Build latestVersion from file structure
+        const latest = {
+          id: f.version_id || null,
+          version: f.version || 1,
+          graph: f.graph || { nodes: f.nodes || [], edges: f.edges || f.connections || [] },
+          variables: f.variables || {},
+          created_at: f.updatedAt || f.created_at || null,
+          created_by: f.createdBy || null
+        };
+        return res.json({ flow: { id: f.id, name: f.name, description: f.description, updated_at: f.updatedAt }, latestVersion: latest });
+      } catch (e) {
+        console.error('fileGetFlow error', e);
+        return res.status(500).json({ error: 'Failed to fetch flow (file store)' });
+      }
+    }
+
     const verRes = await query(
       `SELECT id, version, graph, variables, created_at, created_by
        FROM flow_versions
@@ -144,6 +214,25 @@ router.post('/:id/versions', async (req, res) => {
   if (!graph) return res.status(400).json({ error: 'graph (JSON) is required' });
 
   try {
+    // If DB is disabled, save version to file store fallback
+    if (!pool) {
+      try {
+        const f = await fileGetFlow(id);
+        if (!f) return res.status(404).json({ error: 'Flow not found' });
+        // compute next version heuristically
+        const nextVersion = (f.version || 0) + 1;
+        f.version = nextVersion;
+        f.graph = graph;
+        f.variables = variables || {};
+        f.updatedAt = new Date().toISOString();
+        await fileSaveFlow(f);
+        return res.status(201).json({ id: id + '_' + nextVersion, flow_id: id, version: nextVersion, graph: f.graph, variables: f.variables, created_at: f.updatedAt });
+      } catch (err) {
+        console.error('fileSave version error', err);
+        return res.status(500).json({ error: 'Failed to create flow version (file store)' });
+      }
+    }
+
     // check flow exists
     const flowRes = await query(`SELECT id, name FROM flows WHERE id = $1 AND is_deleted = FALSE`, [id]);
     if (flowRes.rows.length === 0) return res.status(404).json({ error: 'Flow not found' });
