@@ -325,7 +325,15 @@
   // Render flows into table and KPIs
   async function loadDeployments() {
     try {
-      const flows = await FlowAPI.getAllFlows();
+      // Only populate the deployment flow dropdown with flows the current user owns
+      // (avoid showing flows the user doesn't have in their Load Flow list)
+      let flows = [];
+      try {
+        flows = await FlowAPI.getAllFlowsMineOnly();
+      } catch (err) {
+        console.warn('Failed to load user-owned flows, falling back to org flows', err);
+        flows = await FlowAPI.getAllFlows();
+      }
 
       // Populate flow dropdown in modal
       const flowSelect = document.getElementById('deployFlow');

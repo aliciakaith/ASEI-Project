@@ -18,18 +18,25 @@ router.get('/', async (req, res) => {
       return res.status(401).json({ error: 'Organization not found' });
     }
 
-    const rows = await query(
-      `
-      SELECT f.id, f.name, f.description, f.status, f.created_at, f.updated_at,
+    // Optional query param to only return flows created by the current user
+    const mineOnly = String(req.query.mine || '').toLowerCase() === 'true';
+    let sql = `
+      SELECT f.id, f.name, f.description, f.status, f.created_at, f.updated_at, f.created_by,
              COALESCE(MAX(v.version), 0) AS latest_version
       FROM flows f
       LEFT JOIN flow_versions v ON v.flow_id = f.id
       WHERE f.is_deleted = FALSE AND f.org_id = $1
-      GROUP BY f.id
-      ORDER BY f.created_at DESC
-      `,
-      [orgId]
-    );
+    `;
+    const params = [orgId];
+
+    if (mineOnly) {
+      sql += ` AND f.created_by = $2 `;
+      params.push(req.user?.id);
+    }
+
+    sql += ` GROUP BY f.id ORDER BY f.created_at DESC `;
+
+    const rows = await query(sql, params);
     res.json(rows.rows);
   } catch (e) {
     console.error(e);
@@ -51,13 +58,14 @@ router.post('/', async (req, res) => {
       return res.status(401).json({ error: 'Organization not found' });
     }
 
+    const createdBy = req.user?.id || null;
     const result = await query(
       `
-      INSERT INTO flows (org_id, name, description)
-      VALUES ($1, $2, $3)
-      RETURNING id, org_id, name, description, created_at, updated_at, is_deleted
+      INSERT INTO flows (org_id, name, description, created_by)
+      VALUES ($1, $2, $3, $4)
+      RETURNING id, org_id, name, description, created_at, updated_at, is_deleted, created_by
       `,
-      [orgId, name, description || null]
+      [orgId, name, description || null, createdBy]
     );
 
     // ✅ Audit: flow created

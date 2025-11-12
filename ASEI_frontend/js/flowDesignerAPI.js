@@ -7,7 +7,9 @@ const FlowAPI = {
    */
   async getAllFlows() {
     try {
-      const response = await fetch(this.baseURL, {
+      // default: return org-scoped flows. Pass mineOnly=true to return only flows created by the current user.
+      const url = this.baseURL;
+      const response = await fetch(url, {
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -15,6 +17,21 @@ const FlowAPI = {
       return await response.json();
     } catch (error) {
       console.error('Failed to fetch flows:', error);
+      throw error;
+    }
+  },
+
+  // New: fetch flows with option to only return flows created by current user
+  async getAllFlowsMineOnly() {
+    try {
+      const response = await fetch(this.baseURL + '?mine=true', {
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to fetch my flows:', error);
       throw error;
     }
   },
