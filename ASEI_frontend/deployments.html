@@ -807,15 +807,25 @@
       const version = versionInput?.value?.trim() || null;
       
       try {
-        // First, activate the flow if it's not already active
+        // First, activate the flow (PATCH). The backend may auto-start execution when status becomes 'active'.
+        let patchResp = null;
         try {
-          await FlowAPI.updateFlowStatus(flowId, 'active');
+          patchResp = await FlowAPI.updateFlowStatus(flowId, 'active');
         } catch (stErr) {
           console.error('Failed to update flow status to active:', stErr);
-          // Continue — starting execution may still be possible depending on backend state
+          // Continue — we'll attempt to start execution explicitly below
         }
 
-        // Then start an execution with the selected environment
+        // If the PATCH already started an execution, the backend will include `execution` in the response.
+        if (patchResp && patchResp.execution) {
+          console.log('Deployment started by status update:', patchResp.execution);
+          closeModal();
+          showNotification('Deployment started successfully!', 'success');
+          await loadDeployments();
+          return;
+        }
+
+        // Otherwise, start an execution explicitly
         const response = await fetch('/api/executions/start', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
