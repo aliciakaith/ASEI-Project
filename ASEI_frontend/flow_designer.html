@@ -519,11 +519,6 @@ function exportFlow() {
 
 async function saveFlow(status) {
   const flowName = document.getElementById('flowNameInput').value.trim() || 'Untitled Flow';
-  
-  if (nodes.length === 0) {
-    showNotification('Cannot save an empty flow. Add some nodes first.', 'error');
-    return;
-  }
 
   try {
     // Update positions before saving
@@ -551,6 +546,12 @@ async function saveFlow(status) {
       })),
       edges: connections
     };
+
+    // Check if flow is empty AFTER building the graph
+    if (graph.nodes.length === 0) {
+      showNotification('Cannot save an empty flow. Add some nodes first.', 'error');
+      return;
+    }
 
     // Create or update flow
     if (!currentFlowId) {
@@ -624,14 +625,19 @@ function clearCanvas() {
 
 // Make clearCanvas async to use custom modal
 async function clearCanvas() {
-  const confirmed = await showConfirmModal(
-    'Clear Canvas',
-    'Are you sure you want to clear the canvas? This will remove all nodes and connections.',
-    'Clear Canvas',
-    'Cancel'
-  );
+  // Only show confirmation if there are actually nodes on the canvas
+  const hasNodes = nodes.length > 0 || canvas.children.length > 0;
   
-  if (!confirmed) return;
+  if (hasNodes) {
+    const confirmed = await showConfirmModal(
+      'Clear Canvas',
+      'Are you sure you want to clear the canvas? This will remove all nodes and connections.',
+      'Clear Canvas',
+      'Cancel'
+    );
+    
+    if (!confirmed) return;
+  }
   
   canvas.innerHTML = '';
   jsPlumbInstance.reset();
