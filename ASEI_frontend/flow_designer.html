@@ -686,7 +686,7 @@ async function showLoadFlowModal() {
           <h3 class="text-lg font-semibold">Load Flow</h3>
           <p class="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
             ${hasError ? 'Couldn’t load your flows (server error).'
-                        : (safeFlows.length ? 'Your saved flows' : 'No saved flows yet')}
+                          : (safeFlows.length ? 'Your saved flows' : 'No saved flows yet')}
             • <a href="templates.html" class="text-blue-500 hover:underline">Browse Templates</a>
           </p>
         </div>
@@ -703,8 +703,8 @@ async function showLoadFlowModal() {
               <div class="font-medium">${f.name}</div>
               <div class="text-sm text-neutral-500">
                 ${f.latest_version > 0
-                  ? `✅ Version ${f.latest_version} • Updated: ${new Date(f.updated_at).toLocaleDateString()}`
-                  : '⚠️ No design saved yet • Click to start designing'}
+              ? `✅ Version ${f.latest_version} • Updated: ${new Date(f.updated_at).toLocaleDateString()}`
+              : 'No design saved yet • Click to start designing'}
               </div>
             </div>
             <div class="flex items-center gap-2">
@@ -746,9 +746,20 @@ async function loadFlowById(flowId) {
     document.getElementById('flowNameInput').value = data.flow.name;
     document.getElementById('viewExecutionsBtn')?.classList.remove('hidden');
 
-    // Restore graph if present
+    // Restore graph if present. If backend returns only metadata, try fetching the latest version
     if (data.flow.graph) {
       restoreGraph(data.flow.graph);
+    } else if (data.flow.latest_version && data.flow.latest_version > 0) {
+      try {
+        const versionPayload = await FlowAPI.getFlowVersion(flowId, data.flow.latest_version);
+        if (versionPayload && (versionPayload.graph || versionPayload.flow?.graph)) {
+          // Support both shapes: { graph: {...} } and { flow: { graph: {...} } }
+          const g = versionPayload.graph || (versionPayload.flow && versionPayload.flow.graph);
+          restoreGraph(g);
+        }
+      } catch (verErr) {
+        console.warn('Failed to fetch flow version:', verErr);
+      }
     }
 
     showNotification('Flow loaded successfully', 'success');
@@ -1306,6 +1317,27 @@ async function viewExecutionDetails(executionId) {
     } catch(err){
       console.error("renderTemplate: unrecoverable error", err);
       showNotification('Failed to render flow graph', 'error');
+    }
+  }
+
+  /**
+   * Restore a saved graph onto the canvas.
+   * This is a thin wrapper around renderTemplate that performs
+   * defensive checks and gives a clearer notification when no
+   * design is present on the saved flow.
+   */
+  function restoreGraph(graph) {
+    try {
+      if (!graph || !Array.isArray(graph.nodes) || graph.nodes.length === 0) {
+        // Do not display the large yellow warning modal; silently open an empty canvas
+        console.info('restoreGraph: no nodes present in saved graph');
+        return;
+      }
+
+      renderTemplate(graph);
+    } catch (err) {
+      console.error('restoreGraph failed', err);
+      showNotification('Failed to restore saved flow', 'error');
     }
   }
 
