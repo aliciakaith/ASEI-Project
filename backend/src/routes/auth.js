@@ -310,10 +310,13 @@ router.post("/verify", async (req, res) => {
       return res.status(400).json({ error: "Invalid verification code." });
     }
 
-    const orgRes = await query("SELECT id FROM organizations WHERE name=$1", ["DefaultOrg"]);
-    const orgId = orgRes.rowCount
-      ? orgRes.rows[0].id
-      : (await query("INSERT INTO organizations (name) VALUES ($1) RETURNING id", ["DefaultOrg"])).rows[0].id;
+    // Create a unique organization for each user (using their email as org name)
+    const orgName = `Org-${p.email}`;
+    const orgRes = await query(
+      "INSERT INTO organizations (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name=EXCLUDED.name RETURNING id",
+      [orgName]
+    );
+    const orgId = orgRes.rows[0].id;
 
     const created = await query(
       `INSERT INTO users (org_id, email, first_name, last_name, password_hash)
