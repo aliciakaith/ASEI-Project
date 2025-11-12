@@ -756,7 +756,14 @@
         responsive: true,
         maintainAspectRatio: false,
         interaction: { mode: 'index', intersect: false },
-        plugins: { legend: { display: false }, tooltip: { displayColors: false, callbacks: { title(items){ const d = new Date(items[0].parsed.x); return d.toLocaleDateString(undefined, {year:'numeric', month:'short', day:'2-digit'}); }, label(item){ return `Count: ${item.parsed.y}`; } } } },
+        plugins: { legend: { display: false }, tooltip: { displayColors: false, callbacks: { title(items){ const d = new Date(items[0].parsed.x); return d.toLocaleDateString(undefined, {year:'numeric', month:'short', day:'2-digit'}); }, label(item){ return `Count: ${item.parsed.y}`; } } },
+          callbacks: {
+            title(items){
+              const d = new Date(items[0].parsed.x);
+              return d.toLocaleString(undefined, {month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit'});
+            },
+            label(item) { return `Executions: ${item.parsed.y}`;}
+          } },
         scales: {
           x: {type: 'time', time: {unit: 'hour', displayFormats: {hour: 'HH:mm'}, tooltipFormat: 'HH:mm'}, grid: {color: gridColor, drawOnChartArea: false}, ticks: {color: tickColor, maxTicksLimit: 7}, border: {color: axisBorder}},
           y: {beginAtZero: true, suggestedMax: Math.max(...data.map(p => p.y)) + 1, ticks: {precision: 0, color: tickColor}, grid: {color: gridColor}, border: {color: axisBorder}}
