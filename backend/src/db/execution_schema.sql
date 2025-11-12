@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS flow_executions (
   error_message TEXT,
   execution_time_ms INTEGER,
   CONSTRAINT fk_flow_version FOREIGN KEY (flow_id, flow_version) 
-    REFERENCES flow_versions(flow_id, version_number) ON DELETE CASCADE
+    REFERENCES flow_versions(flow_id, version) ON DELETE CASCADE
 );
 
 -- ---------- Execution Steps ----------

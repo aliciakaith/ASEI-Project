@@ -23,14 +23,12 @@ CREATE INDEX IF NOT EXISTS idx_flows_deleted ON flows(is_deleted);
 CREATE TABLE IF NOT EXISTS flow_versions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   flow_id UUID NOT NULL REFERENCES flows(id) ON DELETE CASCADE,
-  version_number INTEGER NOT NULL,
-  name TEXT NOT NULL,
-  nodes JSONB DEFAULT '[]'::jsonb,
-  edges JSONB DEFAULT '[]'::jsonb,
-  meta JSONB DEFAULT '{}'::jsonb,
+  version INTEGER NOT NULL,
+  graph JSONB DEFAULT '{}'::jsonb,
+  variables JSONB DEFAULT '{}'::jsonb,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   created_by UUID REFERENCES users(id),
-  UNIQUE(flow_id, version_number)
+  UNIQUE(flow_id, version)
 );
 
 CREATE INDEX IF NOT EXISTS idx_flow_versions_flow_id ON flow_versions(flow_id);
