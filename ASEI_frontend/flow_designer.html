@@ -1312,10 +1312,9 @@ async function viewExecutionDetails(executionId) {
           return;
         }
         try {
-          // Connect using the connector dot IDs (source_right -> target_left)
           jsPlumbInstance.connect({
-            source: `${edge.from}_right`,
-            target: `${edge.to}_left`
+            source: edge.from,
+            target: edge.to
           });
         } catch(err){
           console.warn("Failed to connect edge", edge, err);
