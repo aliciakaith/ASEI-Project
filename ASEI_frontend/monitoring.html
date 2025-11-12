@@ -575,7 +575,13 @@
       
       const data = await res.json();
       if (data.user) {
-        const fullName = `${data.user.firstName || ''} ${data.user.lastName || ''}`.trim();
+        const capitalizeName = (name) => {
+          if (!name) return '';
+          return name.split(/\s+/).map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+        };
+        const firstName = capitalizeName(data.user.firstName || '');
+        const lastName = capitalizeName(data.user.lastName || '');
+        const fullName = [firstName, lastName].filter(Boolean).join(' ').trim();
         const sidebarUsername = document.getElementById('sidebarUsername');
         if (sidebarUsername) {
           sidebarUsername.textContent = fullName || 'User';

@@ -127,7 +127,7 @@
 
           <img id="initialSidebarPfp" src="images/default_avatar.png" class="js-initial-pfp h-8 w-8 rounded-full object-cover" alt="O Pfp"/>
           <img id="mainPfp" class="js-main-pfp h-8 w-8 rounded-full object-cover hidden" alt="N Pfp"/>
-          <span class="text-sm font-medium">Insert User Name</span>
+          <span class="text-sm font-medium">User</span>
       </div>
 
     </div>
@@ -299,7 +299,13 @@ async function checkAuth() {
     const userData = await response.json();
     // Update profile info if needed
     if (userData.firstName) {
-      document.querySelector('#profileBtn span').textContent = `${userData.firstName} ${userData.lastName || ''}`.trim();
+      const capitalizeName = (name) => {
+        if (!name) return '';
+        return name.split(/\s+/).map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+      };
+      const firstName = capitalizeName(userData.firstName);
+      const lastName = capitalizeName(userData.lastName || '');
+      document.querySelector('#profileBtn span').textContent = [firstName, lastName].filter(Boolean).join(' ').trim();
     }
   } catch (error) {
     console.error('Auth check failed:', error);

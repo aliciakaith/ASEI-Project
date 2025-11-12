@@ -683,8 +683,16 @@ document.getElementById('applyCrop')?.addEventListener('click', async () => {
         }
       }
       
+      // Capitalize names properly
+      const capitalizeName = (name) => {
+        if (!name) return '';
+        return name.split(/\s+/).map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+      };
+
       // Update profile username display
-      const fullName = `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim();
+      const firstName = capitalizeName(currentUser.firstName || '');
+      const lastName = capitalizeName(currentUser.lastName || '');
+      const fullName = [firstName, lastName].filter(Boolean).join(' ').trim();
       document.getElementById('profileUsername').textContent = fullName || 'User';
       document.getElementById('sidebarUsername').textContent = fullName || 'User';
       
