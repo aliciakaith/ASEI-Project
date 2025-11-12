@@ -660,6 +660,7 @@
     const lineColor = currentThemeIsDark() ? '#a8b3cf' : '#1f2937';
     const gridColor = currentThemeIsDark() ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
     const tickColor = currentThemeIsDark() ? '#cbd5e1' : '#475569';
+    const axisBorder = gridColor;
 
 
 
@@ -699,12 +700,14 @@
             type: 'time',
             time: {unit: 'hour', displayFormats: {hour: 'HH:mm'}, tooltipFormat: 'HH:mm'},
             grid: {color: gridColor, drawOnChartArea: false},
-            ticks: {color: tickColor, maxTicksLimit: 12}
+            ticks: {color: tickColor, maxTicksLimit: 12},
+            border: {color: axisBorder}
           },
           y: {
             beginAtZero: true,
             ticks: {precision: 0, color: tickColor},
-            grid: {color: gridColor}
+            grid: {color: gridColor},
+            border: {color: axisBorder}
           }
         }
       }
