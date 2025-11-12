@@ -746,16 +746,20 @@ async function loadFlowById(flowId) {
     document.getElementById('flowNameInput').value = data.flow.name;
     document.getElementById('viewExecutionsBtn')?.classList.remove('hidden');
 
-    // Restore graph if present. If backend returns only metadata, try fetching the latest version
-    if (data.flow.graph) {
+    // Restore graph if present. Backend returns the latest version under `latestVersion`.
+    if (data.latestVersion && data.latestVersion.graph) {
+      console.log('Using latestVersion.graph to restore');
+      restoreGraph(data.latestVersion.graph);
+    } else if (data.flow && data.flow.graph) {
+      console.log('Using flow.graph to restore');
       restoreGraph(data.flow.graph);
-    } else if (data.flow.latest_version && data.flow.latest_version > 0) {
+    } else if (data.latestVersion && data.latestVersion.version) {
+      // If latestVersion exists but graph wasn't embedded, fetch that version explicitly
       try {
-        const versionPayload = await FlowAPI.getFlowVersion(flowId, data.flow.latest_version);
-        if (versionPayload && (versionPayload.graph || versionPayload.flow?.graph)) {
-          // Support both shapes: { graph: {...} } and { flow: { graph: {...} } }
-          const g = versionPayload.graph || (versionPayload.flow && versionPayload.flow.graph);
-          restoreGraph(g);
+        const versionNum = data.latestVersion.version;
+        const versionPayload = await FlowAPI.getFlowVersion(flowId, versionNum);
+        if (versionPayload && versionPayload.graph) {
+          restoreGraph(versionPayload.graph);
         }
       } catch (verErr) {
         console.warn('Failed to fetch flow version:', verErr);
