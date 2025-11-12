@@ -576,8 +576,17 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const data = await loadSeries();
       console.log('Chart data loaded:', data.length, 'points');
+
+      function currentThemeIsDark() {
+        return document.documentElement.classList.contains('dark');
+      }
+
+      const lineColor = currentThemeIsDark() ? '#a8b3cf' : '#1f2937';
+      const gridColor = currentThemeIsDark() ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+      const tickColor = currentThemeIsDark() ? '#cbd5e1' : '#475569';
+      const axisBorder = gridColor;
       
-      const ds = [{ data, borderWidth: 2, tension: 0.3, borderColor: '#000', pointRadius: 0 }];
+      const ds = [{ data, borderWidth: 2, tension: 0.3, borderColor: lineColor, pointRadius: 0 }];
       chart = new Chart(canvas, {
         type: 'line',
         data: { datasets: ds },
@@ -600,8 +609,8 @@ document.addEventListener('DOMContentLoaded', () => {
           },
           interaction: { mode: 'index', intersect: false },
           scales: {
-            x: { type: 'time', time: { unit: 'hour', displayFormats: { hour: 'HH:mm' }}, ticks: { autoSkip: true, maxTicksLimit: 6 }, grid: { display: false }},
-            y: { beginAtZero: true, suggestedMax: Math.max(5, Math.max(...data.map(p => p.y)) + 1), ticks: { precision: 0 } }
+            x: {type: 'time', time: {unit: 'hour', displayFormats: {hour: 'HH:mm'}}, ticks: {autoSkip: true, maxTicksLimit: 6, color: tickColor}, grid: {display: false, color: gridColor}, border: {color: axisBorder}},
+            y: { beginAtZero: true, suggestedMax: Math.max(5, Math.max(...data.map(p => p.y)) + 1), ticks: {precision: 0, color: tickColor}, grid: {color: gridColor}, border: {color: axisBorder}}
           }
         }
       });
