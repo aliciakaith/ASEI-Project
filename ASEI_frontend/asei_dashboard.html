@@ -81,7 +81,7 @@
 
           <img id="initialSidebarPfp" src="images/default_avatar.png" class="js-initial-pfp h-8 w-8 rounded-full object-cover" alt="O Pfp"/>
           <img id="mainPfp" class="js-main-pfp h-8 w-8 rounded-full object-cover hidden" alt="N Pfp"/>
-          <span class="js-profile-name text-sm font-medium">Insert User Name</span>
+          <span class="js-profile-name text-sm font-medium">User</span>
       </div>
     </div>
   </aside>
@@ -378,8 +378,17 @@ const api = {
   // ---------- Profile (name + avatar) ----------
   const PFP_KEY = 'connectify.pfpUrl';
 
+  function capitalizeName(name) {
+    if (!name) return '';
+    return name
+      .split(/\s+/)
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  }
+
   function setProfileUI({ name, pfp }) {
-    document.querySelectorAll('.js-profile-name').forEach(n => n.textContent = name || 'User');
+    const displayName = capitalizeName(name) || 'User';
+    document.querySelectorAll('.js-profile-name').forEach(n => n.textContent = displayName);
 
     // update image 
     const showReal = !!pfp;
@@ -408,7 +417,10 @@ const api = {
       const me = window.__me || await getMeSafe();
       if (me) {
         const pfp = me.profilePicture || stored || null;
-        const full = [me.firstName, me.lastName].filter(Boolean).join(' ') || (me.email||'').split('@')[0] || 'User';
+        // Capitalize each part of the name (handles first, middle, last)
+        const firstName = capitalizeName(me.firstName || '');
+        const lastName = capitalizeName(me.lastName || '');
+        const full = [firstName, lastName].filter(Boolean).join(' ') || (me.email||'').split('@')[0] || 'User';
         setProfileUI({ name: full, pfp });
         if (pfp) try { localStorage.setItem(PFP_KEY, pfp); } catch {}
       }
