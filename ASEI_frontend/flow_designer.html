@@ -739,18 +739,18 @@ async function loadFlowById(flowId) {
     const data = await FlowAPI.getFlow(flowId);
     console.log('Flow data received:', data);
     
-    // Clear canvas and set flow info
+    // Always load with empty canvas, then restore graph
     clearCanvasSilent();
     currentFlowId = data.flow.id;
     currentFlowName = data.flow.name;
     document.getElementById('flowNameInput').value = data.flow.name;
     document.getElementById('viewExecutionsBtn')?.classList.remove('hidden');
 
-    // Render saved graph if present
-    if (data.flow.graph) {
+    // Restore graph if present
+    if (data.flow.graph && Array.isArray(data.flow.graph.nodes)) {
       renderTemplate(data.flow.graph);
     } else {
-      showNotification('No saved design found for this flow', 'warning');
+      showNotification('No design found for this flow. You can start designing.', 'warning');
     }
 
     showNotification('Flow loaded successfully', 'success');
