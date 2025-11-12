@@ -732,7 +732,9 @@ async function showLoadFlowModal() {
 async function loadFlowById(flowId) {
   document.getElementById('viewExecutionsBtn')?.classList.remove('hidden');
   try {
+    console.log('Loading flow:', flowId);
     const data = await FlowAPI.getFlow(flowId);
+    console.log('Flow data received:', data);
     
     if (!data.latestVersion || !data.latestVersion.graph) {
       // Flow exists but has no graph data - start with empty canvas
@@ -763,8 +765,10 @@ async function loadFlowById(flowId) {
     document.getElementById('flowNameInput').value = data.flow.name;
     document.getElementById('viewExecutionsBtn')?.classList.remove('hidden');
     
+    console.log('Rendering graph:', data.latestVersion.graph);
     try {
       renderTemplate(data.latestVersion.graph);
+      showNotification('Flow loaded successfully', 'success');
     } catch (e) {
       console.error('Error rendering loaded flow:', e);
       showNotification('The saved design could not be rendered', 'error');
@@ -774,7 +778,7 @@ async function loadFlowById(flowId) {
     document.querySelector('.fixed.inset-0')?.remove();
   } catch (error) {
     console.error('Failed to load flow:', error);
-    showNotification('Failed to load flow', 'error');
+    showNotification('Failed to load flow: ' + (error.message || 'Unknown error'), 'error');
   }
 }
 
@@ -1308,9 +1312,10 @@ async function viewExecutionDetails(executionId) {
           return;
         }
         try {
+          // Connect using the connector dot IDs (source_right -> target_left)
           jsPlumbInstance.connect({
-            source: edge.from,
-            target: edge.to
+            source: `${edge.from}_right`,
+            target: `${edge.to}_left`
           });
         } catch(err){
           console.warn("Failed to connect edge", edge, err);
