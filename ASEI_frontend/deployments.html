@@ -807,8 +807,13 @@
       
       try {
         // First, activate the flow if it's not already active
-        await FlowAPI.updateFlowStatus(flowId, 'active');
-        
+        try {
+          await FlowAPI.updateFlowStatus(flowId, 'active');
+        } catch (stErr) {
+          console.error('Failed to update flow status to active:', stErr);
+          // Continue — starting execution may still be possible depending on backend state
+        }
+
         // Then start an execution with the selected environment
         const response = await fetch('/api/executions/start', {
           method: 'POST',
@@ -824,14 +829,17 @@
             }
           })
         });
-        
+
         if (!response.ok) {
-          throw new Error(`Deployment failed: ${response.status}`);
+          let body = null;
+          try { body = await response.json(); } catch (e) { /* ignore */ }
+          const msg = body?.error || body?.message || `HTTP ${response.status}`;
+          throw new Error(msg);
         }
-        
+
         const result = await response.json();
         console.log('✅ Deployment started:', result);
-        
+
         closeModal();
         showNotification('Deployment started successfully!', 'success');
         // refresh table and KPIs

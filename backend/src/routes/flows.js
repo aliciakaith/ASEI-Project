@@ -113,9 +113,19 @@ router.get('/:id', async (req, res) => {
       [id]
     );
 
+    // Defensive: ensure graph in latestVersion is parsed JSON (some DB drivers may return as string)
+    const latest = verRes.rows[0] || null;
+    if (latest && latest.graph && typeof latest.graph === 'string') {
+      try {
+        latest.graph = JSON.parse(latest.graph);
+      } catch (e) {
+        console.warn('Could not parse latestVersion.graph JSON for flow', id, e.message);
+      }
+    }
+
     res.json({
       flow: flowRes.rows[0],
-      latestVersion: verRes.rows[0] || null
+      latestVersion: latest
     });
   } catch (e) {
     console.error(e);

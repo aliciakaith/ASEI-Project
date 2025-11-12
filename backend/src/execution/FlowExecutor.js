@@ -48,8 +48,23 @@ class FlowExecutor {
         throw new Error(`Flow version ${this.flowVersion} not found`);
       }
 
-      const graph = flowData.rows[0].graph;
-      if (!graph || !graph.nodes || !graph.edges) {
+      let graph = flowData.rows[0].graph;
+
+      // Defensive: sometimes JSON may be returned as a string depending on driver/config
+      if (typeof graph === 'string') {
+        try {
+          graph = JSON.parse(graph);
+        } catch (e) {
+          throw new Error('Flow graph JSON parsing failed: ' + e.message);
+        }
+      }
+
+      // Accept alternate key names (connections) for backward compatibility
+      if (graph && !Array.isArray(graph.edges) && Array.isArray(graph.connections)) {
+        graph.edges = graph.connections;
+      }
+
+      if (!graph || !Array.isArray(graph.nodes) || !Array.isArray(graph.edges)) {
         throw new Error('Invalid flow graph structure');
       }
 

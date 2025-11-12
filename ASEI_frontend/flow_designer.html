@@ -747,23 +747,49 @@ async function loadFlowById(flowId) {
     document.getElementById('viewExecutionsBtn')?.classList.remove('hidden');
 
     // Restore graph if present. Backend returns the latest version under `latestVersion`.
-    if (data.latestVersion && data.latestVersion.graph) {
-      console.log('Using latestVersion.graph to restore');
-      restoreGraph(data.latestVersion.graph);
-    } else if (data.flow && data.flow.graph) {
-      console.log('Using flow.graph to restore');
-      restoreGraph(data.flow.graph);
-    } else if (data.latestVersion && data.latestVersion.version) {
-      // If latestVersion exists but graph wasn't embedded, fetch that version explicitly
-      try {
-        const versionNum = data.latestVersion.version;
-        const versionPayload = await FlowAPI.getFlowVersion(flowId, versionNum);
-        if (versionPayload && versionPayload.graph) {
-          restoreGraph(versionPayload.graph);
-        }
-      } catch (verErr) {
-        console.warn('Failed to fetch flow version:', verErr);
+    try {
+      let graphPayload = null;
+
+      if (data.latestVersion && data.latestVersion.graph) {
+        console.log('Using latestVersion.graph to restore');
+        graphPayload = data.latestVersion.graph;
+      } else if (data.flow && data.flow.graph) {
+        console.log('Using flow.graph to restore');
+        graphPayload = data.flow.graph;
       }
+
+      // If we still don't have a graph, try to fetch the explicit version
+      if (!graphPayload && data.latestVersion && data.latestVersion.version) {
+        try {
+          const versionNum = data.latestVersion.version;
+          const versionPayload = await FlowAPI.getFlowVersion(flowId, versionNum);
+          if (versionPayload && versionPayload.graph) {
+            graphPayload = versionPayload.graph;
+          }
+        } catch (verErr) {
+          console.warn('Failed to fetch flow version:', verErr);
+        }
+      }
+
+      // Normalize payload if necessary and restore
+      if (graphPayload) {
+        if (typeof graphPayload === 'string') {
+          try {
+            graphPayload = JSON.parse(graphPayload);
+          } catch (e) {
+            console.warn('Failed to parse graph JSON from server:', e);
+            graphPayload = null;
+          }
+        }
+
+        if (graphPayload && !Array.isArray(graphPayload.edges) && Array.isArray(graphPayload.connections)) {
+          graphPayload.edges = graphPayload.connections;
+        }
+
+        if (graphPayload) restoreGraph(graphPayload);
+      }
+    } catch (err) {
+      console.warn('Error restoring graph:', err);
     }
 
     showNotification('Flow loaded successfully', 'success');
